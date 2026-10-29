@@ -11,14 +11,17 @@ GRID=${1:-stress/grids/screening.json}; shift || true
 NAME=$(basename "$GRID" .json)
 mkdir -p stress/results stress/logs
 
-# 1. Node >= 20: use the system one, else a private copy in .node/ (downloaded once from nodejs.org)
-NODE=node
-if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
-  if [ ! -x .node/bin/node ]; then
-    V=v22.11.0; ARCH=$(uname -m); case $ARCH in x86_64) ARCH=x64;; aarch64) ARCH=arm64;; esac
-    echo "installing Node $V ($ARCH) into .node/ ..."
-    mkdir -p .node && curl -fsSL "https://nodejs.org/dist/$V/node-$V-linux-$ARCH.tar.xz" | tar -xJ -C .node --strip-components=1
-  fi
+# 1. Node 24.11.1, the version the golden reference was made with (Node 22 fails the golden wall profile):
+#    the private copy in .node/ if it has that version, else the system one if it matches, else download it into .node/
+V=v24.11.1
+if [ -x .node/bin/node ] && [ "$(.node/bin/node --version)" = "$V" ]; then
+  NODE=$PWD/.node/bin/node
+elif command -v node >/dev/null && [ "$(node --version)" = "$V" ]; then
+  NODE=node
+else
+  ARCH=$(uname -m); case $ARCH in x86_64) ARCH=x64;; aarch64) ARCH=arm64;; esac
+  echo "installing Node $V ($ARCH) into .node/ ..."
+  rm -rf .node && mkdir -p .node && curl -fsSL "https://nodejs.org/dist/$V/node-$V-linux-$ARCH.tar.xz" | tar -xJ -C .node --strip-components=1
   NODE=$PWD/.node/bin/node
 fi
 echo "node: $($NODE --version)"

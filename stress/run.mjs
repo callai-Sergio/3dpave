@@ -10,6 +10,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
+import { APP_HTML } from './engine.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -45,6 +47,13 @@ function expand(grid) {
   return out;
 }
 
+// platform of the run (P7: results differ slightly between Node versions and OSes), written on every line
+const ENV = {
+  node: process.version, os: `${process.platform}-${process.arch}`, host: os.hostname(),
+  app: crypto.createHash('sha256').update(fs.readFileSync(APP_HTML)).digest('hex').slice(0, 12),
+  native: process.env.MD_NATIVE ? `${path.basename(process.env.MD_NATIVE)} x${process.env.MD_THREADS || 1}` : null,
+};
+
 const all = expand(grid);
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 const done = new Set();
@@ -75,7 +84,7 @@ function launch() {
     ch.stderr.on('data', d => { err += d; });
     const fin = rec => {
       if (settled) return; settled = true; clearTimeout(timer); running--;
-      write({ id: spec.id, spec, wall: (Date.now() - t1) / 1000, ...rec });
+      write({ id: spec.id, spec, wall: (Date.now() - t1) / 1000, env: ENV, ...rec });
       if (finished === todo.length) summary(); else launch();
     };
     const timer = setTimeout(() => { ch.kill('SIGKILL'); fin({ status: 'hang', category: 'B', error: `timeout after ${timeout / 1000}s` }); }, timeout);
