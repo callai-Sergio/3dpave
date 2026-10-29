@@ -153,3 +153,8 @@ Casos de `stress/grids/a4_k33.json` (Albayati, Marshall 1200 g, AVC livre, forma
 - No vid1, o mesmo caso deu AVC 6,23 % e K33 0,081 antes da correção: Windows e Linux divergem bastante numa semente só (P7). Por isso a calibração precisa de 3 sementes.
 - Golden em JS: idêntico à referência (o [W] não chega a ter contato pedra-pedra). Smoke: só `synth-gap-p2-20` muda (K33 0,156 → 0,091).
 - Golden pelo núcleo C: volumes iguais aos do JS, mas a parede radial dá 9,27 (falha ± 2 pp) antes e depois → item M14.
+
+### 2026-10-29 · golden no vid1 (Linux, Node 24.11.1, JS)
+
+- K32 (Vagg Linux × Windows): 0,020 % → pass. Determinismo: identical. Referência do Linux gravada no vid1 (`stress/golden_ref.json` de lá; trazer junto com os resultados da A5).
+- Parede radial: 12,5 % no Linux contra 5,4 % no Windows (meta 6 ± 2), com os volumes iguais. A parede é a métrica mais sensível à trajetória (M10, M14): com a referência por plataforma, a regressão fica coberta pela comparação exata; a tolerância de ± 2 pp não foi alterada.
