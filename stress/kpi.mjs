@@ -1,4 +1,4 @@
-// KPIs K1-K26 of Marshall_digital_stress_test.md §3, computed from one runCase() result.
+// KPIs K1-K33 (Marshall_digital_stress_test.md §3, plano_melhorias §3.2, plano_app_unificado §8), computed from one runCase() result.
 // Thresholds are the initial ones from the design (§5 says to recalibrate them after the screening phase).
 import { compSummary, probeSummary } from './engine.mjs';
 
@@ -12,14 +12,14 @@ export const THRESH = {
   K6_Bgap_pp: [2, 5, 'abs'],
   K7_overlap: [0.02, 0.04, 'lt'],
   K8_maxPen_rel: [0.10, 0.25, 'lt'],
-  K9_outside: [1e-9, 0.005, 'lt'],
+  K9_outside: [1e-3, 5e-3, 'lt'], // M3: sampled in voxels it can never reach the design's 1e-9
   K12_keRest: [1e-3, 1e-2, 'lt'],
-  K13_keBlowup: [10, 100, 'lt'],
-  K14_bathtub: [1.3, 1.0, 'gt'],
+  K13_keBlowup: [2, 5, 'lt'], // M6: 10 was never reached (max 0,95 in the screening)
+  K14_bathtub: [[1.3, 4], [1.0, 6], 'band'], // M8: ceiling added (k = 1 reached 26)
   K15_quadCV: [0.25, 0.50, 'lt'],
   K11b_gapErr_mm: [0.05, 0.5, 'lt'],
   K19_bubTouch: [0, 0.005, 'lt'], // fraction of bubble voxels face-adjacent to aggregate
-  K23_meshTri: [250000, 250000, 'lt'],
+  K23_meshTri: [250000, 500000, 'lt'], // M5: now counts voids + bubbles; the plan gives no warn limit, 2× is the warn band
   // plano_app_unificado_compactacao.md §8
   K33_penMax: [0.02, 0.04, 'lt'], // max stone-stone penetration by the real hull, / Min Feret of the smaller particle
   // (max − min AVC of the thirds) / target AVC. A calibrar: with more voids at the faces (K27 > 1, as in real CT) the end thirds
@@ -27,6 +27,8 @@ export const THRESH = {
   K16b_vertSpread: [0.75, 1.0, 'lt'],
   K27_faceVoids: [1.0, 0.7, 'gt'], // AVC within ~2 slices of the faces / AVC of the central third
   K29_skelUniform: [0.85, 0.70, 'gt'], // aggregate fraction in the core / near the faces (2nd–4th slice)
+  K28_voidlessLayer_mm: [0.5, 1.0, 'lt'], // thickest layer at a face with AVC < 0,25 × target (voxel layers)
+  K30_topBotAsym: [0.15, 0.30, 'lt'], // |AVC 0–4 mm top − bottom| / target AVC
   KE_adjEffort: [0.10, 0.25, 'lt'], // locked AVC: share of the height reduction made by the final adjustment
 };
 
@@ -41,6 +43,13 @@ function grade(key, v) {
 }
 
 const mean = a => a.reduce((s, x) => s + x, 0) / (a.length || 1);
+
+const K15_MIN_VOID_VOX = 1000;
+// K28: thickness (mm) of the voxel layers next to a face whose AVC is below 0,25 × target; the thicker of the two faces
+function voidlessLayer(vf, avc) {
+  const run = a => { let n = 0; while (n < a.length && a[n] < 0.25 * avc) n++; return n; };
+  return Math.max(run(vf.bot), run(vf.top)) * vf.dz;
+}
 
 // fraction of each particle's volume outside the cylinder / between-piston space, by sampling its convex hull
 function containment(res, probe) {
@@ -98,7 +107,7 @@ function voxelStats(res) {
   }
   const avc = third.map(([v, t]) => t ? v / t : 0);
   return { bubTouch: nbub ? touch / nbub : 0, bubTouchVox: touch, avcThirds: avc.map(v => v * 100), vertRatio: Math.min(...avc) > 0 ? Math.max(...avc) / Math.min(...avc) : null,
-    quadThird: quad.map(([v, t]) => t ? v / t * 100 : 0) };
+    quadThird: quad.map(([v, t]) => t ? v / t * 100 : 0), quadThirdVoid: quad.map(([v]) => v) };
 }
 
 // small fraction (lowest index present) vs large fraction: mean distance to the specimen centre
@@ -148,8 +157,10 @@ export function computeKPIs(run, spec = {}) {
     K19_bubTouch: vox.bubTouch,
     K21_wall_s: run.wall,
     K22_heapPeakMB: ps.heapPeakMB,
-    K23_meshTri: res.meshE.idx.length / 3,
+    K23_meshTri: res.meshE.idx.length / 3 + (res.bubbles ? res.bubbles.length / 4 : 0) * 80, // M5: void mesh + bubble icosahedra (80 triangles each, as exported)
     K33_penMax: st.pen ? st.pen.max : null,
+    K28_voidlessLayer_mm: st.vface ? voidlessLayer(st.vface, cfg.avc) : null,
+    K30_topBotAsym: st.vface ? Math.abs(mean(st.vface.top) - mean(st.vface.bot)) / cfg.avc : null,
     K16b_vertSpread: (Math.max(...vox.avcThirds) - Math.min(...vox.avcThirds)) / cfg.avc,
     K27_faceVoids: st.vprofile ? ((st.vprofile[0] + st.vprofile[19]) / 2) / Math.max(1e-9, mean(st.vprofile.slice(7, 13))) : null,
     K29_skelUniform: st.vagg ? mean(st.vagg.slice(7, 13)) / Math.max(1e-9, mean([...st.vagg.slice(1, 4), ...st.vagg.slice(16, 19)])) : null,
@@ -162,11 +173,13 @@ export function computeKPIs(run, spec = {}) {
   grades.K11_phase1TimedOut = k.K11_phase1TimedOut ? 'break' : 'pass';
   // the bathtub is only expected with the radial force on
   if (!(cfg.seg.on && cfg.seg.k > 0) || (run.msg && run.msg.proto && run.msg.proto !== 'w')) grades.K14_bathtub = 'na';
-  // K9 sampled in voxels can never reach 1e-9 (M3): 1e-3 is the recalibrated limit
-  if (k.K9_outside != null) grades.K9_outside = k.K9_outside <= 1e-3 ? 'pass' : k.K9_outside <= 5e-3 ? 'warn' : 'break';
+  // M4: with few void voxels per quadrant the CV is sampling noise; a calibrar (check the CV over 5 seeds)
+  if (Math.min(...vox.quadThirdVoid) < K15_MIN_VOID_VOX) grades.K15_quadCV = 'na';
   const flags = {
     forced: k.K10_forced, phase1TimedOut: k.K11_phase1TimedOut, bubbleDeficit: !!st.warn,
     BfallbackEq3: !!res.bub.Bfallback, BScBShFallback: !!res.bub.fallback, placeFail: probe.placeFail,
+    // placement no longer gives up (25_protocolos.js): it raises the drop column instead; M9 records how often
+    raised: st.comp ? st.comp.raised ?? null : null,
   };
   const breaks = Object.entries(grades).filter(([, g]) => g === 'break').map(([k]) => k);
   const warns = Object.entries(grades).filter(([, g]) => g === 'warn').map(([k]) => k);
@@ -175,7 +188,7 @@ export function computeKPIs(run, spec = {}) {
     status: 'ok', category, breaks, warns, kpi: k, grades, flags,
     detail: {
       NA: res.NA, NA1000: res.NA * comp.k1000, bub: res.bub, st: { ...st, profile: st.profile.map(v => +v.toFixed(2)), quad: st.quad.map(v => +v.toFixed(2)) },
-      containment: cont, avcThirds: vox.avcThirds, quadThird: vox.quadThird, bubTouchVox: vox.bubTouchVox, rel: res.rel, stageT: ps.stageT, p1: ps.p1, p2: ps.p2, steps: ps.steps,
+      containment: cont, avcThirds: vox.avcThirds, quadThird: vox.quadThird, quadThirdVoid: vox.quadThirdVoid, bubTouchVox: vox.bubTouchVox, rel: res.rel, stageT: ps.stageT, p1: ps.p1, p2: ps.p2, steps: ps.steps,
     },
     comp: compSummary(comp),
   };

@@ -154,6 +154,9 @@ function runAll(cfg){
   const vp=new Float64Array(20),va=new Float64Array(20),vt=new Float64Array(20);
   for(let zz=0;zz<nz;zz++){const k=Math.min(19,Math.floor((zz+0.5)/nz*20));for(let j=zz*sxy,e=j+sxy;j<e;j++){const p=phase[j];if(!p)continue;vt[k]++;if(p===2||p===3)vp[k]++;else if(p===4)va[k]++;}}
   st.vprofile=[...vp].map((v,k)=>vt[k]?v/vt[k]*100:0);st.vagg=[...va].map((v,k)=>vt[k]?v/vt[k]*100:0);
+  // perfil fino junto às faces (K28, K30): % de vazios por camada de voxels nos primeiros 4 mm da base e do topo
+  {const nf=Math.min(nz>>1,Math.ceil(4/h)),lay=zz=>{let v=0,t=0;for(let j=zz*sxy,e=j+sxy;j<e;j++){const p=phase[j];if(!p)continue;t++;if(p===2||p===3)v++;}return t?v/t*100:0;};
+   st.vface={dz:h,bot:Array.from({length:nf},(_,i)=>+lay(i).toFixed(3)),top:Array.from({length:nf},(_,i)=>+lay(nz-1-i).toFixed(3))};}
   // compactação: protocolo, curva altura × golpe/giro, modo de AVC, esforço de ajuste e penetração pela casca (K33)
   const Hs=C.Hsolto??null,Hc=C.Hcomp??C.Hf;
   st.comp={proto:cfg.proto||'w',locked:C.locked,AVCcp,Hf:C.Hf,Hsolto:Hs,Hcomp:Hc,AVCcomp:100*(areaC*Hc-Vsol)/(areaC*Hc),dH:C.dH,

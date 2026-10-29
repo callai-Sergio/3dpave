@@ -9,7 +9,11 @@ Runs the simulation engine of `../marshall_digital_app.html` headless in Node (v
 ```bash
 node stress/golden.mjs --determinism
 ```
-Default case (C-12,5, limestone, Pb 5,5 %, AVC 4 %, 250 g, seed 2024) checked against the reference table of the spec (§5.3, §7.4), plus a bit-identical rerun (K26). About 40 s. Run this first after any change to the app.
+Default case (C-12,5, limestone, Pb 5,5 %, AVC 4 %, 250 g, seed 2024) checked against the reference table of the spec (§5.3, §7.4), plus a bit-identical rerun (K26). About 70 s. Run this first after any change to the app. Use Node 24.11.1: the reference was made with it.
+
+`stress/golden_ref.json` holds the exact golden values per platform (Node version + OS). On a platform listed there the run must match them bit for bit, and K32 prints the Vagg drift against the other platforms. `--record` writes the current platform's entry: do it once per new machine, or when a change of the values is intended (and say why in the commit).
+
+Every result line carries `env` (Node, OS, host, app hash, C core), so runs from different machines are never compared by mistake.
 
 ```bash
 node stress/run.mjs stress/grids/smoke.json --jobs 6

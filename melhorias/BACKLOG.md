@@ -20,9 +20,10 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 
 | ID | Origem | Problema | Mudança | Arquivo | KPI / prova | Meta | Prio | Status |
 |---|---|---|---|---|---|---|---|---|
-| I1 | IN §6, PM 11 | O `server_run.sh` do PC aceita Node ≥ 20 e baixa v22.11.0; o `deploy.sh` sobrescreve a correção feita à mão no vid1 | Preferir `.node/bin/node`; baixar v24.11.1; exigir 24.11.1 | `stress/server/server_run.sh` | golden passa no vid1 depois do deploy | Node 24.11.1 | alta | falta |
-| I2 | PM 11, P7 | O jsonl não diz em que plataforma rodou | Gravar versão do Node, SO e hash do app em cada linha | `stress/run.mjs` | campo presente | — | alta | falta |
+| I1 | IN §6, PM 11 | O `server_run.sh` do PC aceita Node ≥ 20 e baixa v22.11.0; o `deploy.sh` sobrescreve a correção feita à mão no vid1 | Preferir `.node/bin/node`; baixar v24.11.1; exigir 24.11.1 | `stress/server/server_run.sh` | golden passa no vid1 depois do deploy | Node 24.11.1 | alta | **feito** (2026-10-29; ainda não testado no vid1) |
+| I2 | PM 11, P7 | O jsonl não diz em que plataforma rodou | Gravar versão do Node, SO e hash do app em cada linha | `stress/run.mjs` | campo `env` presente | — | alta | **feito** (`env`: node, SO, host, hash do app, núcleo C) |
 | I3 | IN §4.2 | Pasta sem git | `git init`, commit base e repositório privado no GitHub | raiz | — | — | alta | **feito** (este chat) |
+| I5 | usuário | Documentar e versionar tudo | Commit + push a cada item; `WHITEPAPER.md` atualizado a cada mudança | raiz | — | — | alta | **regra permanente** |
 | I4 | BR §6.10 | §9 do plano unificado desatualizada (não fala do C nem da calibração Ø101,6) | Atualizar §9 | `plano_app_unificado_compactacao.md` | — | — | baixa | falta |
 
 ## Bloco 1: medição (harness `stress/kpi.mjs`), antes de mexer no simulador
@@ -31,18 +32,18 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 |---|---|---|---|---|---|---|---|---|
 | M1 | PM M1, ST | K16 = razão máx/mín explode quando um terço tem ~0 vazios (3105) | K16 rebaixado a informativo; usar K16b | `kpi.mjs` | K16b | ver conflito C1 | alta | **feito** (K16b existe; limites em conflito) |
 | M2 | PM M2 | Terços diluem a camada da face | K27 (vazios na face) | `kpi.mjs:154` | K27 | ≥ 1,0 / ≥ 0,7 | alta | **feito** |
-| M2b | PM K28 | Falta medir a espessura da camada sem vazio | K28: espessura junto à face com AVC < 0,25 × alvo | `kpi.mjs` (usa `st.vprofile`) | K28 | ≤ 0,5 mm / ≤ 1 mm | alta | falta |
+| M2b | PM K28 | Falta medir a espessura da camada sem vazio | K28: espessura junto à face com AVC < 0,25 × alvo | `kpi.mjs` (usa `st.vprofile`) | K28 | ≤ 0,5 mm / ≤ 1 mm | alta | **feito**: novo perfil fino `st.vface` (camadas de voxel, 4 mm por face); smoke: K28 = 0 mm em 4 de 5 casos, 0,5 mm no outro → A1 confirmado |
 | M2c | PM K29 | Esqueleto frouxo no miolo | K29 | `kpi.mjs:155` | K29 | ≥ 0,85 / ≥ 0,70 | alta | **feito** (faixa 2ª–4ª fatia; plano pedia 2–8 mm) |
-| M2d | PM K30 | Assimetria topo/base | K30: \|AVC 0–4 mm topo − base\| / alvo | `kpi.mjs` | K30 | ≤ 0,15 / ≤ 0,30 | média | falta |
-| M3 | PM M3 | K9 com pass 1e-9 inatingível | pass 1e-3 | `kpi.mjs:166` | K9 | ≤ 1e-3 / ≤ 5e-3 | — | **feito** (o `THRESH` ainda diz 1e-9; limpar) |
-| M4 | PM M4 | K15 é ruído com poucos voxels de vazio por quadrante | Só avaliar com N mínimo de voxels; senão `na` | `kpi.mjs` | K15, CV entre 5 sementes ≤ 0,3 | ≤ 0,25 / ≤ 0,50 | alta | falta |
-| M5 | PM M5 | K23 conta só a malha de vazios; com B = 100 % dá 0 | Contar vazios + bolhas | `kpi.mjs:151` | K23 | ≤ 250 mil | média | falta |
-| M6 | PM M6 | K13 com limite 10 nunca dispara (máx 0,95) | Limite 2 / 5 | `kpi.mjs:17` | K13 | ≤ 2 / ≤ 5 | baixa | falta |
+| M2d | PM K30 | Assimetria topo/base | K30: \|AVC 0–4 mm topo − base\| / alvo | `kpi.mjs` | K30 | ≤ 0,15 / ≤ 0,30 | média | **feito**: golden 0,46 e semente 2 0,32 (topo com mais vazios) → item novo A14 |
+| M3 | PM M3 | K9 com pass 1e-9 inatingível | pass 1e-3 | `kpi.mjs` | K9 | ≤ 1e-3 / ≤ 5e-3 | — | **feito** (limite movido para o `THRESH`) |
+| M4 | PM M4 | K15 é ruído com poucos voxels de vazio por quadrante | Só avaliar com N mínimo de voxels; senão `na` | `kpi.mjs` | K15, CV entre 5 sementes ≤ 0,3 | ≤ 0,25 / ≤ 0,50 | alta | **feito**: `na` com < 1000 voxels de vazio por quadrante no terço central (N a calibrar com 5 sementes). O golden ainda dá 0,43 com 7700+ voxels: não é ruído, é o efeito de pedras grandes no molde pequeno (A12) |
+| M5 | PM M5 | K23 conta só a malha de vazios; com B = 100 % dá 0 | Contar vazios + bolhas | `kpi.mjs` | K23 | ≤ 250 mil / ≤ 500 mil | média | **feito**: bolhas = 80 triângulos cada (icosaedro do export). O golden passa a ~290 mil → warn; ver item novo F8 |
+| M6 | PM M6 | K13 com limite 10 nunca dispara (máx 0,95) | Limite 2 / 5 | `kpi.mjs` | K13 | ≤ 2 / ≤ 5 | baixa | **feito** (smoke: máx 1,93) |
 | M7 | PM M7, M8 | K11b, K1, K2, K4, K10–K12 não discriminam | Marcar como "guarda de regressão" no relatório | `report.mjs` | — | — | baixa | falta |
-| M8 | PM 3.1 | K14 só tem piso; com k = 1 chega a 26 | Teto: pass 1,3–4, warn 1,0–6 | `kpi.mjs:18` | K14 | 1,3–4 | média | falta |
-| M9 | PM P4 | `placeFail` não diz a fração | Registrar fração, tamanho e tentativas | app + `kpi.mjs` | placeFail por fração | 0 | média | falta |
-| M10 | PM M10, P7 | Golden: parede radial ± 2 pp apertada; varia por semente e plataforma | Referência por plataforma **ou** ± 6 pp, mantendo K26 como guarda | `golden.mjs` | golden | — | média | falta (decidir: ver C5) |
-| M11 | PM K32 | Sem KPI de reprodutibilidade entre plataformas | K32: diferença de Vagg PC × vid1 | `golden.mjs` | K32 | ≤ 0,05 % / ≤ 0,5 % | baixa | falta (depende de I2) |
+| M8 | PM 3.1 | K14 só tem piso; com k = 1 chega a 26 | Teto: pass 1,3–4, warn 1,0–6 | `kpi.mjs` | K14 | 1,3–4 | média | **feito** (faixa `band`) |
+| M9 | PM P4 | `placeFail` não diz a fração | Desde a unificação a colocação não desiste mais (sobe a coluna 0,5 mm a cada 20 tentativas), então `placeFail` = 0 sempre. Registrar quantas subidas houve | `kpi.mjs` | flag `raised` | — | média | **feito** (golden: 380 subidas) |
+| M10 | PM M10, P7 | Golden: parede radial ± 2 pp apertada; varia por semente e plataforma | Referência exata por plataforma em `stress/golden_ref.json` (`--record`), mantendo as tolerâncias e o K26; a parede ± 2 pp **não** foi afrouxada | `golden.mjs` | golden | bit a bit na mesma plataforma | média | **feito** (referência do PC gravada; falta gravar a do vid1 no próximo deploy) |
+| M11 | PM K32 | Sem KPI de reprodutibilidade entre plataformas | K32: diferença de Vagg PC × vid1 | `golden.mjs` | K32 | ≤ 0,05 % / ≤ 0,5 % | baixa | **feito** (aparece quando houver referência de outra plataforma) |
 | M12 | PU §8.3 | KPIs novos sem teste de mutação | Mutação: faces como agregado → K27/K28 quebram; colisão por esferas → K33 quebra | `stress/` | — | quebram com o defeito | média | falta |
 | M13 | PM 10, IN §4.6 | Limites ainda são os iniciais | Recalibrar depois da Fase 2 e analisar pelos KPIs contínuos | `kpi.mjs`, `effects.mjs` | — | — | média | falta (depois do bloco 2) |
 
@@ -50,7 +51,7 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 
 | ID | Origem | Problema | Mudança | Arquivo | KPI / prova | Meta | Prio | Status |
 |---|---|---|---|---|---|---|---|---|
-| A1 | PM P1a, PU F4 | Camada junto à face sem vazios (pintura trata pistões como agregado) | Peso das faces `faceW` na distância | `src/worker/40_pipeline.js:61` | K27, K28 | K27 ≥ 1; K28 ≤ 0,5 mm | alta | **parcial**: feito (golden K27 = 2,6); falta medir K28 e a triagem; se afasta de [W] §3.6 → conferir o texto "Sobre o método" e o I18N_EN |
+| A1 | PM P1a, PU F4 | Camada junto à face sem vazios (pintura trata pistões como agregado) | Peso das faces `faceW` na distância | `src/worker/40_pipeline.js:61` | K27, K28 | K27 ≥ 1; K28 ≤ 0,5 mm | alta | **feito no smoke** (K27 = 2,15; K28 = 0 mm); a diferença de [W] §3.6 agora está no "Sobre o método" (PT/EN). Falta confirmar na triagem |
 | A2 | PM P1b, ST 1 | Esqueleto denso nas pontas e frouxo no meio (AVC alto, sem força radial) | No Marshall/giratório, a gravidade e os golpes por face já existem; no [W], testar avisar quando k = 0 ou alternar o pistão | `25_protocolos.js` | K29, K16b | K29 ≥ 0,85 | alta | parcial (Marshall/giratório: medir; [W]: falta) |
 | A3 | BR §6.3, decisão | Marshall só em tamanho real | Tirar 250 g/Ø65 do Marshall; giratório padrão 4700 g/Ø150 | `src/ui/*` (`SIZES`) | smoke | — | alta | falta (já pedido) |
 | A4 | BR §6.2, §5 | K33 = 6–8 % com λ 0,5 (o golpe afunda pedras pela película) | Investigar: passo de tempo, rigidez da película, piso `gapMin` | `20_dem.js`, `mdsim.c` | K33, K8 | K33 ≤ 2 %; K8 ≤ 0,10 | alta | falta |
@@ -58,10 +59,11 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | A6 | BR §6.4 | Padrões do app (λ 0,3, escE 0,005) erram 3,7 pp | Aplicar λ/escE calibrados | `src/ui` | V1, golden | MAE ≤ 0,5 pp | alta | falta (depois de A4 e A5) |
 | A7 | PM P2, ST 2 | Mastique +5–11 % com p2 = 20 (sobreposição vira mastique) | Revisar o fechamento em `convert()` com esqueleto aberto | `40_pipeline.js` | K3 | \|K3\| ≤ 3 % em todas as células | alta | falta |
 | A8 | PM P3, ST 3 | Bolhas não cabem com AVC 12 % e B = 100 %; bolhas tocam agregado | Estimar antes, limitar B e avisar (PT/EN); proibir semeadura encostada | pipeline + UI | K5, K6, K19 | K19 = 0; \|K5\| ≤ 5 % | média | falta |
-| A9 | PM P4, ST 5 | `placeFail` > 0 em 41 % dos casos | Mais tentativas ou relaxar antes de desistir (PU F1 diz "sem desistência": medir) | `10_*`/colocação | placeFail | 0 | média | a medir |
+| A9 | PM P4, ST 5 | `placeFail` > 0 em 41 % dos casos | Resolvido na unificação (F1): a colocação nunca desiste | `25_protocolos.js` | placeFail | 0 | média | **feito** (placeFail = 0 por construção) |
 | A10 | PM P5 | K8 = 0,61 isolado | Passo de tempo pelo menor tamanho (pode já estar resolvido com F1) | `20_dem.js` | K8 | ≤ 0,10 | média | a medir |
 | A11 | PM P6 | K14 instável com k = 1 | Investigar k = 1 × k = 2; aviso de calibração de [W] junto do campo (PT/EN) | UI | K14 | 1,3–4 | média | falta |
 | A12 | ST 4 | Pedras grandes no molde pequeno: quadrantes desiguais | Resolve-se em parte com A3 (tamanho real) | — | K15 | ≤ 0,25 | baixa | depende de A3 |
+| A14 | novo (K30) | Topo com mais vazios que a base no protocolo [W] (golden: K30 = 0,46) | Investigar assimetria dos pistões (qual se move, ordem das fases) | `25_protocolos.js` | K30 | ≤ 0,15 | média | falta |
 | A13 | BR §6.5 | Giratório sem calibração no tamanho real | Calibrar em Ø150, 4700 g | grade nova | V4, V5 | V4 RMSE ≤ 10 % | média | falta (precisa de curva h × giro do lab) |
 
 ## Bloco 3: formas, curvas, pacote e interface
@@ -74,6 +76,8 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | F4 | PP 4 | EN usa vírgula decimal | Ponto decimal na versão EN | `src/ui` | — | baixa | falta |
 | F5 | PP 4 | Eq. 3 de [W] não serve para PA (cai em 48 %) | Sugestão de B por tipo de curva | `src/ui` | — | baixa | falta |
 | F6 | PP 4 | Testes faltando | 1000 g, preset [W] completo, download do zip, pacote em macOS/Linux | — | — | baixa | falta |
+| F8 | novo (K23) | Com bolhas, o STL de vazios passa de 250 mil triângulos (golden ~290 mil) | Icosaedro mais simples para bolhas pequenas, ou exportar bolhas em arquivo separado | `src/ui/30_export.js` | K23 | ≤ 250 mil | baixa | falta |
+| F9 | usuário | O app precisa de ajuda, copyright e referências; o projeto, de um whitepaper | Cards Ajuda e Referências (PT/EN), rodapé © Sergio Callai, `WHITEPAPER.md` | `src/app/head.html`, `src/ui/00_base.js` | prévia PT/EN | alta | **feito** |
 | F7 | AG | Eq. 3 (Awuah) ignora a forma: propriedades idênticas | Modelo de previsão que use força de compactação ou contatos do DEM | — | — | baixa | backlog |
 
 ## Bloco 4: desempenho
@@ -116,3 +120,20 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 5. Bloco 4 e backlog.
 
 Validação de cada mudança no app: `node build.mjs`, `node stress/golden.mjs --determinism` (`identical`), `node stress/run.mjs stress/grids/smoke.json --jobs 6` sem crash nem inválidos novos, e a meta do KPI no caso que motivou. Um commit por ID.
+
+## Medições
+
+### 2026-10-29 · bloco 0 e bloco 1 (PC, Node 24.11.1, win32-x64)
+
+Golden e determinismo: passam antes e depois, com volumes idênticos (Vagg 52,329; Vmast 48,819; Vesq 2,192; Vbol 2,023 cm³). A mudança no worker só acrescentou o perfil `st.vface`.
+
+| Caso do smoke | Antes | Depois | O que mudou |
+|---|---|---|---|
+| golden | warn (K15, K19) | D: K30 = 0,46; warn K15, K19, K23 | K30 novo detecta topo com mais vazios (A14); K23 conta as bolhas (~290 mil triângulos) |
+| golden-seed2 | warn (K19) | D: K30 = 0,32 | idem |
+| avc0.5 | D (K15, K16b) | D (K16b, K30 = 1,93) | K15 vira `na` (só 465 voxels de vazio num quadrante) |
+| synth-gap-p2-20 | D (K8, K19, K33) | D (K8, K19, K23, K33) | — |
+| one-sieve-above-2 | D | D | — |
+| invalid-top-sieve | inválido | inválido | — |
+
+Valores novos: K28 = 0 mm em 4 casos e 0,5 mm em 1 (pass): a correção das faces (A1) funciona. K13 máx 1,93 (< 2). Nenhum crash. Resultados em `stress/results/base_smoke.jsonl` e `after_smoke.jsonl`.
