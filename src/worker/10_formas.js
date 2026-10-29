@@ -139,13 +139,18 @@ function probesOf(V,F){
 function sampleParts(cfg,lib,off,cnt){
   const real=!LIBS[cfg.lib],r=makeRng(cfg.seed+7),tpl=[],sc=[],fr=[],rel=[],cls=real?REAL_SHAPES[cfg.lib]:LIBS[cfg.lib],pmax=real?0.98:0.65,pmin=real?0.02:0.005;
   cfg.comp.fracoes.forEach(([lo,hi,pct],fi)=>{
-    const alvo=cfg.comp.m_agg*pct/100,kc=classOf(cls,hi);let acc=0,n=0,guard=0;
+    // A7: a fração não termina no primeiro candidato grande demais. Pedras que cabem no que falta entram; depois de 200
+    // candidatos que não cabem, entra o que deixa a massa mais perto do alvo, se melhorar. Antes o déficit chegava a meia pedra
+    // grande (4% da massa no CP de 250 g com Dmáx 19–25 mm), e essa massa virava mastique (K3)
+    const alvo=cfg.comp.m_agg*pct/100,kc=classOf(cls,hi);let acc=0,n=0,guard=0,miss=0,best=null;
+    const add=(ti,s,mg)=>{acc+=mg;n++;tpl.push(ti);sc.push(s);fr.push(fi);};
     while(true){
       const s=weibQ(cls[kc].mfL,cls[kc].mfK,r.unif(pmin,pmax));
       if(s<2){if(++guard>20000)break;continue;}
-      const ti=off[kc]+r.int(cnt[kc]),mg=lib[ti].vol*s*s*s*cfg.rhoA/1000;
-      if(acc+mg-alvo>alvo-acc)break;
-      acc+=mg;n++;tpl.push(ti);sc.push(s);fr.push(fi);
+      const ti=off[kc]+r.int(cnt[kc]),mg=lib[ti].vol*s*s*s*cfg.rhoA/1000,rem=alvo-acc;
+      if(mg<=rem){add(ti,s,mg);miss=0;best=null;continue;}
+      if(!best||mg<best.mg)best={ti,s,mg};
+      if(++miss>200){if(best.mg-rem<rem)add(best.ti,best.s,best.mg);break;}
     }
     rel.push({lo,hi,n,massa:acc,alvo,classe:cls[kc].nome});
   });

@@ -123,7 +123,9 @@ export function computeKPIs(run, spec = {}) {
   if (run.status !== 'ok') return { status: run.status, error: run.error, validation: run.validation, comp: run.comp, probe: run.probe };
   const { res, comp, probe, cfg } = run, st = res.st;
   const ps = probeSummary(probe, probe.t0);
-  const scale = st.Vcil / comp.V; // grid cylinder vs analytic volume
+  // grid cylinder vs the analytic volume of the cylinder that was voxelized (height res.H). With free AVC that height is the
+  // measured one, not the target's, so comp.V would mix the AVC result into K2/K3/K7 (M15)
+  const scale = st.Vcil / (Math.PI * res.R * res.R * res.H / 1000);
   const rho = cfg.ra;
   // K4: worst fraction closure, in units of that fraction's largest particle
   const pm = res.rel.map(() => 0);

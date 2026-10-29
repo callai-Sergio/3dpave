@@ -18,7 +18,7 @@ const PLATFORM = `node ${process.version} ${process.platform}-${process.arch}${p
 const EXACT = ['Vagg', 'Vmast', 'Vesq', 'Vbol', 'over'];
 
 const EXPECT = [ // [label, getter, expected, tolerance]
-  ['NA (250 g)', r => r.detail.NA, 578, 0],
+  ['NA (250 g)', r => r.detail.NA, 569, 0], // 578 → 569 on 2026-10-29 (A7): the sampling no longer stops at the first candidate that is too big
   ['V aggregates cm3', r => r.detail.st.Vagg, 52.32, 0.3],
   ['overlap cm3', r => r.detail.st.over, 0.006, 0.05],
   ['V mastic cm3', r => r.detail.st.Vmast, 48.83, 0.3],
