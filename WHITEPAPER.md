@@ -50,6 +50,8 @@ O desafio é a plausibilidade: o CP virtual precisa fechar volume e massa, não 
 | Marshall | Queda com gravidade; 75 golpes do soquete por face, com o molde virado; 1200 g em Ø101,6 mm | DNER-ME 043, ASTM D6926 |
 | Giratório | Queda; pressão constante e molde inclinado em precessão; 4700 g em Ø150 mm | AASHTO T 312 |
 
+Moldes por protocolo: o Marshall só existe em tamanho real; o giratório usa Ø150 mm por padrão, com Ø102 mm como opção; o [W] usa 1000 g em Ø102 mm, como no paper, ou o CP rápido de 250 g em Ø65 mm.
+
 Cada protocolo roda em dois modos: **AVC travado** (um ajuste final leva o CP à altura do AVC alvo, e o app mostra quanto da compactação veio desse ajuste) e **AVC livre** (a altura final define o AVC previsto).
 
 ### 3.5 Mastique e bolhas
@@ -126,3 +128,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 |---|---|
 | 2026-10-29 | Repositório git criado; backlog consolidado (`melhorias/BACKLOG.md`); Node 24.11.1 fixado no servidor (I1); plataforma gravada em cada resultado (I2); app com Ajuda, Referências e copyright (PT/EN); este whitepaper |
 | 2026-10-29 | Régua de medição corrigida (bloco 1 do backlog): K28 e K30 novos, K15 com N mínimo, K23 contando bolhas, K13 e K14 com limites úteis, K9 limpo, subidas da coluna registradas, golden por plataforma e K32. Achados: a correção das faces zera a camada sem vazios (K28 = 0); o protocolo [W] deixa o topo com mais vazios que a base (K30 = 0,46, item A14) |
+| 2026-10-29 | A3: Marshall só em tamanho real (1200 g, Ø101,6 mm) e giratório com Ø150 mm por padrão; o molde pequeno ficou só no protocolo [W] |

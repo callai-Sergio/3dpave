@@ -197,7 +197,7 @@ function onInputs(){
   const {cfg,errs}=readForm();showErrs(errs);updateBandCells();renderGradChart();
   $('h-nome').textContent=cfg.nome;$('form').dataset.p=cfg.proto;
   $('n-proto').textContent=cfg.proto==='marshall'?'A mistura cai no molde com gravidade e recebe os golpes do soquete nas duas faces (DNER-ME 043 / ASTM D6926).':
-    cfg.proto==='giratorio'?'A mistura cai no molde e é compactada com pressão constante e o molde inclinado girando (AASHTO T 312). Use o molde de Ø150 mm para a norma; os menores servem de teste rápido.':
+    cfg.proto==='giratorio'?'A mistura cai no molde e é compactada com pressão constante e o molde inclinado girando (AASHTO T 312). O molde padrão é o de Ø150 mm; o de Ø102 mm é a outra opção.':
     'Método de Wan et al. (2024): sem gravidade e sem atrito, pistões até AVC 50% e força crescente até o AVC alvo.';
   $('n-avcmode').textContent=cfg.avcMode==='livre'?'A altura final medida define o AVC do CP. Compare o AVC previsto com o do laboratório.':
     'Se a compactação não chegar à altura do AVC alvo, um ajuste leva até lá, com a mesma física. O painel mostra quanto da compactação foi pelo ajuste.';
