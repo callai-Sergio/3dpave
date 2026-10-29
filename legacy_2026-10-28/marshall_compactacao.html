@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compactação Marshall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Página separada: mistura com mastique, queda no molde, golpes do soquete Marshall e corpo de prova final.
+   O app principal (marshall_digital_app.html) não é alterado: esta página lê o código dele e, em tempo de carga,
+   acrescenta o soquete e a coesão do mastique e troca a etapa de mistura/pistões pela sequência Marshall.
+   A pintura do mastique, dos vazios e das bolhas é a do app principal. */
+:root{
+  --bg:#eeece8; --card:#f8f7f4; --fg:#1f1e1c; --muted:#6c6862; --line:#dcd8d1; --soft:#e6e3dd;
+  --accent:#b3611b; --accent-fg:#ffffff; --viewport:#d9d6d0; --bad:#b8362a;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#171615; --card:#201f1d; --fg:#ece9e4; --muted:#a29d95; --line:#34312d; --soft:#2a2825;
+  --accent:#e0913f; --accent-fg:#1b1207; --viewport:#100f0e; --bad:#f07c6c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171615; --card:#201f1d; --fg:#ece9e4; --muted:#a29d95; --line:#34312d; --soft:#2a2825;
+  --accent:#e0913f; --accent-fg:#1b1207; --viewport:#100f0e; --bad:#f07c6c; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5;padding:18px 16px 40px}
+.wrap{max-width:1380px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font:800 24px var(--f-display);margin:0}
+h2{font:700 13px var(--f-display);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
+.sub{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px}
+@media (max-width:980px){.grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.view{position:relative;background:var(--viewport);border-radius:6px;overflow:hidden;height:min(70vh,700px);min-height:380px;border:1px solid var(--line)}
+.view canvas{display:block;width:100%;height:100%;touch-action:none}
+.hint{position:absolute;top:10px;right:10px;font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:5px;padding:4px 8px}
+@media (max-width:700px){.hint{display:none}}
+.label{position:absolute;top:10px;left:10px;font:500 13px var(--f-mono);background:var(--card);border:1px solid var(--line);border-radius:5px;padding:5px 10px;max-width:calc(100% - 20px)}
+.tools{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tools .slider{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:4px 10px;font-size:12px}
+.chk{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer}
+.player{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.player input[type=range]{flex:1;min-width:160px}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg button{font:500 12px var(--f-body);border:0;background:transparent;color:var(--fg);padding:6px 10px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.btn{font:600 13px var(--f-body);border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:5px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field.wide{grid-column:1/-1}
+label{font-size:12px;color:var(--muted)}
+input[type=text],select{font:14px var(--f-body);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:6px 8px;width:100%}
+.note{font-size:12px;color:var(--muted)}
+.err{font-size:12px;color:var(--bad)}
+dl.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin:0;font-size:13px}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0;font-family:var(--f-mono);text-align:right}
+dl.kv .sep{grid-column:1/-1;font:700 11px var(--f-display);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px}
+.legend .sw{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-2px;border:1px solid var(--line)}
+.chart svg{width:100%;height:auto;display:block}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--viewport) 70%,transparent)}
+.overlay .box{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px 18px;width:min(460px,92%)}
+.bar{height:6px;background:var(--soft);border-radius:3px;overflow:hidden;margin:10px 0 6px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.ptext{font:12px var(--f-mono);color:var(--muted)}
+ul.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Compactação Marshall</h1>
+    <div class="sub">A mistura com mastique cai no molde, o soquete golpeia uma face, o molde é virado e a outra face recebe os mesmos golpes. No fim, o corpo de prova compactado com mastique, vazios e bolhas. Agregados e motor do Marshall Simulator.</div>
+  </header>
+  <div class="grid">
+    <div class="col">
+      <div class="view" id="view">
+        <canvas id="c3d" aria-label="Simulação da compactação"></canvas>
+        <div class="label" id="flabel">Aguardando a simulação</div>
+        <div class="hint">Arraste para girar · roda: zoom · Shift ou botão direito: mover</div>
+        <div class="tools" id="tools-cp" hidden>
+          <div class="seg" id="seg-mast" role="group" aria-label="Mastique">
+            <button type="button" data-v="1" aria-pressed="true">Com mastique</button>
+            <button type="button" data-v="0" aria-pressed="false">Só agregados</button>
+          </div>
+          <div class="seg" id="seg-corte" role="group" aria-label="Corte">
+            <button type="button" data-v="n" aria-pressed="false">Sem corte</button>
+            <button type="button" data-v="x" aria-pressed="true">Corte vertical</button>
+            <button type="button" data-v="z" aria-pressed="false">Corte horizontal</button>
+          </div>
+          <span class="slider"><span id="cut-lbl" style="font-family:var(--f-mono)">x = 0 mm</span><input type="range" id="cut" min="0" max="1000" value="500" aria-label="Posição do corte"></span>
+          <label class="chk"><input type="checkbox" id="chk-void" checked> vazios</label>
+        </div>
+        <div class="overlay" id="overlay">
+          <div class="box">
+            <div id="ostage" style="font-weight:600">Carregando o motor do Marshall Simulator…</div>
+            <div class="bar"><i id="pbar"></i></div>
+            <div class="ptext" id="ptext"></div>
+            <div class="err" id="errbox"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card player">
+        <div class="seg" id="seg-modo" role="group" aria-label="Vista">
+          <button type="button" data-v="a" aria-pressed="true" disabled>Animação</button>
+          <button type="button" data-v="c" aria-pressed="false" disabled>Corpo de prova</button>
+        </div>
+        <button type="button" class="btn" id="b-play" disabled>▶ Reproduzir</button>
+        <input type="range" id="frame" min="0" max="0" value="0" disabled aria-label="Quadro da animação">
+        <span class="note" id="fnum" style="font-family:var(--f-mono)">0 / 0</span>
+        <div class="seg" id="seg-speed" role="group" aria-label="Velocidade">
+          <button type="button" data-v="0.5" aria-pressed="false">0,5×</button>
+          <button type="button" data-v="1" aria-pressed="true">1×</button>
+          <button type="button" data-v="3" aria-pressed="false">3×</button>
+        </div>
+        <div class="seg" id="seg-cor" role="group" aria-label="Cores">
+          <button type="button" data-v="s" aria-pressed="true">Pedra</button>
+          <button type="button" data-v="f" aria-pressed="false">Por fração</button>
+        </div>
+      </div>
+      <div class="card"><h2>Legenda</h2><div class="legend" id="legend"></div></div>
+      <div class="card">
+        <h2>Altura do material ao longo dos golpes</h2>
+        <div class="chart" id="chart"><p class="note" style="margin:0">O gráfico aparece quando a simulação terminar.</p></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <form class="card" id="form" novalidate>
+        <h2>Mistura e ensaio</h2>
+        <div class="fields">
+          <div class="field wide"><label for="f-curve">Curva granulométrica (meio da faixa)</label><select id="f-curve"></select></div>
+          <div class="field"><label for="f-pb">Teor de betume (%)</label><input type="text" id="f-pb" inputmode="decimal" value="5,5"></div>
+          <div class="field"><label for="f-avc">AVC alvo (%)</label><input type="text" id="f-avc" inputmode="decimal" value="4,0"></div>
+          <div class="field"><label for="f-ra">Densidade do agregado</label><input type="text" id="f-ra" inputmode="decimal" value="2,70"></div>
+          <div class="field"><label for="f-rb">Densidade do betume</label><input type="text" id="f-rb" inputmode="decimal" value="1,04"></div>
+          <div class="field"><label for="f-lib">Agregado</label><select id="f-lib"><option value="WL">Calcário</option><option value="WG">Granito</option></select></div>
+          <div class="field"><label for="f-seed">Semente</label><input type="text" id="f-seed" inputmode="numeric" value="2024"></div>
+          <div class="field wide"><label for="f-size">Corpo de prova</label>
+            <select id="f-size"><option value="p">Rápido: 250 g em molde Ø65 mm</option><option value="w">1000 g em molde Ø102 mm (muito lento)</option></select></div>
+          <div class="field"><label for="f-golpes">Golpes por face</label>
+            <select id="f-golpes"><option>50</option><option selected>75</option></select></div>
+          <div class="field"><label for="f-sim">Golpes simulados</label>
+            <select id="f-sim"><option value="0" selected>Todos, um a um</option><option value="20">20 por face</option><option value="10">10 por face</option><option value="5">5 por face (teste)</option></select></div>
+          <div class="field wide"><label for="f-coh">Coesão do mastique</label>
+            <select id="f-coh"><option value="0">Sem coesão (grãos soltos)</option><option value="1" selected>Normal</option><option value="2.5">Alta (mistura mais fria)</option></select></div>
+          <div class="field wide"><span class="note" id="n-sim"></span><span class="err" id="e-form"></span></div>
+        </div>
+        <div style="margin-top:12px;display:flex;justify-content:flex-end"><button type="submit" class="btn primary" id="b-gen" disabled>Simular compactação</button></div>
+      </form>
+      <section class="card"><h2>Resultado</h2><dl class="kv" id="res"><dt>—</dt><dd></dd></dl></section>
+      <section class="card"><h2>Como funciona</h2>
+        <ul class="lim">
+          <li>Mesmas formas, sorteio e posições iniciais do Marshall Simulator para a mesma semente.</li>
+          <li>O mastique (betume + finos &lt; 2 mm) é uma película sobre os agregados, com o volume M da composição. Onde as películas se tocam, há uma força de coesão: a mistura forma uma massa e cai como um bloco, não grão a grão.</li>
+          <li>1) Os agregados são reunidos numa massa solta (AVC ≈ 40%), como na bacia. 2) A massa cai 30 mm no molde, com gravidade e atrito 0,1. 3) O soquete golpeia a face 1; o molde é virado (gravidade invertida) e golpeia a face 2.</li>
+          <li>O soquete é uma placa livre com a massa de 4,536 kg na proporção da massa do corpo de prova, que chega a 0,5 m/s e fica apoiada até o material parar. A energia real (3 m/s) desestabiliza os contatos macios do DEM.</li>
+          <li>Sem a viscosidade do betume quente, os golpes não chegam ao AVC alvo. 4) Por isso, no fim, o corpo de prova é prensado até a altura do AVC alvo, como na etapa final de Wan et al. (2024), e a película volta à espessura do app. 5) Mastique, vazios e bolhas são pintados pelo código do app principal.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- Acrescentado ao worker do app principal: chamado por runAll no lugar da mistura e dos pistões -->
+<script type="text/x-worker" id="worker-extra">
+let MAR=null;
+function marshallDEM(cfg,P,lib,NA,comp,R,H){
+  const MC=cfg.marshall,n=NA;
+  // mesma permutação e mesma colocação num tubo alto do app principal
+  const perm=[...Array(n).keys()],r1=makeRng(cfg.seed+1);
+  for(let i=n-1;i>0;i--){const j=r1.int(i+1);[perm[i],perm[j]]=[perm[j],perm[i]];}
+  const Ps={tpl:perm.map(i=>P.tpl[i]),sc:perm.map(i=>P.sc[i]),fr:perm.map(i=>P.fr[i])};
+  const rho=cfg.rhoA*1e-6,S=makeSim(Ps,lib,R,rho,cfg.seed+3);
+  let z=0;
+  for(let i=0;i<n;i++){
+    const rb=S.brad[i];let p;
+    for(let tries=0;tries<200;tries++){
+      const rr=Math.max(0,R-rb-0.2)*Math.sqrt(r1()),th=r1()*2*Math.PI;
+      p=[rr*Math.cos(th),rr*Math.sin(th),z+rb+r1()*2];
+      let ok=true;
+      for(let j=Math.max(0,i-500);j<i;j++){const dx=S.pos[3*j]-p[0],dy=S.pos[3*j+1]-p[1],dz=S.pos[3*j+2]-p[2],rc=S.brad[j]+rb+0.1;if(dx*dx+dy*dy+dz*dz<rc*rc){ok=false;break;}}
+      if(ok)break;
+      if(tries%20===19)z+=0.5;
+    }
+    S.pos.set(p,3*i);
+    const qq=[r1.normal(),r1.normal(),r1.normal(),r1.normal()];const L=Math.hypot(...qq);S.q.set(qq.map(v=>v/L),4*i);
+  }
+  let zlo=1e9,zhi=-1e9;for(let i=0;i<n;i++){zlo=Math.min(zlo,S.pos[3*i+2]-S.brad[i]);zhi=Math.max(zhi,S.pos[3*i+2]+S.brad[i]);}
+
+  const dt=cfg.dt,chunk=Math.round(0.005/dt),chunkB=Math.round(0.001/dt),area=Math.PI*R*R/1000,Vsol=comp.V_graudo+comp.M;
+  const avcOf=h=>100*(area*h-Vsol)/(area*h);
+  const G=9810,mu=0.1,nb=MC.golpes,ns=MC.sim>0?Math.min(nb,MC.sim):nb;
+  let Mtot=0;for(let i=0;i<n;i++)Mtot+=S.mass[i];
+  const keStop=0.5*Mtot*10*10;
+  // película de mastique: volume M espalhado sobre a área dos agregados (área ≈ 5,8·V^(2/3))
+  let Atot=0;for(let i=0;i<n;i++)Atot+=5.8*Math.pow(S.mass[i]/rho,2/3);
+  const coatM=Math.max(cfg.coat,comp.M*1000/Atot);
+  S.coat=coatM;S.coh=MC.coh;
+
+  // quadros: posições, orientações, placas e legenda; acima do teto, descarta um quadro sim, um não
+  // placa: 1 soquete no topo, −1 soquete na base (molde virado), 2 pistão no topo
+  const capF=clamp(Math.floor(48e6/(28*n)),80,600);
+  let fP=[],fQ=[],fM=[],fStride=1,fCount=0,flip=0,ham=0;
+  const snap=(txt,force)=>{if(!force&&(fCount++%fStride))return;
+    const [lo,hi]=S.extent();fP.push(new Float32Array(S.pos));fQ.push(new Float32Array(S.q));fM.push([S.zb,S.zp,lo,hi,flip,ham,txt]);
+    if(fP.length>capF){const ev=(_,k)=>k%2===0;fP=fP.filter(ev);fQ=fQ.filter(ev);fM=fM.filter(ev);fStride*=2;}};
+
+  // 1. a mistura com mastique é reunida numa massa solta e coesa (sem gravidade, como na bacia)
+  S.zb=zlo-0.5;S.zp=zhi+0.5;ham=2;
+  const gapL=Vsol/(0.6*area),gap0=S.zp-S.zb;
+  let tt=0,tm=0,out={gap:gap0,ke:0,maxov:0,fpist:0};
+  snap('Mistura com mastique',true);
+  while(out.gap>gapL+1e-6&&tm<1.5){
+    out=S.run(chunk,{dt,mu,gd:4,g:0,vp:300,gapT:gapL,t0:tt});tt+=chunk*dt;tm+=chunk*dt;
+    snap(`Mistura com mastique · AVC ${br(avcOf(out.gap),0)}%`);
+    progress('mistura',(gap0-out.gap)/Math.max(gap0-gapL,1e-6),`Reunindo a mistura · AVC ${br(avcOf(out.gap),1)}%`);
+  }
+  out=S.run(4*chunk,{dt,mu,gd:8,g:0,t0:tt});tt+=4*chunk*dt;
+  // 2. queda: a massa é solta 30 mm acima da base do molde
+  S.zb-=MC.queda;S.zp=1e6;ham=0;
+  let tq=0;snap('Queda no molde · 0,00 s',true);
+  while(tq<2){
+    out=S.run(chunk,{dt,mu,gd:1,g:G,t0:tt});tt+=chunk*dt;tq+=chunk*dt;
+    snap(`Queda no molde · ${br(tq,2)} s`);
+    progress('queda',Math.min(tq/0.4,0.97),`Queda no molde · ${br(tq,2)} s`);
+    if(tq>0.15&&out.ke<keStop)break;
+  }
+  let e=S.extent(0.98);const Hsolto=e[1]-e[0],hist=[[0,Hsolto]];
+  // 3. golpes, face 1 e face 2 (molde virado: a placa do topo vira o apoio e a gravidade aponta para +z)
+  for(let f=1;f<=2;f++){
+    const side=f===1?1:-1,gz=side*G;
+    if(f===2){e=S.extent();S.zp=e[1]+0.05;flip=1;
+      out=S.run(chunk,{dt,mu,gd:6,g:gz,t0:tt});tt+=chunk*dt;snap('Molde virado · face 2',true);}
+    for(let k=1;k<=ns;k++){
+      const a=Math.round((k-1)*nb/ns)+1,b=Math.round(k*nb/ns),txt=`${a===b?'Golpe '+a:'Golpes '+a+'–'+b} de ${nb} · face ${f}`;
+      e=S.extent();
+      if(side>0)S.zp=e[1]+0.3;else S.zb=e[0]-0.3;
+      S.hv=-side*MC.v0;ham=side;snap(txt,true);
+      let tb=0,deep=false;
+      // o soquete fica apoiado até o material parar (o repique dele é amortecido), para a energia elástica
+      // dos contatos não lançar as partículas quando ele sobe
+      while(tb<0.04){
+        out=S.run(chunkB,{dt,mu,gd:deep?8:1,g:gz,ham:{side,M:MC.M},t0:tt});tt+=chunkB*dt;tb+=chunkB*dt;
+        if(!deep&&side*S.hv>=0){deep=true;snap(txt,true);}
+        if(deep)S.hv*=0.5;
+        if(deep&&tb>0.012&&out.ke<keStop)break;
+      }
+      if(side>0)S.zp=1e6;else S.zb=-1e6;ham=0;
+      out=S.run(chunk,{dt,mu,gd:6,g:gz,t0:tt});tt+=chunk*dt;
+      e=S.extent(0.98);hist.push([(f-1)*nb+b,e[1]-e[0]]);snap(txt,true);
+      progress('golpes',((f-1)*ns+k)/(2*ns),`${txt} · altura ${br(e[1]-e[0],1)} mm`);
+    }
+  }
+  flip=0;const Hgolpes=S.extent(0.98).reduce((a,b)=>b-a);e=S.extent();
+  // 4. prensagem final, sem gravidade e sem atrito, até a altura do AVC alvo; a película volta à espessura do app
+  if(Hgolpes>=H){S.zb=e[0]-0.05;S.zp=e[1]+0.05;}else{const c=(e[0]+e[1])/2;S.zb=c-H/2;S.zp=c+H/2;}
+  S.vel.fill(0);S.w.fill(0);S.coh=0;ham=2;
+  out={gap:S.zp-S.zb,fpist:0,maxov:out.maxov,ke:0};
+  snap('Fim dos golpes',true);
+  const g2=out.gap,F0=5000,Frate=100000;let tB=0,forced=false;
+  while(out.gap>H+1e-6||S.coat>cfg.coat){
+    S.coat=coatM+(cfg.coat-coatM)*Math.min(1,tB/0.3);
+    const cap=F0+Frate*tB,vp=(out.fpist<cap||forced)?40:0;
+    out=S.run(chunk,{dt,mu:0,gd:5,g:0,vp,gapT:H,t0:tt});tt+=chunk*dt;tB+=chunk*dt;
+    if(tB>1.5)forced=true;
+    snap(`Prensagem final · AVC ${br(avcOf(out.gap),1)}%`);
+    progress('compac',0.9*(g2-out.gap)/Math.max(g2-H,1e-6),`Prensagem final até o AVC alvo · AVC ${br(avcOf(out.gap),1)}%`);
+  }
+  const nrel=Math.round(0.06/dt);
+  for(let k=0;k<nrel;k+=chunk){out=S.run(chunk,{dt,mu:0,gd:8,g:0,vp:0,gapT:H,t0:tt});tt+=chunk*dt;progress('compac',0.9+0.1*k/nrel,'Acomodação');}
+  snap('Corpo de prova compactado',true);
+  // a base passa a ser z = 0 (também nos quadros)
+  const zs=S.zb;for(let i=0;i<n;i++)S.pos[3*i+2]-=zs;
+  const nf=fP.length,aP=new Float32Array(nf*3*n),aQ=new Float32Array(nf*4*n),aZ=new Float32Array(nf*4),aF=new Int8Array(nf*2),aT=[];
+  for(let k=0;k<nf;k++){const p=fP[k];for(let i=2;i<3*n;i+=3)p[i]-=zs;aP.set(p,k*3*n);aQ.set(fQ[k],k*4*n);
+    const m=fM[k];aZ.set([m[0]-zs,m[1]-zs,m[2]-zs,m[3]-zs],4*k);aF[2*k]=m[4];aF[2*k+1]=m[5];aT.push(m[6]);}
+  MAR={anim:{nf,P:aP,Q:aQ,Z:aZ,F:aF,txt:aT},hist,Hsolto,Hgolpes,AVCsolto:avcOf(Hsolto),AVCgolpes:avcOf(Hgolpes),golpes:nb,ns,coatM,tPrensa:tB};
+  return {S,Ps,out,forced,n};
+}
+</script>
+
+<script>
+'use strict';
+(function(){
+const $=id=>document.getElementById(id);
+const fmt=(x,d=1)=>(x==null||!isFinite(x))?'—':Number(x).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const parseNum=s=>{s=String(s).trim().replace(/\s/g,'').replace(',','.');return s===''?NaN:Number(s);};
+const APP='marshall_digital_app.html';
+
+/* ---------- leitura do app principal (sem alterá-lo) ---------- */
+function extractWorker(html){
+  const tag='<script type="text/x-worker" id="worker-src">',a=html.indexOf(tag);
+  if(a<0)throw new Error('não achei o worker em '+APP);
+  return html.slice(a+tag.length,html.indexOf('</'+'script>',a));
+}
+// fonte de um `const NOME=...;` ou `function NOME(...){...}` do script da página, por casamento de chaves
+function extractDecl(src,name){
+  let i=src.indexOf(`\nconst ${name}=`),isFn=false;
+  if(i<0){i=src.indexOf(`\nfunction ${name}(`);isFn=true;}
+  if(i<0)throw new Error(`declaração ${name} não encontrada em ${APP}`);
+  i++;let depth=0,j=i,started=false;
+  for(;j<src.length;j++){
+    const c=src[j];
+    if(c==='"'||c==="'"||c==='`'){const q=c;j++;while(j<src.length&&src[j]!==q){if(src[j]==='\\')j++;j++;}continue;}
+    if(c==='/'&&src[j+1]==='/'){while(src[j]!=='\n')j++;if(started&&depth===0&&!isFn)break;continue;}
+    if(c==='/'&&src[j+1]==='*'){j=src.indexOf('*/',j)+1;continue;}
+    if(c==='{'||c==='['||c==='('){depth++;started=true;}
+    else if(c==='}'||c===']'||c===')'){depth--;if(started&&depth===0&&isFn&&c==='}'){j++;break;}}
+    else if(c===';'&&depth===0&&started&&!isFn){j++;break;}
+    else if(c==='\n'&&depth===0&&started&&!isFn)break;
+  }
+  return src.slice(i,j);
+}
+function patch(src,find,repl,label){
+  const k=src.split(find).length-1;
+  if(k!==1)throw new Error(`ajuste "${label}" achou ${k} trechos (esperado 1): o ${APP} mudou`);
+  return src.replace(find,repl);
+}
+// troca o trecho entre dois marcadores (inclui o primeiro, exclui o segundo)
+function replaceBetween(src,a,b,repl,label){
+  const i=src.indexOf(a),j=src.indexOf(b);
+  if(i<0||j<i||src.indexOf(a,i+1)>=0||src.indexOf(b,j+1)>=0)throw new Error(`ajuste "${label}" não achou os marcadores: o ${APP} mudou`);
+  return src.slice(0,i)+repl+src.slice(j);
+}
+const PATCHES=[
+  // soquete: a placa de um lado fica livre (massa M, velocidade S.hv); S.coh: coesão do mastique; S.extent: altura real
+  ['estado',
+   'const S={n,ns,pos,q,vel,w,mass,brad,zb:0,zp:1e4,coat:0};',
+   `const S={n,ns,pos,q,vel,w,mass,brad,zb:0,zp:1e4,coat:0,hv:0,coh:0};
+  // extremos em z das esferas; com p (0–1), o percentil p dos extremos de cada partícula (ignora grãos soltos)
+  S.extent=p=>{let lo=1e9,hi=-1e9;const L=p?new Float64Array(n):null,U=p?new Float64Array(n):null;
+    for(let i=0;i<n;i++){const qw=q[4*i],qx=q[4*i+1],qy=q[4*i+2],qz=q[4*i+3],pz=pos[3*i+2];let li=1e9,ui=-1e9;
+      for(let s=spStart[i],e=s+spN[i];s<e;s++){const vx=spLoc[4*s],vy=spLoc[4*s+1],vz=spLoc[4*s+2];
+        const z=pz+vz+qw*2*(qx*vy-qy*vx)+(qx*2*(qz*vx-qx*vz)-qy*2*(qy*vz-qz*vy)),r=spLoc[4*s+3]+S.coat;
+        if(z-r<li)li=z-r;if(z+r>ui)ui=z+r;}
+      if(li<lo)lo=li;if(ui>hi)hi=ui;if(p){L[i]=li;U[i]=ui;}}
+    if(!p)return [lo,hi];
+    L.sort();U.sort();const k=Math.min(n-1,Math.floor(p*(n-1)));return [L[n-1-k],U[k]];};`],
+  // coesão entre películas que se tocam: atração constante fc = coh·r_eff, até o limite de tração fc
+  ['coesão',
+   'let fn=kn*ov-cn*vn;if(fn<0)fn=0;',
+   'let fn=kn*ov-cn*vn;if(b>=0&&S.coh>0){const fc=S.coh*ra*rb/(ra+rb);fn-=fc;if(fn<-fc)fn=-fc;}else if(fn<0)fn=0;'],
+  ['atrito','if(ft>mu*fn)ft=mu*fn;','if(ft>mu*Math.abs(fn))ft=mu*Math.abs(fn);'],
+  ['opções','fbn=o.fbn||0,kick=o.kick,skin=0.6;','fbn=o.fbn||0,kick=o.kick,ham=o.ham,skin=0.6;'],
+  ['placas',
+   'const moving=vp>0&&(S.zp-S.zb)>gapT,vh=moving?vp/2:0;',
+   'const moving=!ham&&vp>0&&(S.zp-S.zb)>gapT,vh=moving?vp/2:0,vT=ham&&ham.side>0?S.hv:-vh,vB=ham&&ham.side<0?S.hv:vh;'],
+  ['base','fbot+=contact(i,-1,cx,cy,cz,r,cx,cy,S.zb,0,kn,zeta,mu,vh);','fbot+=contact(i,-1,cx,cy,cz,r,cx,cy,S.zb,0,kn,zeta,mu,vB);'],
+  ['topo','ftop-=contact(i,-1,cx,cy,cz,r,cx,cy,S.zp,0,kn,zeta,mu,-vh);','ftop-=contact(i,-1,cx,cy,cz,r,cx,cy,S.zp,0,kn,zeta,mu,vT);'],
+  ['soquete',
+   'if(moving){S.zp-=vh*dt;S.zb+=vh*dt;const gap=S.zp-S.zb;if(gap<gapT){const c=(gapT-gap)/2;S.zp+=c;S.zb-=c;}}',
+   'if(moving){S.zp-=vh*dt;S.zb+=vh*dt;const gap=S.zp-S.zb;if(gap<gapT){const c=(gapT-gap)/2;S.zp+=c;S.zb-=c;}}\n      if(ham){if(ham.side>0){S.hv+=(ftop/ham.M-g)*dt;S.zp+=S.hv*dt;}else{S.hv+=(-fbot/ham.M-g)*dt;S.zb+=S.hv*dt;}}'],
+  ['resultado','post({type:\'done\',res:{','post({type:\'done\',res:{mar:MAR,'],
+];
+let workerURL=null,H={};
+async function loadEngine(){
+  let html;
+  try{const r=await fetch(APP,{cache:'no-cache'});if(!r.ok)throw new Error('HTTP '+r.status);html=(await r.text()).replace(/\r\n/g,'\n');}
+  catch(e){throw new Error(`Não consegui ler ${APP} (${e.message}). Abra esta página pelo mesmo servidor do app, por exemplo: python -m http.server 8765, e acesse http://127.0.0.1:8765/marshall_compactacao.html`);}
+  let w=extractWorker(html);
+  for(const [label,f,r] of PATCHES)w=patch(w,f,r,label);
+  // a mistura e os pistões de [W] dão lugar à sequência Marshall; o resto de runAll (pintura, bolhas, estatísticas) é o do app
+  w=replaceBetween(w,'  const perm=[...Array(NA).keys()]','  const tDem=(Date.now()-t0)/1000;',
+    '  const {S,Ps,out,forced,n}=marshallDEM(cfg,P,lib,NA,comp,R,H);\n','sequência Marshall');
+  w+='\n'+$('worker-extra').textContent;
+  workerURL=URL.createObjectURL(new Blob([w],{type:'text/javascript'}));
+  const main=html.slice(html.indexOf('<script>',html.indexOf('worker-src')));
+  const names=['GRADLIB','DEFAULT_CURVE','midOf','interp','composicao'];
+  H=new Function(names.map(n=>extractDecl(main,n)).join('\n')+'\n;return {'+names.join(',')+'};')();
+}
+
+/* ---------- formulário ---------- */
+function buildCurves(){
+  const sel=$('f-curve'),groups={};
+  H.GRADLIB.forEach(c=>{const k=c.norma;(groups[k]=groups[k]||[]).push(c);});
+  sel.innerHTML=Object.entries(groups).map(([k,l])=>`<optgroup label="${k}">${l.map(c=>`<option value="${c.id}">${c.des}</option>`).join('')}</optgroup>`).join('');
+  sel.value=H.DEFAULT_CURVE;
+}
+function readForm(){
+  const c=H.GRADLIB.find(x=>x.id===$('f-curve').value);
+  const cfg={grad:c.pts.map(p=>({s:p[0],p:Math.round(H.midOf(p)*10)/10})).sort((a,b)=>b.s-a.s),
+    pb:parseNum($('f-pb').value),avc:parseNum($('f-avc').value),ra:parseNum($('f-ra').value),rb:parseNum($('f-rb').value),
+    seed:Math.round(parseNum($('f-seed').value))||2024,lib:$('f-lib').value,size:$('f-size').value,
+    golpes:+$('f-golpes').value,sim:+$('f-sim').value,coh:+$('f-coh').value,nome:c.des};
+  let err='';
+  if(!(cfg.pb>=2&&cfg.pb<=10))err='Use um teor de betume entre 2 e 10%.';
+  else if(!(cfg.avc>=0.5&&cfg.avc<=30))err='Use vazios entre 0,5 e 30%.';
+  else if(!(cfg.ra>=1.5&&cfg.ra<=4))err='Use uma densidade do agregado entre 1,5 e 4,0.';
+  else if(!(cfg.rb>=0.9&&cfg.rb<=1.2))err='Use uma densidade do betume entre 0,9 e 1,2.';
+  return {cfg,err};
+}
+function noteSim(){
+  const g=+$('f-golpes').value,s=+$('f-sim').value||g,big=$('f-size').value==='w',per=big?28:7,min=Math.round((2*s*per+(big?600:150))/60);
+  $('n-sim').textContent=(s<g?`Cada golpe simulado representa cerca de ${fmt(g/s,1)} golpes reais. `:'Todos os golpes são simulados, um a um. ')+`Tempo estimado: ${min} min${big?' (molde de Ø102 mm)':''}.`;
+}
+['f-golpes','f-sim','f-size'].forEach(id=>$(id).addEventListener('change',noteSim));
+
+/* ---------- simulação ---------- */
+let worker=null,result=null,lastCfg=null;
+const STAGE={formas:['Formas dos agregados',0,4],mistura:['Mistura com mastique',4,8],queda:['Queda no molde',8,14],golpes:['Golpes do soquete',14,82],
+  compac:['Prensagem final até o AVC alvo',82,90],pintura:['Pintura do mastique',90,96],bolhas:['Vazios e bolhas',96,100]};
+function setProgress(stage,pct,text){
+  const s=STAGE[stage]||[stage,0,100];
+  $('pbar').style.width=(s[1]+(s[2]-s[1])*Math.min(Math.max(pct||0,0),1))+'%';
+  $('ostage').textContent=s[0];if(text!=null)$('ptext').textContent=text;
+}
+function simulate(){
+  const {cfg,err}=readForm();$('e-form').textContent=err;if(err)return;
+  const comp=H.composicao(cfg);
+  if(!comp.fracoes.length){$('e-form').textContent='Não há agregados acima de 2 mm nesta granulometria.';return;}
+  stop();lastCfg=Object.assign(cfg,{comp});
+  if(worker)worker.terminate();
+  $('overlay').hidden=false;$('errbox').textContent='';setProgress('formas',0,'');$('b-gen').disabled=true;
+  const t0=Date.now();
+  worker=new Worker(workerURL);
+  worker.onmessage=ev=>{const m=ev.data;
+    if(m.type==='progress')setProgress(m.stage,m.pct,`${m.text} · ${fmtT((Date.now()-t0)/1000)}`);
+    else if(m.type==='sampled')$('ptext').textContent=`${fmt(m.NA,0)} agregados sorteados`;
+    else if(m.type==='done'){result=Object.assign(m.res,{stone:cfg.lib});$('b-gen').disabled=false;
+      try{buildScene(result);}catch(e){showError('Falha ao montar a cena 3D: '+e.message);return;}
+      renderResult();renderChart();renderLegend();$('overlay').hidden=true;
+      mode='a';$('tools-cp').hidden=true;document.querySelectorAll('#seg-modo button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v==='a')));
+      Object.assign(cam,camA);setFrame(0);updateCut();play();}
+    else if(m.type==='error'){$('b-gen').disabled=false;showError('Erro na simulação: '+m.message);}};
+  worker.onerror=e=>{$('b-gen').disabled=false;showError('Erro no worker: '+(e.message||'desconhecido'));};
+  // mesma mensagem que o app principal manda ao worker, mais os parâmetros do ensaio Marshall
+  worker.postMessage({comp:{R:comp.R,H:comp.H,V:comp.V,m_agg:comp.m_agg,fracoes:comp.fracoes,k250:comp.k250,k1000:comp.k1000,V_void:comp.V_void,M:comp.M,V_graudo:comp.V_graudo},
+    rhoA:cfg.ra,seed:cfg.seed,lib:cfg.lib,bub:{mode:'auto'},seg:{on:false,k:0},avc:cfg.avc,voxel:cfg.size==='w'?0.4:0.25,dt:2e-5,coat:0.25,
+    marshall:{golpes:cfg.golpes,sim:cfg.sim,coh:2*cfg.coh,v0:500,M:4.536*comp.mass/1200,queda:30}});
+}
+const fmtT=s=>s<60?`${Math.round(s)} s`:`${Math.floor(s/60)} min ${String(Math.round(s%60)).padStart(2,'0')} s`;
+function showError(msg){$('overlay').hidden=false;$('errbox').textContent=msg;}
+$('form').addEventListener('submit',e=>{e.preventDefault();simulate();});
+
+function renderResult(){
+  const r=result,M=r.mar,st=r.st,c=lastCfg.comp;
+  const rows=[['sep','Ensaio'],['Agregados ≥ 2 mm',fmt(r.NA,0)],['Molde',`Ø${fmt(c.D,0)} mm`],['Película de mastique',fmt(M.coatM,2)+' mm'],
+    ['Golpes simulados',M.ns<M.golpes?`${M.ns} por face (de ${M.golpes})`:`${M.golpes} por face`],
+    ['Altura solta, após a queda',`${fmt(M.Hsolto,1)} mm · AVC ${fmt(M.AVCsolto,1)}%`],
+    ['Altura após os golpes',`${fmt(M.Hgolpes,1)} mm · AVC ${fmt(M.AVCgolpes,1)}%`],
+    ['Redução pelos golpes',fmt(100*(1-M.Hgolpes/M.Hsolto),1)+'%'],
+    ['sep','Corpo de prova compactado'],['Dimensões',`Ø${fmt(c.D,0)} × ${fmt(r.H,1)} mm`],['AVC alvo',fmt(lastCfg.avc,1)+'%'],['AVC real',fmt(st.AVC,2)+'%'],
+    ['Vazios do esqueleto',fmt(st.Vesq,2)+' cm³'],['Bolhas',`${fmt(st.Vbol,2)} cm³ · ${fmt(st.nBubbles,0)}`],['B real',fmt(st.Breal,1)+'%'],
+    ['Mastique',fmt(st.Vmast,1)+' cm³'],['Sobreposição de agregados',fmt(st.over,2)+' cm³'],['Tempo de cálculo',fmtT(r.tTotal)]];
+  $('res').innerHTML=rows.map(([a,b])=>a==='sep'?`<div class="sep">${b}</div>`:`<dt>${a}</dt><dd>${b}</dd>`).join('')+
+    (st.warn?`<div class="err" style="grid-column:1/-1">${st.warn}</div>`:'')+(st.forced?'<div class="err" style="grid-column:1/-1">O esqueleto travou antes do AVC alvo; os pistões foram levados à altura final assim mesmo.</div>':'');
+}
+function renderChart(){
+  const r=result,M=r.mar,h=M.hist,W=520,Hh=200,ml=40,mr=10,mt=12,mb=30,xmax=2*M.golpes;
+  const ys=[...h.map(p=>p[1]),r.H],ymin=Math.floor(Math.min(...ys)-1),ymax=Math.ceil(Math.max(...ys)+1);
+  const X=x=>ml+x/xmax*(W-ml-mr),Y=y=>mt+(1-(y-ymin)/(ymax-ymin))*(Hh-mt-mb);
+  let s='';
+  for(let k=0;k<=4;k++){const y=ymin+(ymax-ymin)*k/4;s+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(y)}" y2="${Y(y)}" stroke="var(--line)"/><text x="${ml-5}" y="${Y(y)+3}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${fmt(y,0)}</text>`;}
+  [0,M.golpes,xmax].forEach((x,i)=>{s+=`<text x="${X(x)}" y="${Hh-mb+14}" text-anchor="${['start','middle','end'][i]}" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${x}</text>`;});
+  s+=`<line x1="${X(M.golpes)}" x2="${X(M.golpes)}" y1="${mt}" y2="${Hh-mb}" stroke="var(--muted)" stroke-dasharray="2 3"/><text x="${X(M.golpes/2)}" y="${mt+10}" text-anchor="middle" font-size="10" fill="var(--muted)">face 1</text><text x="${X(1.5*M.golpes)}" y="${mt+10}" text-anchor="middle" font-size="10" fill="var(--muted)">face 2</text>`;
+  s+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(r.H)}" y2="${Y(r.H)}" stroke="var(--fg)" stroke-dasharray="4 3"/><text x="${W-mr}" y="${Y(r.H)-4}" text-anchor="end" font-size="10" fill="var(--fg)">altura do corpo de prova final (AVC alvo)</text>`;
+  const pts=h.map(p=>`${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ');
+  s+=`<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>`+(h.length<=90?h.map(p=>`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="2.4" fill="var(--accent)"/>`).join(''):'');
+  s+=`<text x="${(ml+W-mr)/2}" y="${Hh-4}" text-anchor="middle" font-size="10" fill="var(--muted)">golpes acumulados · eixo vertical: altura do material (mm)</text>`;
+  $('chart').innerHTML=`<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Altura do material por golpe">${s}</svg>`;
+}
+
+/* ---------- cena 3D ---------- */
+const STONE={WL:[[184,178,166],[164,158,147],[199,192,178],[146,141,132],[210,203,190]],WG:[[150,148,150],[118,116,120],[176,170,168],[96,94,98],[196,186,180]]};
+const FRACC=[[232,197,71],[214,135,64],[91,141,196],[64,92,168],[176,72,140],[120,170,110],[150,110,200],[90,180,190]];
+const C_MAST=[30,29,28],C_VOID=[226,61,40];
+const toneOf=i=>(Math.imul(i,2654435761)>>>0)%5;
+let renderer,scene,camera,group,inst=[],mold,base,foot,shaft,skin,capTop,capBot,capCut,voidE,voidB,clipPlane,dirty=true;
+let colorMode='s',mode='a',mastMode=true,cutMode='x',showVoids=true,camA=null,camC=null;
+const cam={th:0.75,ph:1.15,r:200,tx:0,ty:30,tz:0};
+function lin(rgb){return new THREE.Color(rgb[0]/255,rgb[1]/255,rgb[2]/255).convertSRGBToLinear();}
+function initThree(){
+  if(typeof THREE==='undefined')throw new Error('A biblioteca three.js não carregou. Verifique a conexão e recarregue a página.');
+  const cv=$('c3d');
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});renderer.outputEncoding=THREE.sRGBEncoding;renderer.localClippingEnabled=true;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(32,1,1,5000);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x5a5550,0.75));
+  const d=new THREE.DirectionalLight(0xffffff,0.9);d.position.set(120,220,140);scene.add(d);
+  const f=new THREE.DirectionalLight(0xffffff,0.3);f.position.set(-150,60,-120);scene.add(f);
+  group=new THREE.Group();scene.add(group);
+  clipPlane=new THREE.Plane(new THREE.Vector3(-1,0,0),1e5);
+  new ResizeObserver(resize).observe($('view'));resize();controls(cv);
+  const loop=()=>{if(dirty){updateCam();renderer.render(scene,camera);dirty=false;}requestAnimationFrame(loop);};loop();
+}
+function resize(){const v=$('view'),w=v.clientWidth,h=v.clientHeight;if(!renderer||!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();dirty=true;}
+function updateCam(){const s=Math.sin(cam.ph);camera.position.set(cam.tx+cam.r*s*Math.sin(cam.th),cam.ty+cam.r*Math.cos(cam.ph),cam.tz+cam.r*s*Math.cos(cam.th));camera.lookAt(cam.tx,cam.ty,cam.tz);}
+function controls(cv){
+  const ptrs=new Map();let md=null,last=null,pinch0=0;
+  cv.addEventListener('contextmenu',e=>e.preventDefault());
+  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+    md=(e.button===2||e.shiftKey)?'pan':'rot';last=[e.clientX,e.clientY];
+    if(ptrs.size===2){const p=[...ptrs.values()];pinch0=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);md='pinch';}});
+  cv.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+    if(md==='pinch'&&ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);if(pinch0>0){cam.r=Math.min(2000,Math.max(20,cam.r*pinch0/d));pinch0=d;dirty=true;}return;}
+    const dx=e.clientX-last[0],dy=e.clientY-last[1];last=[e.clientX,e.clientY];
+    if(md==='rot'){cam.th-=dx*0.006;cam.ph=Math.min(3.1,Math.max(0.05,cam.ph-dy*0.006));}
+    else if(md==='pan'){const k=cam.r*0.0016,ct=Math.cos(cam.th),st=Math.sin(cam.th);cam.tx-=dx*k*ct;cam.tz+=dx*k*st;cam.ty+=dy*k;}
+    dirty=true;});
+  const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2&&md==='pinch')md=null;if(ptrs.size===1){last=[...ptrs.values()][0];md='rot';}};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{e.preventDefault();cam.r=Math.min(2000,Math.max(20,cam.r*Math.exp(e.deltaY*0.0012)));dirty=true;},{passive:false});
+}
+function particleRGB(i){return colorMode==='s'?STONE[result.stone][toneOf(i)]:FRACC[result.fr[i]%FRACC.length];}
+function renderLegend(){
+  const c=lastCfg.comp,sw=(rgb,t)=>`<div><span class="sw" style="background:rgb(${rgb})"></span>${t}</div>`,it=[];
+  if(colorMode==='s')it.push(sw(STONE[lastCfg.lib][0],`Agregado (${lastCfg.lib==='WG'?'granito':'calcário'})`));
+  else c.fracoes.forEach(([lo,hi],k)=>it.push(sw(FRACC[k%FRACC.length],`${fmt(lo,lo<10?2:1)}–${fmt(hi,hi<10?2:1)} mm`)));
+  it.push(sw(C_MAST,'Mastique (no corpo de prova)'),sw(C_VOID,'Vazio de ar'),sw([141,138,134],'Base, soquete e pistões'));
+  $('legend').innerHTML=it.join('');
+}
+function buildScene(r){
+  while(group.children.length){const o=group.children.pop();if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}}
+  inst=[];
+  const byT=new Map();for(let i=0;i<r.tpl.length;i++){const t=r.tpl[i];if(!byT.has(t))byT.set(t,[]);byT.get(t).push(i);}
+  const mat=new THREE.MeshStandardMaterial({flatShading:true,roughness:0.92,metalness:0,side:THREE.DoubleSide,clippingPlanes:[clipPlane]});
+  for(const [t,list] of byT){
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(r.lib[t].v,3));g.setIndex(new THREE.BufferAttribute(r.lib[t].f,1));g.computeVertexNormals();
+    const im=new THREE.InstancedMesh(g,mat,list.length);im.userData.ids=list;
+    list.forEach((i,k)=>im.setColorAt(k,lin(particleRGB(i))));im.instanceColor.needsUpdate=true;
+    group.add(im);inst.push(im);
+  }
+  // animação: molde transparente, base, soquete (pé + haste) e pistões
+  const A=r.mar.anim,metal=new THREE.MeshStandardMaterial({color:0x8d8a86,roughness:0.45,metalness:0.6});
+  let ztop=0;for(let k=0;k<A.nf;k++)ztop=Math.max(ztop,Math.min(A.Z[4*k+3]-A.Z[4*k],4*r.H+40));
+  const mh=Math.max(ztop,r.H)+5;
+  const cg=new THREE.CylinderGeometry(r.R+0.6,r.R+0.6,mh,96,1,true);cg.rotateX(Math.PI/2);cg.translate(0,0,mh/2);
+  mold=new THREE.Mesh(cg,new THREE.MeshStandardMaterial({color:0xb9c3cc,roughness:0.3,metalness:0.2,transparent:true,opacity:0.16,side:THREE.DoubleSide,depthWrite:false}));
+  mold.userData.h=mh;group.add(mold);
+  const disc=new THREE.CylinderGeometry(r.R+3,r.R+3,4,96);disc.rotateX(Math.PI/2);base=new THREE.Mesh(disc,metal);group.add(base);
+  const fg=new THREE.CylinderGeometry(r.R-0.5,r.R-0.5,4,96);fg.rotateX(Math.PI/2);foot=new THREE.Mesh(fg,metal);group.add(foot);
+  const sg=new THREE.CylinderGeometry(7,7,90,32);sg.rotateX(Math.PI/2);shaft=new THREE.Mesh(sg,metal);group.add(shaft);
+  camA={th:0.75,ph:1.15,r:Math.max(r.R*2,mh)*2.4,tx:0,ty:mh/2,tz:0};
+  // corpo de prova: vazios, bolhas, pele de mastique e tampas com a seção
+  {const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(r.meshE.pos,3));g.setIndex(new THREE.BufferAttribute(r.meshE.idx,1));g.computeVertexNormals();
+    voidE=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:lin(C_VOID),roughness:0.6,side:THREE.DoubleSide,clippingPlanes:[clipPlane]}));group.add(voidE);}
+  {const nb=r.bubbles.length/4,g=new THREE.IcosahedronGeometry(1,2),m4=new THREE.Matrix4(),q0=new THREE.Quaternion(),p=new THREE.Vector3(),s=new THREE.Vector3();
+    voidB=new THREE.InstancedMesh(g,new THREE.MeshStandardMaterial({color:lin(C_VOID),roughness:0.6,clippingPlanes:[clipPlane]}),Math.max(nb,1));voidB.count=nb;
+    for(let k=0;k<nb;k++){const b=r.bubbles;p.set(b[4*k],b[4*k+1],b[4*k+2]);s.setScalar(b[4*k+3]);m4.compose(p,q0,s);voidB.setMatrixAt(k,m4);}
+    voidB.instanceMatrix.needsUpdate=true;group.add(voidB);}
+  const kg=new THREE.CylinderGeometry(r.R+0.05,r.R+0.05,r.H,128,1,true);kg.rotateX(Math.PI/2);kg.translate(0,0,r.H/2);
+  skin=new THREE.Mesh(kg,new THREE.MeshStandardMaterial({color:new THREE.Color(0x1b1a19).convertSRGBToLinear(),roughness:0.85,side:THREE.DoubleSide,clippingPlanes:[clipPlane]}));group.add(skin);
+  const capMat=clip=>new THREE.MeshBasicMaterial({alphaTest:0.5,side:THREE.DoubleSide,clippingPlanes:clip?[clipPlane]:[]});
+  capTop=new THREE.Mesh(new THREE.PlaneGeometry(2*r.R,2*r.R),capMat(true));capTop.position.z=r.H+0.03;group.add(capTop);
+  capBot=new THREE.Mesh(new THREE.PlaneGeometry(2*r.R,2*r.R),capMat(true));capBot.position.z=-0.03;group.add(capBot);
+  capCut=new THREE.Mesh(new THREE.PlaneGeometry(1,1),capMat(false));group.add(capCut);
+  setMap(capTop,sectionCanvas('z',r.nz-1));setMap(capBot,sectionCanvas('z',0));
+  camC={th:0.75,ph:1.05,r:Math.max(r.R,r.H)*5.6,tx:0,ty:r.H/2,tz:0};
+  $('frame').max=A.nf-1;$('frame').disabled=false;$('b-play').disabled=false;
+  document.querySelectorAll('#seg-modo button').forEach(b=>b.disabled=false);
+}
+function sectionCanvas(kind,idx){
+  const r=result,nx=r.nx,ny=r.ny,nz=r.nz,sxy=nx*ny,W=kind==='z'?nx:ny,Hh=kind==='z'?ny:nz;
+  const cv=document.createElement('canvas');cv.width=W;cv.height=Hh;const ctx=cv.getContext('2d'),img=ctx.createImageData(W,Hh),d=img.data,cache=new Map();
+  for(let j=0;j<Hh;j++)for(let i=0;i<W;i++){
+    const id=kind==='z'?idx*sxy+(ny-1-j)*nx+i:(nz-1-j)*sxy+i*nx+idx,p=r.phase[id],o=4*(j*W+i);let c=null;
+    if(p===1)c=C_MAST;else if(p===2||p===3)c=C_VOID;
+    else if(p===4){const L=r.lab[id]-1;if(!cache.has(L))cache.set(L,particleRGB(L));c=cache.get(L);}
+    if(c){d[o]=c[0];d[o+1]=c[1];d[o+2]=c[2];d[o+3]=255;}
+  }
+  ctx.putImageData(img,0,0);return cv;
+}
+function setMap(m,cv){if(m.material.map)m.material.map.dispose();const t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;t.magFilter=THREE.NearestFilter;t.generateMipmaps=false;t.minFilter=THREE.LinearFilter;m.material.map=t;m.material.needsUpdate=true;}
+function updateCut(){
+  const r=result;if(!r)return;const f=+$('cut').value/1000;
+  if(mode!=='c'||cutMode==='n'){clipPlane.normal.set(-1,0,0);clipPlane.constant=1e5;$('cut-lbl').textContent='sem corte';}
+  else if(cutMode==='x'){const c=(f*2-1)*r.R,ix=Math.min(r.nx-1,Math.max(0,Math.floor((c+r.R)/r.h)));
+    capCut.geometry.dispose();const g=new THREE.PlaneGeometry(2*r.R,r.H);
+    g.applyMatrix4(new THREE.Matrix4().makeBasis(new THREE.Vector3(0,1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(1,0,0)));
+    capCut.geometry=g;capCut.position.set(c-0.03,0,r.H/2);setMap(capCut,sectionCanvas('x',ix));
+    clipPlane.normal.set(-1,0,0);clipPlane.constant=c;$('cut-lbl').textContent=`x = ${fmt(c,1)} mm`;}
+  else{const c=f*r.H,iz=Math.min(r.nz-1,Math.max(0,Math.floor(c/r.h)));
+    capCut.geometry.dispose();capCut.geometry=new THREE.PlaneGeometry(2*r.R,2*r.R);capCut.position.set(0,0,c-0.03);setMap(capCut,sectionCanvas('z',iz));
+    clipPlane.normal.set(0,-1,0);clipPlane.constant=c;$('cut-lbl').textContent=`z = ${fmt(c,1)} mm`;}
+  applyVis();
+}
+function applyVis(){
+  const a=mode==='a';
+  mold.visible=a;if(!a){base.visible=foot.visible=shaft.visible=false;}
+  skin.visible=!a&&mastMode;capBot.visible=!a&&mastMode;capTop.visible=!a&&mastMode&&cutMode!=='z';capCut.visible=!a&&mastMode&&cutMode!=='n';
+  voidE.visible=!a&&showVoids;voidB.visible=!a&&showVoids&&voidB.count>0;
+  $('cut').disabled=cutMode==='n';dirty=true;
+}
+const m4=new THREE.Matrix4(),qq=new THREE.Quaternion(),pp=new THREE.Vector3(),ss=new THREE.Vector3();
+function pose(P,Q,oP,oQ){
+  for(const im of inst){im.userData.ids.forEach((i,j)=>{pp.set(P[oP+3*i],P[oP+3*i+1],P[oP+3*i+2]);
+    qq.set(Q[oQ+4*i+1],Q[oQ+4*i+2],Q[oQ+4*i+3],Q[oQ+4*i]);const s=result.sc[i];ss.set(s,s,s);m4.compose(pp,qq,ss);im.setMatrixAt(j,m4);});
+    im.instanceMatrix.needsUpdate=true;}
+}
+let cur=0;
+function setFrame(k){
+  const r=result,A=r.mar.anim,n=r.tpl.length;cur=k;
+  pose(A.P,A.Q,k*3*n,k*4*n);
+  const zb=A.Z[4*k],zp=A.Z[4*k+1],flip=A.F[2*k],ham=A.F[2*k+1],ok=z=>Math.abs(z)<1e5;
+  // face 2: o molde virado aparece de cabeça para baixo, com o apoio (placa do topo) embaixo
+  group.rotation.x=flip?Math.PI/2:-Math.PI/2;group.position.y=flip?zp:0;
+  const floorZ=flip?zp:zb;
+  base.visible=ok(floorZ);base.position.set(0,0,floorZ+(flip?2:-2));
+  mold.position.z=flip?zp-mold.userData.h:zb;
+  const hz=ham===1||ham===2?zp:ham===-1?zb:null,dir=ham===-1?-1:1;
+  foot.visible=hz!=null&&ok(hz);shaft.visible=foot.visible&&ham!==2;
+  if(foot.visible){foot.position.set(0,0,hz+dir*2);shaft.position.set(0,0,hz+dir*49);}
+  $('frame').value=k;$('fnum').textContent=`${k+1} / ${A.nf}`;$('flabel').textContent=A.txt[k];dirty=true;
+}
+function setMode(m){
+  stop();if(m===mode)return;
+  if(mode==='a')camA=Object.assign({},cam);else camC=Object.assign({},cam);
+  mode=m;document.querySelectorAll('#seg-modo button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===m)));
+  $('tools-cp').hidden=m!=='c';
+  if(m==='c'){group.rotation.x=-Math.PI/2;group.position.y=0;pose(result.pos,result.q,0,0);Object.assign(cam,camC);
+    $('flabel').textContent=`Corpo de prova compactado · AVC ${fmt(result.st.AVC,2)}%`;}
+  else{Object.assign(cam,camA);setFrame(cur);}
+  updateCut();
+}
+let playing=false,speed=1,acc=0,lastT=0;
+function play(){if(!result)return;if(mode!=='a')setMode('a');if(cur>=result.mar.anim.nf-1)setFrame(0);playing=true;$('b-play').textContent='❚❚ Pausar';lastT=performance.now();acc=0;requestAnimationFrame(tick);}
+function stop(){playing=false;$('b-play').textContent='▶ Reproduzir';}
+function tick(t){if(!playing)return;acc+=(t-lastT)/1000*24*speed;lastT=t;
+  const last=result.mar.anim.nf-1;
+  if(acc>=1){const k=Math.min(last,cur+Math.floor(acc));acc-=Math.floor(acc);setFrame(k);
+    if(k>=last){stop();setTimeout(()=>{if(!playing&&mode==='a'&&cur===last)setMode('c');},900);return;}}
+  requestAnimationFrame(tick);}
+function recolor(){if(!result)return;for(const im of inst){im.userData.ids.forEach((i,k)=>im.setColorAt(k,lin(particleRGB(i))));im.instanceColor.needsUpdate=true;}
+  setMap(capTop,sectionCanvas('z',result.nz-1));setMap(capBot,sectionCanvas('z',0));updateCut();renderLegend();}
+$('b-play').addEventListener('click',()=>playing?stop():play());
+$('frame').addEventListener('input',e=>{stop();if(mode!=='a')setMode('a');setFrame(+e.target.value);});
+function segGroup(id,cb){const el=$(id);el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));cb(b.dataset.v);});}
+segGroup('seg-speed',v=>{speed=+v;});
+segGroup('seg-cor',v=>{colorMode=v;recolor();});
+segGroup('seg-modo',v=>{if(result)setMode(v);});
+segGroup('seg-mast',v=>{mastMode=v==='1';applyVis();});
+segGroup('seg-corte',v=>{cutMode=v;$('cut').value=500;updateCut();});
+$('cut').addEventListener('input',updateCut);
+$('chk-void').addEventListener('change',e=>{showVoids=e.target.checked;applyVis();});
+
+/* ---------- início ---------- */
+(async()=>{
+  try{initThree();await loadEngine();}catch(e){showError(e.message);$('ostage').textContent='Não foi possível iniciar';return;}
+  buildCurves();noteSim();$('b-gen').disabled=false;
+  $('ostage').textContent='Pronto para simular';$('ptext').textContent='Escolha a mistura e clique em “Simular compactação”.';
+})();
+})();
+</script>
+</body>
+</html>

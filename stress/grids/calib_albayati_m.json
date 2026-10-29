@@ -1,0 +1,14 @@
+{
+  "name": "Calibração no tamanho real: Albayati (2024), betume 60/70, Marshall 75 golpes por face, AVC livre, 1200 g em Ø101,6 mm, formas reais (RT). Laboratório: Pb 4,0 → 6,1%; 4,5 → 4,8%; 5,0 → 3,3%; 5,5 → 2,7%",
+  "base": {
+    "seed": 2024, "size": "m", "proto": "marshall", "avcMode": "livre", "lib": "RT",
+    "grad": [[19, 100], [12.5, 95], [9.5, 83], [4.75, 54], [2.36, 36], [0.3, 13], [0.075, 7]],
+    "ra": 2.65, "rb": 1.027, "grade": "50/70", "temp": 140, "avc": 4.8,
+    "bub": { "mode": "auto" }
+  },
+  "factors": {
+    "pb": [4.0, 4.5, 5.0, 5.5],
+    "mastic": [{ "lam": 0.3 }, { "lam": 0.4 }, { "lam": 0.5 }],
+    "marshall": [{ "golpes": 75, "escE": 0.002 }, { "golpes": 75, "escE": 0.005 }]
+  }
+}

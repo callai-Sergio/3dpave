@@ -1,0 +1,41 @@
+curve_id,country,standard,edition,family,designation,application,nmas_mm,dmax_mm
+BR_DNIT031-2024_A-25,BR,DNIT 031/2024-ES,2024 (errata 2025),CA denso (concreto asfáltico),Faixa A-25,"rolamento / ligação / base / regularização (esp. ≥ 2,5×TNM)",25.4,38.1
+BR_DNIT031-2024_B-19,BR,DNIT 031/2024-ES,2024 (errata 2025),CA denso (concreto asfáltico),Faixa B-19,"rolamento / ligação / base / regularização (esp. ≥ 2,5×TNM)",19.1,25.4
+"BR_DNIT031-2024_C-12,5",BR,DNIT 031/2024-ES,2024 (errata 2025),CA denso (concreto asfáltico),"Faixa C-12,5","rolamento / ligação / base / regularização (esp. ≥ 2,5×TNM)",12.7,19.1
+"BR_DNIT031-2024_D-9,5",BR,DNIT 031/2024-ES,2024 (errata 2025),CA denso (concreto asfáltico),"Faixa D-9,5","rolamento / ligação / base / regularização (esp. ≥ 2,5×TNM)",9.5,12.7
+BR_DNIT031-2006_A,BR,DNIT 031/2006-ES,2006 (cancelada),CA denso (concreto asfáltico),Faixa A,ligação (binder),38.1,50.8
+BR_DNIT031-2006_B,BR,DNIT 031/2006-ES,2006 (cancelada),CA denso (concreto asfáltico),Faixa B,ligação / rolamento,25.4,38.1
+BR_DNIT031-2006_C,BR,DNIT 031/2006-ES,2006 (cancelada),CA denso (concreto asfáltico),Faixa C,rolamento,12.7,19.1
+US_M323_37.5,US,AASHTO M 323,M 323 (atual),Superpave denso (control points),37.5 mm NMAS,conforme projeto (rolamento/ligação/base),37.5,50.0
+US_M323_25.0,US,AASHTO M 323,M 323 (atual),Superpave denso (control points),25.0 mm NMAS,conforme projeto (rolamento/ligação/base),25.0,37.5
+US_M323_19.0,US,AASHTO M 323,M 323 (atual),Superpave denso (control points),19.0 mm NMAS,conforme projeto (rolamento/ligação/base),19.0,25.0
+US_M323_12.5,US,AASHTO M 323,M 323 (atual),Superpave denso (control points),12.5 mm NMAS,conforme projeto (rolamento/ligação/base),12.5,19.0
+US_M323_9.5,US,AASHTO M 323,M 323 (atual),Superpave denso (control points),9.5 mm NMAS,conforme projeto (rolamento/ligação/base),9.5,12.5
+US_M323_4.75,US,AASHTO M 323,M 323 (atual),Superpave denso (control points),4.75 mm NMAS,camada fina / nivelamento,4.75,9.5
+US_M325_SMA_25.0,US,AASHTO M 325 (NCHRP 9-8),NCHRP Rep. 425 / M 325,SMA,SMA 25.0 mm NMAS,rolamento,25.0,37.5
+US_M325_SMA_19.0,US,AASHTO M 325 (NCHRP 9-8),NCHRP Rep. 425 / M 325,SMA,SMA 19.0 mm NMAS,rolamento,19.0,25.0
+US_M325_SMA_12.5,US,AASHTO M 325 (NCHRP 9-8),NCHRP Rep. 425 / M 325,SMA,SMA 12.5 mm NMAS,rolamento,12.5,19.0
+US_M325_SMA_9.5,US,AASHTO M 325 (NCHRP 9-8),NCHRP Rep. 425 / M 325,SMA,SMA 9.5 mm NMAS,rolamento,9.5,12.5
+US_M325_SMA_4.75,US,AASHTO M 325 (NCHRP 9-8),NCHRP Rep. 425 / M 325,SMA,SMA 4.75 mm NMAS,rolamento,4.75,9.5
+DE_TL0713_SMA11S,DE,TL Asphalt-StB 07/13,2007/2013,SMA (Splittmastixasphalt),SMA 11 S,Deckschicht (rolamento),11.2,16.0
+DE_TL0713_SMA8S,DE,TL Asphalt-StB 07/13,2007/2013,SMA (Splittmastixasphalt),SMA 8 S,Deckschicht (rolamento),8.0,11.2
+DE_TL0713_SMA8N,DE,TL Asphalt-StB 07/13,2007/2013,SMA (Splittmastixasphalt),SMA 8 N,Deckschicht (rolamento),8.0,11.2
+DE_TL0713_SMA5S,DE,TL Asphalt-StB 07/13,2007/2013,SMA (Splittmastixasphalt),SMA 5 S,Deckschicht (rolamento),5.6,8.0
+DE_TL0713_SMA5N,DE,TL Asphalt-StB 07/13,2007/2013,SMA (Splittmastixasphalt),SMA 5 N,Deckschicht (rolamento),5.6,8.0
+DE_TL0713_AC32TS,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 32 T S,Tragschicht (base),31.5,45.0
+DE_TL0713_AC22TS,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 22 T S,Tragschicht (base),22.4,31.5
+DE_TL0713_AC32TN,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 32 T N,Tragschicht (base),31.5,45.0
+DE_TL0713_AC22TN,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 22 T N,Tragschicht (base),22.4,31.5
+DE_TL0713_AC22BS,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 22 B S,Binderschicht (ligação),22.4,31.5
+DE_TL0713_AC16BS,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 16 B S,Binderschicht (ligação),16.0,22.4
+DE_TL0713_AC16BN,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 16 B N,Binderschicht (ligação),16.0,22.4
+DE_TL0713_AC16DS,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 16 D S,Deckschicht (rolamento),16.0,22.4
+DE_TL0713_AC11DS,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 11 D S,Deckschicht (rolamento),11.2,16.0
+DE_TL0713_AC8DS,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 8 D S,Deckschicht (rolamento),8.0,11.2
+DE_TL0713_AC11DN,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 11 D N,Deckschicht (rolamento),11.2,16.0
+DE_TL0713_AC8DN,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 8 D N,Deckschicht (rolamento),8.0,11.2
+DE_TL0713_AC8DL,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 8 D L,Deckschicht (rolamento),8.0,11.2
+DE_TL0713_AC5DL,DE,TL Asphalt-StB 07/13,2007/2013,AC (Asphaltbeton),AC 5 D L,Deckschicht (rolamento),5.6,8.0
+DE_TL0713_PA16,DE,TL Asphalt-StB 07/13,2007/2013,PA (Offenporiger Asphalt),PA 16,Deckschicht drenante,16.0,22.4
+DE_TL0713_PA11,DE,TL Asphalt-StB 07/13,2007/2013,PA (Offenporiger Asphalt),PA 11,Deckschicht drenante,11.2,16.0
+DE_TL0713_PA8,DE,TL Asphalt-StB 07/13,2007/2013,PA (Offenporiger Asphalt),PA 8,Deckschicht drenante,8.0,11.2

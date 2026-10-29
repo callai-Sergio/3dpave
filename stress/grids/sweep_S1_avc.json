@@ -1,0 +1,5 @@
+{
+  "name": "S1 target AVC sweep, C-12,5 mid-band, 250 g, 5 seeds",
+  "base": {},
+  "factors": { "avc": [0.5, 1, 2, 4, 8, 12, 20, 30], "seed": [11, 23, 37, 41, 53] }
+}

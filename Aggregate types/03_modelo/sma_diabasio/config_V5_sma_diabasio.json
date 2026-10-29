@@ -1,0 +1,101 @@
+{
+ "nome": "V5_sma_diabasio",
+ "descricao": "SMA 8 · calcário Tunstead · betume 40/60 · Awuah et al. (2024), Tabela 10",
+ "granulometria": {
+  "peneiras_mm": [
+   10,
+   8,
+   6.3,
+   4,
+   2.8,
+   2,
+   1,
+   0.5,
+   0.25,
+   0.125,
+   0.063
+  ],
+  "passante_pct": [
+   100.0,
+   93.6,
+   84.3,
+   55.9,
+   38.8,
+   28.6,
+   19.1,
+   15.2,
+   12.9,
+   10.9,
+   9.0
+  ]
+ },
+ "teor_betume_pct": 5.0,
+ "densidade_agregado": 2.7,
+ "densidade_betume": 1.03,
+ "vazios_alvo_pct": 4.8,
+ "corpo_de_prova": {
+  "diametro_mm": 101.6,
+  "altura_mm": 63.5
+ },
+ "forma_agregados": {
+  "_comentario": "Ajustado em dados reais (sma_diabasio: [{'fonte': 'F001', 'grupo': '20200429_antes'}]) por Aggregate types/scripts/e4_ajuste.py. AR ~ Weibull(escala, forma); h = espessura/Min Feret. Extras (n, IC, KS) são ignorados por md_core.",
+  "classes": [
+   {
+    "ate_mm": 4,
+    "AR_escala": 0.7518,
+    "AR_forma": 6.93,
+    "h": 0.8,
+    "n": 162,
+    "MF_escala": 3.178,
+    "MF_forma": 5.422,
+    "angulosidade_classe": 0.979
+   },
+   {
+    "ate_mm": 8,
+    "AR_escala": 0.7823,
+    "AR_forma": 4.952,
+    "h": 0.741,
+    "n": 155,
+    "MF_escala": 5.975,
+    "MF_forma": 5.106,
+    "angulosidade_classe": 0.996
+   },
+   {
+    "ate_mm": 999,
+    "AR_escala": 0.9162,
+    "AR_forma": 4.552,
+    "h": 0.74,
+    "n": 56,
+    "MF_escala": 11.714,
+    "MF_forma": 4.987,
+    "angulosidade_classe": 0.99
+   }
+  ],
+  "angulosidade": 0.988
+ },
+ "calibracao_tamanho": {
+  "_comentario": "modo 'NA_250g': ajusta o tamanho das partículas para bater o número de agregados por 250 g (paper V5: 1196). modo 'fator': Min Feret = fator x abertura da peneira (Camsizer da Tabela 3: 1.218).",
+  "modo": "NA_250g",
+  "NA_250g": 1196,
+  "fator": 1.218
+ },
+ "simulacao": {
+  "atrito_despejo": 0.4,
+  "atrito_compactacao": 0.12,
+  "forca_final_pistao_N": 40,
+  "semente": 2024
+ },
+ "voxel_mm": 0.25,
+ "propriedades_medidas": {
+  "trabalhabilidade_pct": 62.4,
+  "estabilidade_kN": 10.4,
+  "fluencia_mm": 3.6,
+  "vazios_pct": 4.8
+ },
+ "propriedades_nomograma": {
+  "trabalhabilidade_pct": 66.0,
+  "estabilidade_kN": 9.7,
+  "fluencia_mm": 3.7,
+  "vazios_pct": 4.5
+ }
+}

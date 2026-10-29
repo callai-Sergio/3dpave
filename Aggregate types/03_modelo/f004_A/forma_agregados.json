@@ -1,0 +1,16 @@
+{
+ "_comentario": "Ajustado em dados reais (f004_A: [{'fonte': 'F004', 'grupo': 'A'}]) por Aggregate types/scripts/e4_ajuste.py. AR ~ Weibull(escala, forma); h = espessura/Min Feret. Extras (n, IC, KS) são ignorados por md_core.",
+ "classes": [
+  {
+   "ate_mm": 999,
+   "AR_escala": 0.6821,
+   "AR_forma": 9.149,
+   "h": 0.771,
+   "n": 52,
+   "MF_escala": 15.57,
+   "MF_forma": 2.618,
+   "angulosidade_classe": 0.999
+  }
+ ],
+ "angulosidade": 0.999
+}

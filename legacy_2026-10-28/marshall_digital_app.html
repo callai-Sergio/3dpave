@@ -1,0 +1,1548 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Marshall Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: bancada de laboratório — área 3D à esquerda com o formulário da mistura abaixo, fichas de resultados num painel de 360 px à direita */
+:root{
+  --bg:#eeece8; --card:#f8f7f4; --fg:#1f1e1c; --muted:#6c6862; --line:#dcd8d1; --soft:#e6e3dd;
+  --accent:#b3611b; --accent-fg:#ffffff; --viewport:#d9d6d0; --ok:#2f7d4a; --bad:#b8362a; --okbg:#e3efe6; --badbg:#f6e2df; --band:#5b8dc4;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#171615; --card:#201f1d; --fg:#ece9e4; --muted:#a29d95; --line:#34312d; --soft:#2a2825;
+  --accent:#e0913f; --accent-fg:#1b1207; --viewport:#100f0e; --ok:#6cc58a; --bad:#f07c6c; --okbg:#1f3326; --badbg:#3a211d; --band:#7fa9d8; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171615; --card:#201f1d; --fg:#ece9e4; --muted:#a29d95; --line:#34312d; --soft:#2a2825;
+  --accent:#e0913f; --accent-fg:#1b1207; --viewport:#100f0e; --ok:#6cc58a; --bad:#f07c6c; --okbg:#1f3326; --badbg:#3a211d; --band:#7fa9d8; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.lang{float:right;display:inline-flex;gap:4px}.lang .btn{font-size:12px;padding:2px 8px}.lang .btn[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1380px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header h1{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,3.4vw,38px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+header h1 span{color:var(--accent)}
+.spec{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:6px}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.card h2{font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 10px;color:var(--muted)}
+.card h3{font-family:var(--f-display);font-weight:700;font-size:15px;margin:0 0 8px}
+.view{position:relative;background:var(--viewport);border-radius:6px;overflow:hidden;height:min(72vh,720px);min-height:380px;border:1px solid var(--line)}
+.view canvas{display:block;width:100%;height:100%;touch-action:none}
+#c3d{cursor:grab}
+#c3d:active{cursor:grabbing}
+.tabs{position:absolute;top:10px;left:10px;display:flex;gap:4px;z-index:3}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg button{font:500 12px var(--f-body);border:0;background:transparent;color:var(--fg);padding:6px 10px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.seg button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.toolbar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;z-index:3}
+.toolbar .slider{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:4px 10px;font-size:12px}
+.toolbar input[type=range]{width:140px}
+.chk{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer}
+.hint{position:absolute;top:12px;right:12px;font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:5px;padding:4px 8px;z-index:3}
+@media (max-width:600px){.hint{display:none}}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:4;background:color-mix(in srgb,var(--viewport) 70%,transparent)}
+.overlay .box{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px 18px;width:min(440px,92%)}
+.steps{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.steps li{display:flex;gap:8px;align-items:center;color:var(--muted)}
+.steps li::before{content:"";width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor;flex:none}
+.steps li.on{color:var(--fg);font-weight:600}
+.steps li.on::before{background:var(--accent);border-color:var(--accent)}
+.steps li.done{color:var(--fg)}
+.steps li.done::before{background:var(--fg);border-color:var(--fg)}
+.bar{height:6px;background:var(--soft);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.ptext{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:8px;min-height:1.5em}
+.errbox{color:var(--bad);font-family:var(--f-mono);font-size:12px;white-space:pre-wrap}
+#tomo{position:absolute;inset:0;display:flex;flex-direction:column}
+#tomo .tc{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:52px 12px 60px}
+#tomo canvas{width:auto;height:auto;max-width:100%;max-height:100%;image-rendering:pixelated}
+.form{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+@media (max-width:760px){.form{grid-template-columns:minmax(0,1fr)}}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;align-content:start}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field.wide{grid-column:1/-1}
+label,.lbl{font-size:12px;color:var(--muted);font-weight:500}
+input[type=text],select{font:14px var(--f-body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;width:100%;min-width:0}
+input.numin{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+input.bad{border-color:var(--bad)}
+input.out{border-color:var(--bad);color:var(--bad)}
+.err{color:var(--bad);font-size:12px}
+.gtab{width:100%;border-collapse:collapse}
+.gtab th{font-size:12px;color:var(--muted);font-weight:500;text-align:left;padding:0 6px 4px}
+.gtab td{padding:2px 4px;vertical-align:middle}
+.gtab td.band{font-family:var(--f-mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.gtab td:last-child{width:32px}
+.tag{display:inline-block;font-size:10px;padding:0 4px;border-radius:3px;background:var(--soft);color:var(--muted);margin-left:4px}
+.tag.k{background:var(--badbg);color:var(--bad)}
+.gbox{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:6px}
+.gchart svg{width:100%;height:auto;display:block}
+.btn{font:600 13px var(--f-body);border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:5px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.icon{padding:3px 8px;font-weight:500}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-weight:600;font-size:13px}
+.note{font-size:12px;color:var(--muted)}
+.warn{font-size:12px;color:var(--bad)}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.ptab{width:100%;border-collapse:collapse;font-size:13px}
+.ptab th{font-weight:500;color:var(--muted);text-align:right;padding:3px 4px;font-size:12px}
+.ptab th:first-child,.ptab td:first-child{text-align:left}
+.ptab td{padding:4px;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;border-top:1px solid var(--line)}
+.ptab td:first-child{font-family:var(--f-body)}
+.pill{display:inline-block;padding:0 6px;border-radius:3px}
+.pill.ok{background:var(--okbg);color:var(--ok)}
+.pill.bad{background:var(--badbg);color:var(--bad)}
+.legend{display:flex;flex-direction:column;gap:5px;font-size:13px}
+.legend span.sw{display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:8px;vertical-align:-2px;border:1px solid var(--line)}
+.calc label{display:flex;justify-content:space-between}
+.calc input[type=range]{width:100%}
+.calc .out{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}
+.calc .out div{background:var(--soft);border-radius:4px;padding:6px 8px;font-size:12px}
+.calc .out b{display:block;font-family:var(--f-mono);font-size:15px;font-weight:500}
+textarea{width:100%;height:120px;font:11px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px;resize:vertical}
+.chart svg{width:100%;height:auto;display:block}
+.tstats{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-top:8px}
+ul.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.extra{border-style:dashed}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Corpo de Prova <span id="h-nome">C-12,5</span><span class="lang" role="group" aria-label="Idioma / Language"><button type="button" class="btn icon" data-lang="pt">PT</button><button type="button" class="btn icon" data-lang="en">EN</button></span></h1>
+    <div class="spec" id="h-spec">DNIT 031/2024-ES · Faixa C-12,5 · calcário · Wan et al. (2024)</div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <div class="view" id="view">
+        <canvas id="c3d" aria-label="Modelo 3D do corpo de prova"></canvas>
+        <div id="tomo" hidden>
+          <div class="tc"><canvas id="csec" aria-label="Seção do corpo de prova"></canvas></div>
+        </div>
+        <div class="tabs">
+          <div class="seg" id="seg-tab" role="group" aria-label="Vista">
+            <button type="button" data-v="3d" aria-pressed="true">3D</button>
+            <button type="button" data-v="tomo" aria-pressed="false">Tomografia</button>
+          </div>
+        </div>
+        <div class="hint" id="hint">Arraste para girar · roda: zoom · Shift ou botão direito: mover</div>
+        <div class="toolbar" id="tb3d">
+          <div class="seg" id="seg-mast" role="group" aria-label="Mastique">
+            <button type="button" data-v="1" aria-pressed="true">Com mastique</button>
+            <button type="button" data-v="0" aria-pressed="false">Só agregados</button>
+          </div>
+          <div class="seg" id="seg-cor" role="group" aria-label="Cores">
+            <button type="button" data-v="s" aria-pressed="true">Pedra</button>
+            <button type="button" data-v="f" aria-pressed="false">Por fração</button>
+          </div>
+          <div class="seg" id="seg-corte" role="group" aria-label="Corte">
+            <button type="button" data-v="n" aria-pressed="false">Sem corte</button>
+            <button type="button" data-v="x" aria-pressed="true">Corte vertical</button>
+            <button type="button" data-v="z" aria-pressed="false">Corte horizontal</button>
+          </div>
+          <span class="slider"><span id="cut-lbl" class="num">x = 0 mm</span><input type="range" id="cut" min="0" max="1000" value="500" aria-label="Posição do corte"></span>
+          <label class="chk"><input type="checkbox" id="chk-void" checked> vazios</label>
+          <label class="chk"><input type="checkbox" id="chk-bub"> distinguir bolhas</label>
+        </div>
+        <div class="toolbar" id="tbtomo" hidden>
+          <div class="seg" id="seg-sec" role="group" aria-label="Orientação da seção">
+            <button type="button" data-v="z" aria-pressed="true">Horizontal</button>
+            <button type="button" data-v="x" aria-pressed="false">Vertical</button>
+          </div>
+          <span class="slider"><span id="sec-lbl" class="num">z = 0 mm</span><input type="range" id="sec" min="0" max="100" value="50" aria-label="Posição da seção"></span>
+          <label class="chk"><input type="checkbox" id="chk-tc"> Estilo TC</label>
+        </div>
+        <div class="overlay" id="overlay">
+          <div class="box">
+            <ul class="steps" id="steps">
+              <li data-s="comp">Composição</li><li data-s="formas">Formas dos agregados</li><li data-s="mistura">Mistura e pistões até AVC 50%</li>
+              <li data-s="compac">Compactação por força até o AVC alvo</li><li data-s="pintura">Pintura do mastique</li><li data-s="bolhas">Bolhas</li><li data-s="pronto">Pronto</li>
+            </ul>
+            <div class="bar"><i id="pbar"></i></div>
+            <div class="ptext" id="ptext">Preparando…</div>
+            <div class="errbox" id="errbox"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="tomo-card" hidden>
+        <h2>Seção atual</h2>
+        <div class="tstats" id="tstats"></div>
+      </div>
+
+      <form class="card" id="form" novalidate>
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <h3 style="margin:0">Mistura</h3>
+          <div class="row">
+            <button type="button" class="btn" id="b-reset">Restaurar padrão</button>
+            <button type="submit" class="btn primary" id="b-gen">Gerar corpo de prova</button>
+          </div>
+        </div>
+        <div class="form">
+          <div class="field">
+            <label for="f-curve">Curva granulométrica</label>
+            <select id="f-curve"></select>
+            <span class="note" id="n-curve"></span>
+            <div class="row" style="margin-top:6px">
+              <button type="button" class="btn icon" id="b-newcurve">+ Adicionar curva</button>
+              <button type="button" class="btn icon" id="b-savecurve">Salvar tabela como curva</button>
+              <button type="button" class="btn icon" id="b-delcurve" hidden>Excluir esta curva</button>
+            </div>
+            <div id="nc-box" hidden style="margin-top:8px;border:1px solid var(--line);border-radius:5px;padding:10px;display:flex;flex-direction:column;gap:6px">
+              <label for="nc-nome">Nome da curva</label><input type="text" id="nc-nome" placeholder="Ex.: Pedreira X – brita 1 + pó">
+              <label for="nc-txt">Uma peneira por linha: duas colunas (peneira; % passante) ou três (peneira; mínimo; máximo)</label>
+              <textarea id="nc-txt" style="height:140px" placeholder="19,1; 100&#10;12,5; 94&#10;9,5; 82&#10;4,75; 58&#10;2,36; 42&#10;..."></textarea>
+              <div class="row"><label class="btn icon" style="cursor:pointer">Importar CSV/TXT<input type="file" id="nc-file" accept=".csv,.txt,text/csv,text/plain" hidden></label>
+                <button type="button" class="btn primary" id="nc-ok">Salvar curva</button><button type="button" class="btn" id="nc-cancel">Cancelar</button></div>
+              <span class="err" id="nc-err"></span>
+              <span class="note" id="nc-where"></span>
+            </div>
+            <div class="gchart" id="gchart" style="margin-top:6px"></div>
+            <div class="gbox" style="margin-top:6px">
+              <table class="gtab"><thead><tr><th>Peneira (mm)</th><th>% passante</th><th>Faixa</th><th></th></tr></thead><tbody id="gbody"></tbody></table>
+            </div>
+            <div class="row" style="margin-top:6px"><button type="button" class="btn icon" id="b-addrow">+ peneira</button><span class="note">Projeto = meio da faixa. Edite os valores para criar a sua curva.</span></div>
+            <div class="err" id="e-grad"></div>
+          </div>
+          <div class="fields">
+            <div class="field"><label for="f-nome">Nome</label><input type="text" id="f-nome"></div>
+            <div class="field"><label for="f-seed">Semente aleatória</label><input type="text" class="numin" id="f-seed" inputmode="numeric" value="2024"></div>
+            <div class="field wide"><label for="f-lib">Agregado ([W] Tabela 2)</label>
+              <select id="f-lib"><option value="WL">Calcário (L1–L5)</option><option value="WG">Granito (G1–G5)</option></select>
+              <span class="note">Forma prevista pelo paper: Min Feret e AR por Weibull truncada, espessura h. Será trocada pelos agregados medidos quando estiverem prontos.</span></div>
+            <div class="field"><label for="f-pb">Teor de betume (% da massa)</label><input type="text" class="numin" id="f-pb" inputmode="decimal"><span class="err" id="e-pb"></span></div>
+            <div class="field"><label for="f-avc">Vazios de ar alvo, AVC (%)</label><input type="text" class="numin" id="f-avc" inputmode="decimal"><span class="err" id="e-avc"></span></div>
+            <div class="field"><label for="f-ra">Densidade do agregado (g/cm³)</label><input type="text" class="numin" id="f-ra" inputmode="decimal"><span class="err" id="e-ra"></span></div>
+            <div class="field"><label for="f-rb">Densidade do betume (g/cm³)</label><input type="text" class="numin" id="f-rb" inputmode="decimal"><span class="err" id="e-rb"></span></div>
+            <div class="field wide"><label for="f-size">Corpo de prova virtual</label>
+              <select id="f-size"><option value="p">Rápido: 250 g em molde Ø65 mm</option><option value="w">Como em [W]: 1000 g em molde Ø102 mm</option></select>
+              <span class="note" id="n-size"></span>
+              <span class="warn" id="w-size" hidden></span>
+            </div>
+            <details class="field wide" id="adv">
+              <summary>Avançado</summary>
+              <div class="fields" style="margin-top:10px">
+                <div class="field wide"><label for="f-bub">Bolhas de ar</label>
+                  <select id="f-bub"><option value="auto">Automático – [W] Eqs. 3–5</option><option value="manual">Manual</option><option value="off">Desligado</option></select></div>
+                <div class="field" data-man><label for="f-bB">B (% dos vazios)</label><input type="text" class="numin" id="f-bB" inputmode="decimal" value="40"></div>
+                <div class="field" data-man><label for="f-bSc">BSc, escala (mm)</label><input type="text" class="numin" id="f-bSc" inputmode="decimal" value="1,0"></div>
+                <div class="field" data-man><label for="f-bSh">BSh, forma</label><input type="text" class="numin" id="f-bSh" inputmode="decimal" value="1,5"></div>
+                <div class="field wide"><label class="chk" style="border:0;padding:0;background:none"><input type="checkbox" id="f-seg" checked> Força radial (efeito castanha-do-pará, [W] §3.3)</label></div>
+                <div class="field wide"><label for="f-segk">Intensidade: <span id="v-segk" class="num">1,0</span></label><input type="range" id="f-segk" min="0" max="2" step="0.1" value="1"></div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="col">
+      <section class="card"><h2>Legenda</h2><div class="legend" id="legend"></div></section>
+      <section class="card"><h2>Composição</h2><p class="warn" id="stale-note" hidden style="margin:0 0 8px">As entradas mudaram. O 3D ainda mostra o corpo de prova anterior; clique em “Gerar corpo de prova”.</p><dl class="kv" id="comp"></dl></section>
+      <section class="card"><h2>Vazios e bolhas</h2><dl class="kv" id="voids"></dl>
+        <div class="chart" id="radial" style="margin-top:10px"></div>
+        <p class="note" id="radial-note" style="margin:6px 0 0"></p>
+      </section>
+      <section class="card calc"><h2>Calculadora de bolhas · [W] Eqs. (3)–(5)</h2>
+        <label for="s-NA">NA, agregados por 1000 g <span class="num" id="v-NA"></span></label><input type="range" id="s-NA" min="1500" max="9000" step="10" value="4000">
+        <label for="s-M">M, mastique por 1000 g <span class="num" id="v-M"></span></label><input type="range" id="s-M" min="100" max="260" step="0.5" value="160">
+        <label for="s-AVC">AVC, vazios (%) <span class="num" id="v-AVC"></span></label><input type="range" id="s-AVC" min="2" max="25" step="0.1" value="4">
+        <div class="out" id="calc-out"></div>
+        <p class="note" style="margin:8px 0 0">[W] calibrou as equações com 14 misturas de 1000 g, AVC de 3 a 22% e tamanho máximo de 10 a 20 mm.</p>
+      </section>
+      <section class="card"><h2>Exportar</h2>
+        <div class="row">
+          <button type="button" class="btn" id="b-zip" disabled>Baixar STL (.zip)</button>
+          <button type="button" class="btn" id="b-stla" disabled>STL ASCII dos agregados</button>
+          <button type="button" class="btn" id="b-stlv" disabled>STL ASCII dos vazios</button>
+        </div>
+        <p class="note" id="exp-note" style="margin:8px 0">O STL dos agregados de 1000 g passa de 200 mil triângulos. Para exportar, prefira o corpo de prova rápido.</p>
+        <div id="stl-box" hidden>
+          <textarea id="stl-txt" readonly aria-label="Texto do STL"></textarea>
+          <div class="row" style="margin-top:6px"><button type="button" class="btn" id="b-copy">Copiar</button><span class="note" id="copy-msg"></span></div>
+          <p class="note" style="margin:6px 0 0">Cole num editor de texto e salve com a extensão .stl.</p>
+        </div>
+      </section>
+      <section class="card"><h2>Sobre o método</h2>
+        <ul class="lim">
+          <li>Wan, Garcia-Hernández, Dopazo-Hilario, Cui &amp; Liu (2024), <i>Algorithms to create realistic virtual asphalt mixtures</i>, Computers and Structures 298, 107391.</li>
+          <li>Só agregados com Min Feret ≥ 2 mm são simulados. Betume, fíler e finos formam o mastique.</li>
+          <li>Compactação sem gravidade e sem atrito; pistões até AVC = 50% pela Eq. (1), depois força crescente até o AVC alvo.</li>
+          <li>O mastique é pintado a partir das bordas dos agregados e das paredes; as bolhas seguem as Eqs. (3)–(5).</li>
+          <li>A Weibull truncada não reproduz os maiores agregados de cada classe ([W] §5).</li>
+          <li>A força radial de [W] foi calibrada só com a mistura 1 e 50 golpes por face. Aqui ela é ajustável.</li>
+          <li>Faixas granulométricas: biblioteca gradlib (DNIT, AASHTO, TL Asphalt-StB). Valores K ainda precisam ser conferidos na norma.</li>
+        </ul>
+      </section>
+      <section class="card extra"><h2>Extra · Awuah et al. (2024)</h2>
+        <table class="ptab" id="props"></table>
+        <p class="note" id="propnote" style="margin:8px 0 0"></p>
+        <details style="margin-top:8px"><summary>Calculadora da [A] Eq. (3)</summary>
+          <div class="calc" style="margin-top:8px">
+            <label for="s-aM">M, mastique por 250 g <span class="num" id="v-aM"></span></label><input type="range" id="s-aM" min="25" max="65" step="0.1" value="40">
+            <label for="s-aNA">NA, agregados por 250 g <span class="num" id="v-aNA"></span></label><input type="range" id="s-aNA" min="400" max="2500" step="1" value="1000">
+            <div class="out" id="acalc-out"></div>
+          </div>
+        </details>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script type="text/x-worker" id="worker-src">
+'use strict';
+/* ===================== Marshall Digital — worker: método de Wan et al. (2024) ===================== */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function makeRng(seed){
+  const r=mulberry32(seed>>>0);
+  r.unif=(a,b)=>a+(b-a)*r();
+  r.int=n=>Math.floor(r()*n);
+  r.normal=()=>{let u=r();while(u<1e-12)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());};
+  return r;
+}
+const clamp=(x,a,b)=>x<a?a:x>b?b:x;
+const weibQ=(l,k,p)=>l*Math.pow(-Math.log(1-p),1/k);
+
+// [W] Tabela 2: WSc/WSh do Min Feret (mm), WSc/WSh do AR e espessura relativa h; 'ate' = limite superior da faixa (mm)
+const LIBS={
+  WL:[{ate:4,mfL:2.92,mfK:6.53,arL:.75,arK:5.97,h:.67,nome:'L1'},{ate:6,mfL:4.67,mfK:4.56,arL:.74,arK:7.36,h:.88,nome:'L2'},
+      {ate:10,mfL:8.60,mfK:5.55,arL:.74,arK:6.45,h:.66,nome:'L3'},{ate:14,mfL:11.44,mfK:6.69,arL:.74,arK:6.91,h:.75,nome:'L4'},
+      {ate:1e9,mfL:17.12,mfK:7.11,arL:.75,arK:7.24,h:.82,nome:'L5'}],
+  WG:[{ate:4,mfL:2.77,mfK:6.23,arL:.75,arK:9.61,h:.87,nome:'G1'},{ate:6,mfL:5.10,mfK:4.20,arL:.71,arK:6.25,h:.78,nome:'G2'},
+      {ate:10,mfL:7.10,mfK:3.68,arL:.70,arK:5.79,h:.76,nome:'G3'},{ate:14,mfL:11.36,mfK:5.91,arL:.74,arK:6.72,h:.82,nome:'G4'},
+      {ate:1e9,mfL:17.36,mfK:7.39,arL:.75,arK:7.18,h:.77,nome:'G5'}]
+};
+const classOf=(cls,hi)=>{let k=cls.findIndex(c=>hi<=c.ate+1e-9);return k<0?cls.length-1:k;};
+
+function eqW(NA,M,AVC){ // [W] Eqs. (3)-(5); NA e M por 1000 g; B em %, BSc em cm
+  // fora da faixa calibrada a Eq. (3) diverge (denominador perto de zero): usa a mediana da Tabela 3 de [W], B = 48%
+  const den=NA-23.01*M+2106;let B=(81.38*NA-125.2*M-170800)/den,Bfallback=false;
+  if(!(B>=0&&B<=100)||Math.abs(den)<200){B=48;Bfallback=true;}
+  let BSc=(73.22*AVC+60.94*B-1065)/(AVC+426.7*B+4318);
+  let BSh=(507.9*AVC+1189*B-8587)/(AVC+910.6*B-5781);
+  let fallback=false;
+  if(!(BSh>=0.8&&BSh<=4)||!(BSc>=0.02&&BSc<=0.3)){BSc=0.115;BSh=1.47;fallback=true;}
+  return {B,BSc,BSh,fallback,Bfallback,Braw:(81.38*NA-125.2*M-170800)/den};
+}
+
+let lastPost=0;
+function post(o,tr){self.postMessage(o,tr||[]);}
+function progress(stage,pct,text,force){
+  const t=Date.now();
+  if(!force&&t-lastPost<150)return;
+  lastPost=t; post({type:'progress',stage,pct,text});
+}
+const br=(x,d)=>x.toFixed(d).replace('.',',');
+
+/* ---------- casca convexa (força bruta; 36 pontos) ---------- */
+function hull3(P){
+  const n=P.length/3,F=[];
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)for(let k=j+1;k<n;k++){
+    const ax=P[3*j]-P[3*i],ay=P[3*j+1]-P[3*i+1],az=P[3*j+2]-P[3*i+2];
+    const bx=P[3*k]-P[3*i],by=P[3*k+1]-P[3*i+1],bz=P[3*k+2]-P[3*i+2];
+    let nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;
+    const L=Math.hypot(nx,ny,nz); if(L<1e-10)continue; nx/=L;ny/=L;nz/=L;
+    const d=-(nx*P[3*i]+ny*P[3*i+1]+nz*P[3*i+2]);
+    let pos=false,neg=false;
+    for(let m=0;m<n;m++){
+      if(m===i||m===j||m===k)continue;
+      const s=nx*P[3*m]+ny*P[3*m+1]+nz*P[3*m+2]+d;
+      if(s>1e-9)pos=true;else if(s<-1e-9)neg=true;
+      if(pos&&neg)break;
+    }
+    if(pos&&neg)continue;
+    if(pos)F.push(i,k,j);else F.push(i,j,k);
+  }
+  return F;
+}
+function planesOf(V,F){
+  const nf=F.length/3,PL=new Float64Array(4*nf);
+  for(let f=0;f<nf;f++){
+    const a=F[3*f],b=F[3*f+1],c=F[3*f+2];
+    const ax=V[3*b]-V[3*a],ay=V[3*b+1]-V[3*a+1],az=V[3*b+2]-V[3*a+2];
+    const bx=V[3*c]-V[3*a],by=V[3*c+1]-V[3*a+1],bz=V[3*c+2]-V[3*a+2];
+    let nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;const L=Math.hypot(nx,ny,nz)||1;nx/=L;ny/=L;nz/=L;
+    PL[4*f]=nx;PL[4*f+1]=ny;PL[4*f+2]=nz;PL[4*f+3]=-(nx*V[3*a]+ny*V[3*a+1]+nz*V[3*a+2]);
+  }
+  return PL;
+}
+function jacobi3(A){
+  const a=A.slice(),V=[1,0,0,0,1,0,0,0,1],pairs=[[0,1],[0,2],[1,2]];
+  for(let sweep=0;sweep<60;sweep++){
+    if(a[1]*a[1]+a[2]*a[2]+a[5]*a[5]<1e-24*(a[0]*a[0]+a[4]*a[4]+a[8]*a[8]))break;
+    for(const [p,q] of pairs){
+      const apq=a[3*p+q]; if(Math.abs(apq)<1e-300)continue;
+      const theta=(a[3*q+q]-a[3*p+p])/(2*apq);
+      const t=(theta>=0?1:-1)/(Math.abs(theta)+Math.sqrt(theta*theta+1));
+      const c=1/Math.sqrt(t*t+1),s=t*c;
+      for(let k=0;k<3;k++){const kp=a[3*k+p],kq=a[3*k+q];a[3*k+p]=c*kp-s*kq;a[3*k+q]=s*kp+c*kq;}
+      for(let k=0;k<3;k++){const pk=a[3*p+k],qk=a[3*q+k];a[3*p+k]=c*pk-s*qk;a[3*q+k]=s*pk+c*qk;}
+      for(let k=0;k<3;k++){const kp=V[3*k+p],kq=V[3*k+q];V[3*k+p]=c*kp-s*kq;V[3*k+q]=s*kp+c*kq;}
+    }
+  }
+  return {w:[a[0],a[4],a[8]],V};
+}
+
+/* ---------- uma forma de agregado em escala unitária (Min Feret = 1), [W] §3.1 ---------- */
+function makeShape(rng,par,ang){
+  const AR=clamp(weibQ(par.arL,par.arK,rng.unif(0.03,0.97)),0.3,0.99);
+  const h=clamp(par.h*(1+0.08*rng.normal()),0.42,0.98);
+  const dims=[1/AR,1,h];
+  const ar=[dims[1]*dims[2],dims[1]*dims[2],dims[0]*dims[2],dims[0]*dims[2],dims[0]*dims[1],dims[0]*dims[1]];
+  const tot=ar.reduce((s,x)=>s+x,0),N=36,P=new Float64Array(3*N);
+  for(let m=0;m<N;m++){
+    let u=rng()*tot,face=0; while(face<5&&u>ar[face]){u-=ar[face];face++;}
+    for(let a=0;a<3;a++)P[3*m+a]=(rng()-0.5)*dims[a];
+    const ax=face>>1,sg=(face&1)?1:-1;
+    P[3*m+ax]=sg*dims[ax]/2*(1-rng()*ang);
+  }
+  const F=hull3(P);
+  const used=new Map(),Vl=[];
+  const F2=F.map(i=>{if(!used.has(i)){used.set(i,Vl.length/3);Vl.push(P[3*i],P[3*i+1],P[3*i+2]);}return used.get(i);});
+  const nv=Vl.length/3,V=new Float64Array(Vl);
+  const mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9],mean=[0,0,0];
+  for(let i=0;i<nv;i++)for(let a=0;a<3;a++){const x=V[3*i+a];mean[a]+=x/nv;if(x<mn[a])mn[a]=x;if(x>mx[a])mx[a]=x;}
+  for(let i=0;i<nv;i++)for(let a=0;a<3;a++)V[3*i+a]=(V[3*i+a]-mean[a])*dims[a]/(mx[a]-mn[a]);
+  let PL=planesOf(V,F2);
+  let vol=0;
+  for(let f=0;f<F2.length/3;f++){
+    const a=F2[3*f],b=F2[3*f+1],c=F2[3*f+2];
+    vol+=(V[3*a]*(V[3*b+1]*V[3*c+2]-V[3*b+2]*V[3*c+1])-V[3*a+1]*(V[3*b]*V[3*c+2]-V[3*b+2]*V[3*c])+V[3*a+2]*(V[3*b]*V[3*c+1]-V[3*b+1]*V[3*c]))/6;
+  }
+  const G=17,bmn=[1e9,1e9,1e9],bmx=[-1e9,-1e9,-1e9];
+  for(let i=0;i<nv;i++)for(let a=0;a<3;a++){const x=V[3*i+a];if(x<bmn[a])bmn[a]=x;if(x>bmx[a])bmx[a]=x;}
+  const gi=[],np=PL.length/4;
+  for(let ix=0;ix<G;ix++)for(let iy=0;iy<G;iy++)for(let iz=0;iz<G;iz++){
+    const x=bmn[0]+(bmx[0]-bmn[0])*(ix+0.5)/G,y=bmn[1]+(bmx[1]-bmn[1])*(iy+0.5)/G,z=bmn[2]+(bmx[2]-bmn[2])*(iz+0.5)/G;
+    let ok=true; for(let p=0;p<np;p++){if(PL[4*p]*x+PL[4*p+1]*y+PL[4*p+2]*z+PL[4*p+3]>0){ok=false;break;}}
+    if(ok)gi.push(x,y,z);
+  }
+  const ng=gi.length/3,c=[0,0,0];
+  for(let i=0;i<ng;i++)for(let a=0;a<3;a++)c[a]+=gi[3*i+a]/ng;
+  const S=[0,0,0,0,0,0,0,0,0];let tr=0;
+  for(let i=0;i<ng;i++){const r=[gi[3*i]-c[0],gi[3*i+1]-c[1],gi[3*i+2]-c[2]];tr+=r[0]*r[0]+r[1]*r[1]+r[2]*r[2];for(let a=0;a<3;a++)for(let b=0;b<3;b++)S[3*a+b]+=r[a]*r[b];}
+  const I=[0,0,0,0,0,0,0,0,0];for(let a=0;a<3;a++)for(let b=0;b<3;b++)I[3*a+b]=((a===b?tr:0)-S[3*a+b])/ng*vol;
+  const J=jacobi3(I),Q=J.V;
+  const det=Q[0]*(Q[4]*Q[8]-Q[5]*Q[7])-Q[1]*(Q[3]*Q[8]-Q[5]*Q[6])+Q[2]*(Q[3]*Q[7]-Q[4]*Q[6]);
+  if(det<0){Q[2]=-Q[2];Q[5]=-Q[5];Q[8]=-Q[8];}
+  const toP=(arr,n)=>{const o=new Float64Array(3*n);for(let i=0;i<n;i++){const r=[arr[3*i]-c[0],arr[3*i+1]-c[1],arr[3*i+2]-c[2]];for(let j=0;j<3;j++)o[3*i+j]=r[0]*Q[j]+r[1]*Q[3+j]+r[2]*Q[6+j];}return o;};
+  const Vp=toP(V,nv),Gp=toP(gi,ng);
+  PL=planesOf(Vp,F2);
+  const di=new Float64Array(ng);
+  for(let i=0;i<ng;i++){let m=1e9;for(let p=0;p<np;p++){const s=-(PL[4*p]*Gp[3*i]+PL[4*p+1]*Gp[3*i+1]+PL[4*p+2]*Gp[3*i+2]+PL[4*p+3]);if(s<m)m=s;}di[i]=m;}
+  const nc=Math.min(160,ng),cand=new Int32Array(nc);
+  for(let j=0;j<nc;j++)cand[j]=rng.int(ng);
+  const cov=new Uint8Array(nc*ng);
+  for(let j=0;j<nc;j++){const cj=cand[j],r=di[cj]*1.10,r2=r*r;
+    for(let i=0;i<ng;i++){const dx=Gp[3*i]-Gp[3*cj],dy=Gp[3*i+1]-Gp[3*cj+1],dz=Gp[3*i+2]-Gp[3*cj+2];if(dx*dx+dy*dy+dz*dz<r2)cov[j*ng+i]=1;}}
+  const covered=new Uint8Array(ng),sp=[];let ncov=0;
+  for(let it=0;it<10;it++){
+    let best=-1,bg=0;
+    for(let j=0;j<nc;j++){if(di[cand[j]]*1.10<=0.07)continue;let g=0;const o=j*ng;for(let i=0;i<ng;i++)if(cov[o+i]&&!covered[i])g++;if(g>bg){bg=g;best=j;}}
+    if(best<0||bg<0.01*ng)break;
+    const cj=cand[best];sp.push(Gp[3*cj],Gp[3*cj+1],Gp[3*cj+2],di[cj]*1.10);
+    for(let i=0;i<ng;i++)if(cov[best*ng+i]&&!covered[i]){covered[i]=1;ncov++;}
+    if(ncov/ng>0.96)break;
+  }
+  if(!sp.length)sp.push(0,0,0,Math.max(0.1,Math.min(dims[2],1)/2));
+  return {v:new Float32Array(Vp),f:new Uint16Array(F2),pl:PL,vol,I:J.w.map(Math.abs),sp:new Float64Array(sp),AR,h};
+}
+
+/* ---------- partículas: Min Feret pela Weibull da classe ([W] §4.1, p entre 0,005 e 0,65) ---------- */
+function sampleParts(cfg,lib,off,ntpl){
+  const r=makeRng(cfg.seed+7),tpl=[],sc=[],fr=[],rel=[],cls=LIBS[cfg.lib];
+  cfg.comp.fracoes.forEach(([lo,hi,pct],fi)=>{
+    const alvo=cfg.comp.m_agg*pct/100,kc=classOf(cls,hi);let acc=0,n=0,guard=0;
+    while(true){
+      const s=weibQ(cls[kc].mfL,cls[kc].mfK,r.unif(0.005,0.65));
+      if(s<2){if(++guard>20000)break;continue;}
+      const ti=off[kc]+r.int(ntpl),mg=lib[ti].vol*s*s*s*cfg.rhoA/1000;
+      if(acc+mg-alvo>alvo-acc)break;
+      acc+=mg;n++;tpl.push(ti);sc.push(s);fr.push(fi);
+    }
+    rel.push({lo,hi,n,massa:acc,alvo,classe:cls[kc].nome});
+  });
+  return {tpl,sc,fr,rel};
+}
+
+/* ---------- DEM de aglomerados de esferas com dois pistões ---------- */
+function makeSim(P,lib,R,rho,seed){
+  const n=P.tpl.length,rk=makeRng(seed);
+  const spStart=new Int32Array(n),spN=new Int32Array(n);
+  let ns=0;for(let i=0;i<n;i++){spStart[i]=ns;spN[i]=lib[P.tpl[i]].sp.length/4;ns+=spN[i];}
+  const spLoc=new Float64Array(4*ns),spw=new Float64Array(4*ns);
+  const mass=new Float64Array(n),Ib=new Float64Array(3*n),brad=new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const t=lib[P.tpl[i]],s=P.sc[i];let bR=0;
+    for(let k=0;k<spN[i];k++){const o=4*(spStart[i]+k);
+      spLoc[o]=t.sp[4*k]*s;spLoc[o+1]=t.sp[4*k+1]*s;spLoc[o+2]=t.sp[4*k+2]*s;spLoc[o+3]=t.sp[4*k+3]*s;
+      const e=Math.hypot(spLoc[o],spLoc[o+1],spLoc[o+2])+spLoc[o+3];if(e>bR)bR=e;}
+    brad[i]=bR;mass[i]=t.vol*s*s*s*rho;for(let a=0;a<3;a++)Ib[3*i+a]=Math.max(t.I[a],1e-6)*Math.pow(s,5)*rho;
+  }
+  const pos=new Float64Array(3*n),q=new Float64Array(4*n),vel=new Float64Array(3*n),w=new Float64Array(3*n);
+  const F=new Float64Array(3*n),T=new Float64Array(3*n),posB=new Float64Array(3*n),kdir=new Float64Array(3*n);
+  let pairs=new Int32Array(1<<16),npairs=0,lastKick=-1;
+  // distância de contato extra (mm) em todas as esferas: compensa os cantos da casca que o aglomerado não cobre
+  const S={n,ns,pos,q,vel,w,mass,brad,zb:0,zp:1e4,coat:0};
+
+  function buildPairs(skin){
+    let bmax=0;for(let i=0;i<n;i++)if(brad[i]>bmax)bmax=brad[i];
+    const cs=2*bmax+skin+2*S.coat;let zmin=1e9,zmax=-1e9;
+    for(let i=0;i<n;i++){const z=pos[3*i+2];if(z<zmin)zmin=z;if(z>zmax)zmax=z;}
+    const x0=-R-cs,z0=zmin-cs,nx=Math.floor((2*R+2*cs)/cs)+1,ny=nx,nz=Math.floor((zmax-zmin+2*cs)/cs)+1;
+    const head=new Int32Array(nx*ny*nz).fill(-1),next=new Int32Array(n),cell=new Int32Array(n);
+    for(let i=0;i<n;i++){
+      const cx=clamp(Math.floor((pos[3*i]-x0)/cs),0,nx-1),cy=clamp(Math.floor((pos[3*i+1]-x0)/cs),0,ny-1),cz=clamp(Math.floor((pos[3*i+2]-z0)/cs),0,nz-1);
+      const c=(cz*ny+cy)*nx+cx;cell[i]=c;next[i]=head[c];head[c]=i;
+    }
+    npairs=0;
+    for(let i=0;i<n;i++){
+      const c=cell[i],cx=c%nx,cy=Math.floor(c/nx)%ny,cz=Math.floor(c/(nx*ny));
+      for(let dz=-1;dz<=1;dz++)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const X=cx+dx,Y=cy+dy,Z=cz+dz;if(X<0||Y<0||Z<0||X>=nx||Y>=ny||Z>=nz)continue;
+        for(let j=head[(Z*ny+Y)*nx+X];j>=0;j=next[j]){
+          if(j<=i)continue;
+          const ddx=pos[3*i]-pos[3*j],ddy=pos[3*i+1]-pos[3*j+1],ddz=pos[3*i+2]-pos[3*j+2],rc=brad[i]+brad[j]+2*S.coat+skin;
+          if(ddx*ddx+ddy*ddy+ddz*ddz<rc*rc){
+            if(2*npairs+2>pairs.length){const np2=new Int32Array(pairs.length*2);np2.set(pairs);pairs=np2;}
+            pairs[2*npairs]=i;pairs[2*npairs+1]=j;npairs++;
+          }
+        }
+      }
+    }
+    posB.set(pos);
+  }
+
+  let maxov=0;
+  // contato esfera-esfera (b>=0) ou esfera-parede (b<0, ponto cb com raio 0 e velocidade de parede vwz); devolve Fz na partícula a
+  function contact(a,b,cax,cay,caz,ra,cbx,cby,cbz,rb,kn,zeta,mu,vwz){
+    const dx=cax-cbx,dy=cay-cby,dz=caz-cbz,dist=Math.sqrt(dx*dx+dy*dy+dz*dz),ov=ra+rb-dist;
+    if(ov<=0||dist<1e-12)return 0;
+    if(ov>maxov)maxov=ov;
+    const nx=dx/dist,ny=dy/dist,nz=dz/dist,l=ra-ov/2;
+    const xcx=cax-nx*l,xcy=cay-ny*l,xcz=caz-nz*l;
+    const rax=xcx-pos[3*a],ray=xcy-pos[3*a+1],raz=xcz-pos[3*a+2];
+    const wa0=w[3*a],wa1=w[3*a+1],wa2=w[3*a+2];
+    let vx=vel[3*a]+wa1*raz-wa2*ray,vy=vel[3*a+1]+wa2*rax-wa0*raz,vz=vel[3*a+2]+wa0*ray-wa1*rax;
+    let meff=mass[a],rbx=0,rby=0,rbz=0;
+    if(b>=0){
+      rbx=xcx-pos[3*b];rby=xcy-pos[3*b+1];rbz=xcz-pos[3*b+2];
+      const wb0=w[3*b],wb1=w[3*b+1],wb2=w[3*b+2];
+      vx-=vel[3*b]+wb1*rbz-wb2*rby;vy-=vel[3*b+1]+wb2*rbx-wb0*rbz;vz-=vel[3*b+2]+wb0*rby-wb1*rbx;
+      meff=mass[a]*mass[b]/(mass[a]+mass[b]);
+    } else vz-=vwz;
+    const vn=vx*nx+vy*ny+vz*nz,cn=2*zeta*Math.sqrt(meff*kn);
+    let fn=kn*ov-cn*vn;if(fn<0)fn=0;
+    let ft=0,vtx=0,vty=0,vtz=0;
+    if(mu>0){vtx=vx-vn*nx;vty=vy-vn*ny;vtz=vz-vn*nz;const vtm=Math.sqrt(vtx*vtx+vty*vty+vtz*vtz);if(vtm>1e-12){ft=cn*vtm;if(ft>mu*fn)ft=mu*fn;ft/=vtm;}}
+    const fx=fn*nx-ft*vtx,fy=fn*ny-ft*vty,fz=fn*nz-ft*vtz;
+    F[3*a]+=fx;F[3*a+1]+=fy;F[3*a+2]+=fz;
+    T[3*a]+=ray*fz-raz*fy;T[3*a+1]+=raz*fx-rax*fz;T[3*a+2]+=rax*fy-ray*fx;
+    if(b>=0){F[3*b]-=fx;F[3*b+1]-=fy;F[3*b+2]-=fz;T[3*b]-=rby*fz-rbz*fy;T[3*b+1]-=rbz*fx-rbx*fz;T[3*b+2]-=rbx*fy-rby*fx;}
+    return fz;
+  }
+
+  // o: dt, mu, gd, g, vp (velocidade de aproximação dos pistões), gapT, fbn, kick {f,period,dur}, t0
+  function run(nsteps,o){
+    const dt=o.dt,kn=1000,zeta=0.3,mu=o.mu,gd=o.gd,g=o.g||0,vp=o.vp||0,gapT=o.gapT,fbn=o.fbn||0,kick=o.kick,skin=0.6;
+    const coat=S.coat;
+    buildPairs(skin);
+    let fpist=0,ke=0;
+    for(let st=0;st<nsteps;st++){
+      const t=o.t0+st*dt;
+      let dmax=0;
+      for(let i=0;i<3*n;i+=3){const dx=pos[i]-posB[i],dy=pos[i+1]-posB[i+1],dz=pos[i+2]-posB[i+2],dd=dx*dx+dy*dy+dz*dz;if(dd>dmax)dmax=dd;}
+      if(Math.sqrt(dmax)>skin*0.45)buildPairs(skin);
+      for(let i=0;i<n;i++){
+        const qw=q[4*i],qx=q[4*i+1],qy=q[4*i+2],qz=q[4*i+3],px=pos[3*i],py=pos[3*i+1],pz=pos[3*i+2];
+        for(let s=spStart[i],e=s+spN[i];s<e;s++){
+          const vx=spLoc[4*s],vy=spLoc[4*s+1],vz=spLoc[4*s+2];
+          const tx=2*(qy*vz-qz*vy),ty=2*(qz*vx-qx*vz),tz=2*(qx*vy-qy*vx);
+          spw[4*s]=px+vx+qw*tx+(qy*tz-qz*ty);spw[4*s+1]=py+vy+qw*ty+(qz*tx-qx*tz);spw[4*s+2]=pz+vz+qw*tz+(qx*ty-qy*tx);spw[4*s+3]=spLoc[4*s+3]+coat;
+        }
+      }
+      F.fill(0);T.fill(0);maxov=0;let ftop=0,fbot=0;
+      for(let p=0;p<npairs;p++){
+        const a=pairs[2*p],b=pairs[2*p+1];
+        const dx=pos[3*a]-pos[3*b],dy=pos[3*a+1]-pos[3*b+1],dz=pos[3*a+2]-pos[3*b+2],rc=brad[a]+brad[b]+2*coat;
+        if(dx*dx+dy*dy+dz*dz>rc*rc)continue;
+        const bx=pos[3*b],by=pos[3*b+1],bz=pos[3*b+2],rbb=brad[b]+coat;
+        for(let ia=spStart[a],ea=ia+spN[a];ia<ea;ia++){
+          const cax=spw[4*ia],cay=spw[4*ia+1],caz=spw[4*ia+2],ra=spw[4*ia+3];
+          const ex=cax-bx,ey=cay-by,ez=caz-bz,rr=ra+rbb;
+          if(ex*ex+ey*ey+ez*ez>rr*rr)continue;
+          for(let ib=spStart[b],eb=ib+spN[b];ib<eb;ib++){
+            const cbx=spw[4*ib],cby=spw[4*ib+1],cbz=spw[4*ib+2],rb=spw[4*ib+3];
+            const fx=cax-cbx,fy=cay-cby,fz=caz-cbz,r2=ra+rb;
+            if(fx*fx+fy*fy+fz*fz>=r2*r2)continue;
+            contact(a,b,cax,cay,caz,ra,cbx,cby,cbz,rb,kn,zeta,mu,0);
+          }
+        }
+      }
+      const moving=vp>0&&(S.zp-S.zb)>gapT,vh=moving?vp/2:0;
+      for(let i=0;i<n;i++){
+        for(let s=spStart[i],e=s+spN[i];s<e;s++){
+          const cx=spw[4*s],cy=spw[4*s+1],cz=spw[4*s+2],r=spw[4*s+3],rxy=Math.sqrt(cx*cx+cy*cy);
+          if(rxy+r>R&&rxy>1e-9){const sc=R/rxy;contact(i,-1,cx,cy,cz,r,cx*sc,cy*sc,cz,0,kn,zeta,mu,0);}
+          if(cz-r<S.zb)fbot+=contact(i,-1,cx,cy,cz,r,cx,cy,S.zb,0,kn,zeta,mu,vh);
+          if(cz+r>S.zp)ftop-=contact(i,-1,cx,cy,cz,r,cx,cy,S.zp,0,kn,zeta,mu,-vh);
+        }
+      }
+      fpist=(ftop+fbot)/2;
+      // força radial (castanha-do-pará): igual para todas, para o centro entre os pistões
+      if(fbn>0){const zc=(S.zb+S.zp)/2;
+        for(let i=0;i<n;i++){const dx=-pos[3*i],dy=-pos[3*i+1],dz=zc-pos[3*i+2],L=Math.sqrt(dx*dx+dy*dy+dz*dz);if(L>1e-6){F[3*i]+=fbn*dx/L;F[3*i+1]+=fbn*dy/L;F[3*i+2]+=fbn*dz/L;}}}
+      // mistura: força igual para todas, em direção aleatória, durante 'dur' a cada 'period'
+      if(kick){const id=Math.floor(t/kick.period);
+        if(t-id*kick.period<kick.dur){
+          if(id!==lastKick){lastKick=id;for(let i=0;i<n;i++){let x=rk.normal(),y=rk.normal(),z=rk.normal();const L=Math.hypot(x,y,z)||1;kdir[3*i]=x/L;kdir[3*i+1]=y/L;kdir[3*i+2]=z/L;}}
+          for(let i=0;i<3*n;i++)F[i]+=kick.f*kdir[i];
+        }}
+      ke=0;
+      for(let i=0;i<n;i++){
+        const m=mass[i];
+        for(let k=0;k<3;k++){let f=F[3*i+k]-gd*m*vel[3*i+k];if(k===2)f-=m*g;vel[3*i+k]+=f/m*dt;pos[3*i+k]+=vel[3*i+k]*dt;ke+=0.5*m*vel[3*i+k]*vel[3*i+k];}
+        const qw=q[4*i],qx=q[4*i+1],qy=q[4*i+2],qz=q[4*i+3];
+        const rinv=(v0,v1,v2)=>{const tx=2*(-qy*v2+qz*v1),ty=2*(-qz*v0+qx*v2),tz=2*(-qx*v1+qy*v0);return [v0+qw*tx+(-qy*tz+qz*ty),v1+qw*ty+(-qz*tx+qx*tz),v2+qw*tz+(-qx*ty+qy*tx)];};
+        const tb=rinv(T[3*i],T[3*i+1],T[3*i+2]),wb=rinv(w[3*i],w[3*i+1],w[3*i+2]);
+        const I0=Ib[3*i],I1=Ib[3*i+1],I2=Ib[3*i+2];
+        wb[0]+=((tb[0]-(I2-I1)*wb[1]*wb[2])/I0-gd*wb[0])*dt;
+        wb[1]+=((tb[1]-(I0-I2)*wb[2]*wb[0])/I1-gd*wb[1])*dt;
+        wb[2]+=((tb[2]-(I1-I0)*wb[0]*wb[1])/I2-gd*wb[2])*dt;
+        const tx=2*(qy*wb[2]-qz*wb[1]),ty=2*(qz*wb[0]-qx*wb[2]),tz=2*(qx*wb[1]-qy*wb[0]);
+        const w0=wb[0]+qw*tx+(qy*tz-qz*ty),w1=wb[1]+qw*ty+(qz*tx-qx*tz),w2=wb[2]+qw*tz+(qx*ty-qy*tx);
+        w[3*i]=w0;w[3*i+1]=w1;w[3*i+2]=w2;
+        const nw=qw+0.5*(-w0*qx-w1*qy-w2*qz)*dt,nx=qx+0.5*(w0*qw+w1*qz-w2*qy)*dt,ny=qy+0.5*(-w0*qz+w1*qw+w2*qx)*dt,nz=qz+0.5*(w0*qy-w1*qx+w2*qw)*dt;
+        const L=Math.sqrt(nw*nw+nx*nx+ny*ny+nz*nz);q[4*i]=nw/L;q[4*i+1]=nx/L;q[4*i+2]=ny/L;q[4*i+3]=nz/L;
+      }
+      if(moving){S.zp-=vh*dt;S.zb+=vh*dt;const gap=S.zp-S.zb;if(gap<gapT){const c=(gapT-gap)/2;S.zp+=c;S.zb-=c;}}
+    }
+    return {maxov,fpist,ke,gap:S.zp-S.zb};
+  }
+  S.run=run;
+  return S;
+}
+
+/* ---------- distância chamfer 3-4-5 (resultado ×3 em unidades de voxel) ---------- */
+function chamfer(D,nx,ny,nz){
+  const sxy=nx*ny,off=[],w=[];
+  for(let dz=-1;dz<=0;dz++)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    if(dz===0&&(dy>0||(dy===0&&dx>=0)))continue;
+    off.push([dx,dy,dz]);w.push([0,3,4,5][Math.abs(dx)+Math.abs(dy)+Math.abs(dz)]);
+  }
+  for(let pass=0;pass<2;pass++){
+    const sg=pass===0?1:-1;
+    for(let zi=0;zi<nz;zi++){const z=pass===0?zi:nz-1-zi;
+      for(let yi=0;yi<ny;yi++){const y=pass===0?yi:ny-1-yi;
+        for(let xi=0;xi<nx;xi++){const x=pass===0?xi:nx-1-xi;
+          const id=z*sxy+y*nx+x;let v=D[id];if(v===0)continue;
+          for(let k=0;k<off.length;k++){
+            const X=x+sg*off[k][0],Y=y+sg*off[k][1],Z=z+sg*off[k][2];
+            if(X<0||Y<0||Z<0||X>=nx||Y>=ny||Z>=nz)continue;
+            const c=D[Z*sxy+Y*nx+X]+w[k];if(c<v)v=c;
+          }
+          D[id]=v;
+        }}}
+  }
+}
+
+/* ---------- superfície (surface nets) de uma máscara, subamostrada ---------- */
+function surfaceMesh(phase,nx,ny,nz,h,R,codes,step){
+  const bx=Math.ceil(nx/step),by=Math.ceil(ny/step),bz=Math.ceil(nz/step);
+  const X=bx+2,Y=by+2,Z=bz+2,f=new Float32Array(X*Y*Z),g=new Float32Array(X*Y*Z);
+  const isC=new Uint8Array(256);codes.forEach(c=>isC[c]=1);
+  for(let z=0;z<nz;z++)for(let y=0;y<ny;y++){const row=(z*ny+y)*nx;for(let x=0;x<nx;x++)if(isC[phase[row+x]])f[((Math.floor(z/step)+1)*Y+Math.floor(y/step)+1)*X+Math.floor(x/step)+1]+=1;}
+  const inv=1/(step*step*step);for(let i=0;i<f.length;i++)f[i]*=inv;
+  const blur=(src,dst,sx)=>{for(let z=1;z<Z-1;z++)for(let y=1;y<Y-1;y++)for(let x=1;x<X-1;x++){const i=(z*Y+y)*X+x;dst[i]=0.5*src[i]+0.25*(src[i-sx]+src[i+sx]);}};
+  blur(f,g,1);blur(g,f,X);blur(f,g,X*Y);
+  const fld=g,iso=0.5;
+  const cell=new Int32Array(X*Y*Z).fill(-1),P=[];
+  const corners=[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]];
+  const edges=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+  const val=new Float32Array(8);
+  for(let z=0;z<Z-1;z++)for(let y=0;y<Y-1;y++)for(let x=0;x<X-1;x++){
+    let mask=0;
+    for(let c=0;c<8;c++){const v=fld[((z+corners[c][2])*Y+y+corners[c][1])*X+x+corners[c][0]];val[c]=v;if(v>iso)mask|=1<<c;}
+    if(mask===0||mask===255)continue;
+    let sx=0,sy=0,sz=0,ne=0;
+    for(const [a,b] of edges){const ia=(mask>>a)&1,ib=(mask>>b)&1;if(ia===ib)continue;const t=(iso-val[a])/(val[b]-val[a]);
+      sx+=corners[a][0]+t*(corners[b][0]-corners[a][0]);sy+=corners[a][1]+t*(corners[b][1]-corners[a][1]);sz+=corners[a][2]+t*(corners[b][2]-corners[a][2]);ne++;}
+    cell[(z*Y+y)*X+x]=P.length/3;
+    P.push(((x+sx/ne-1)*step+step/2)*h-R,((y+sy/ne-1)*step+step/2)*h-R,((z+sz/ne-1)*step+step/2)*h);
+  }
+  const I=[];
+  const quad=(c0,c1,c2,c3,flip)=>{if(c0<0||c1<0||c2<0||c3<0)return;if(flip)I.push(c0,c2,c1,c0,c3,c2);else I.push(c0,c1,c2,c0,c2,c3);};
+  const C=(x,y,z)=>(x<0||y<0||z<0||x>=X-1||y>=Y-1||z>=Z-1)?-1:cell[(z*Y+y)*X+x];
+  for(let z=1;z<Z-1;z++)for(let y=1;y<Y-1;y++)for(let x=1;x<X-1;x++){
+    const v0=fld[(z*Y+y)*X+x]>iso;
+    {const v1=fld[(z*Y+y)*X+x+1]>iso;if(v0!==v1)quad(C(x,y-1,z-1),C(x,y,z-1),C(x,y,z),C(x,y-1,z),v1);}
+    {const v1=fld[(z*Y+y+1)*X+x]>iso;if(v0!==v1)quad(C(x-1,y,z-1),C(x-1,y,z),C(x,y,z),C(x,y,z-1),v1);}
+    {const v1=fld[((z+1)*Y+y)*X+x]>iso;if(v0!==v1)quad(C(x-1,y-1,z),C(x,y-1,z),C(x,y,z),C(x-1,y,z),v1);}
+  }
+  return {pos:new Float32Array(P),idx:new Uint32Array(I)};
+}
+
+/* ---------- ruído de valor 3D ---------- */
+function valueNoise(seed){
+  const hash=(x,y,z)=>{let h=Math.imul(x,374761393)^Math.imul(y,668265263)^Math.imul(z,2147483647)^seed;h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967295*2-1;};
+  const sm=t=>t*t*(3-2*t);
+  return (x,y,z)=>{const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z),fx=sm(x-xi),fy=sm(y-yi),fz=sm(z-zi);
+    const l=(a,b,t)=>a+(b-a)*t;
+    return l(l(l(hash(xi,yi,zi),hash(xi+1,yi,zi),fx),l(hash(xi,yi+1,zi),hash(xi+1,yi+1,zi),fx),fy),
+             l(l(hash(xi,yi,zi+1),hash(xi+1,yi,zi+1),fx),l(hash(xi,yi+1,zi+1),hash(xi+1,yi+1,zi+1),fx),fy),fz);};
+}
+
+/* ---------- pipeline ---------- */
+function runAll(cfg){
+  const comp=cfg.comp,R=comp.R,H=comp.H,t0=Date.now();
+  progress('formas',0,'Gerando a biblioteca de formas',true);
+  const rng=makeRng(cfg.seed),cls=LIBS[cfg.lib],ntpl=60;
+  const usedCls=new Set();comp.fracoes.forEach(([lo,hi])=>usedCls.add(classOf(cls,hi)));
+  const lib=[],off=[],ang=0.28;
+  cls.forEach((par,k)=>{off.push(lib.length);if(!usedCls.has(k))return;for(let i=0;i<ntpl;i++)lib.push(makeShape(rng,par,ang));
+    progress('formas',lib.length/(usedCls.size*ntpl),'Gerando a biblioteca de formas');});
+  const P=sampleParts(cfg,lib,off,ntpl),NA=P.tpl.length;
+  if(NA<2)throw new Error('A granulometria não tem agregados acima de 2 mm suficientes para simular.');
+  const NA1000=NA*comp.k1000,M1000=comp.M*comp.k1000;
+  let bub;
+  if(cfg.bub.mode==='auto')bub=Object.assign({mode:'auto'},eqW(NA1000,M1000,cfg.avc));
+  else if(cfg.bub.mode==='manual')bub={mode:'manual',B:clamp(cfg.bub.B,0,100),BSc:cfg.bub.BScmm/10,BSh:cfg.bub.BSh,fallback:false};
+  else bub={mode:'off',B:0,BSc:0.1,BSh:1.5,fallback:false};
+  post({type:'sampled',NA,rel:P.rel,bub,ARmin:Math.min(...lib.map(t=>t.AR)),ARmax:Math.max(...lib.map(t=>t.AR))});
+
+  const perm=[...Array(NA).keys()],r1=makeRng(cfg.seed+1);
+  for(let i=NA-1;i>0;i--){const j=r1.int(i+1);[perm[i],perm[j]]=[perm[j],perm[i]];}
+  const Ps={tpl:perm.map(i=>P.tpl[i]),sc:perm.map(i=>P.sc[i]),fr:perm.map(i=>P.fr[i])};
+  const rho=cfg.rhoA*1e-6,S=makeSim(Ps,lib,R,rho,cfg.seed+3),n=NA;
+  // aggregates gerados aleatoriamente num tubo alto, sem sobreposição ([W] §3.2)
+  let z=0;
+  for(let i=0;i<n;i++){
+    const rb=S.brad[i];let p;
+    for(let tries=0;tries<200;tries++){
+      const rr=Math.max(0,R-rb-0.2)*Math.sqrt(r1()),th=r1()*2*Math.PI;
+      p=[rr*Math.cos(th),rr*Math.sin(th),z+rb+r1()*2];
+      let bad=false;
+      for(let j=Math.max(0,i-500);j<i;j++){const dx=S.pos[3*j]-p[0],dy=S.pos[3*j+1]-p[1],dz=S.pos[3*j+2]-p[2],rc=S.brad[j]+rb+0.1;if(dx*dx+dy*dy+dz*dz<rc*rc){bad=true;break;}}
+      if(!bad)break;
+      if(tries%20===19)z+=0.5;
+    }
+    S.pos.set(p,3*i);
+    const qq=[r1.normal(),r1.normal(),r1.normal(),r1.normal()];const L=Math.hypot(...qq);S.q.set(qq.map(v=>v/L),4*i);
+  }
+  let zlo=1e9,zhi=-1e9;for(let i=0;i<n;i++){zlo=Math.min(zlo,S.pos[3*i+2]-S.brad[i]);zhi=Math.max(zhi,S.pos[3*i+2]+S.brad[i]);}
+  S.zb=zlo-0.5;S.zp=zhi+0.5;S.coat=cfg.coat;
+  const dt=cfg.dt,chunk=Math.round(0.005/dt),area=Math.PI*R*R/1000,Vsol=comp.V_graudo+comp.M;
+  const avcOf=gap=>100*(area*gap-Vsol)/(area*gap);
+  let mmin=1e9;for(let i=0;i<n;i++)if(S.mass[i]<mmin)mmin=S.mass[i];
+  const fbn=cfg.seg.on?cfg.seg.k*0.3*mmin*9810:0;
+  const kick={f:3*mmin*9810,period:0.1,dur:0.005};
+  const gap50=Vsol/(0.5*area),gap0=S.zp-S.zb;
+  let tt=0,out={gap:gap0,fpist:0,maxov:0};
+  // 1. mistura e pistões a velocidade constante até AVC = 50% (Eq. 1)
+  while(out.gap>gap50+1e-6&&tt<4){
+    out=S.run(chunk,{dt,mu:0,gd:4,g:0,vp:150,gapT:gap50,fbn,kick,t0:tt});tt+=chunk*dt;
+    progress('mistura',(gap0-out.gap)/Math.max(gap0-gap50,1e-6),`Pistões · altura ${br(out.gap,1)} mm · AVC(Eq. 1) ${br(avcOf(out.gap),1)}%`);
+  }
+  // 2. força crescente nos pistões até o AVC alvo: avança enquanto a força está abaixo do limite, que cresce com o tempo
+  let tB=0,forced=false;const vB=40,F0=5000,Frate=100000;
+  while(out.gap>H+1e-6){
+    const cap=F0+Frate*tB;const vp=(out.fpist<cap||forced)?vB:0;
+    out=S.run(chunk,{dt,mu:0,gd:5,g:0,vp,gapT:H,fbn,t0:tt});tt+=chunk*dt;tB+=chunk*dt;
+    if(tB>1.5)forced=true;
+    progress('compac',(gap50-out.gap)/Math.max(gap50-H,1e-6)*0.9,`Força nos pistões ${br(out.fpist/1000,1)} N (limite ${br(cap/1000,0)} N) · AVC ${br(avcOf(out.gap),1)}%`);
+  }
+  // 3. acomodação com os pistões parados
+  const nrel=Math.round(0.06/dt);
+  for(let k=0;k<nrel;k+=chunk){out=S.run(chunk,{dt,mu:0,gd:8,g:0,vp:0,gapT:H,t0:tt});tt+=chunk*dt;progress('compac',0.9+0.1*k/nrel,'Acomodação');}
+  // a base passa a ser z = 0
+  for(let i=0;i<n;i++)S.pos[3*i+2]-=S.zb;
+  const tDem=(Date.now()-t0)/1000;
+
+  /* ---------- voxels ---------- */
+  progress('pintura',0,'Voxelizando os agregados',true);
+  const h=cfg.voxel,nx=Math.ceil(2*R/h),ny=nx,nz=Math.ceil(H/h),nvox=nx*ny*nz,sxy=nx*ny;
+  const lab=new Int32Array(nvox),phase=new Uint8Array(nvox);
+  for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){const X=(x+0.5)*h-R,Y=(y+0.5)*h-R;if(X*X+Y*Y<=R*R)for(let zz=0;zz<nz;zz++)phase[zz*sxy+y*nx+x]=1;}
+  let over=0;
+  for(let i=0;i<n;i++){
+    const t=lib[Ps.tpl[i]],s=Ps.sc[i];
+    const qw=S.q[4*i],qx=S.q[4*i+1],qy=S.q[4*i+2],qz=S.q[4*i+3];
+    const Rm=[1-2*(qy*qy+qz*qz),2*(qx*qy-qw*qz),2*(qx*qz+qw*qy),2*(qx*qy+qw*qz),1-2*(qx*qx+qz*qz),2*(qy*qz-qw*qx),2*(qx*qz-qw*qy),2*(qy*qz+qw*qx),1-2*(qx*qx+qy*qy)];
+    const px=S.pos[3*i],py=S.pos[3*i+1],pz=S.pos[3*i+2];
+    const mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
+    for(let v=0;v<t.v.length;v+=3){const a=t.v[v]*s,b=t.v[v+1]*s,c=t.v[v+2]*s;const wv=[Rm[0]*a+Rm[1]*b+Rm[2]*c+px,Rm[3]*a+Rm[4]*b+Rm[5]*c+py,Rm[6]*a+Rm[7]*b+Rm[8]*c+pz];for(let k=0;k<3;k++){if(wv[k]<mn[k])mn[k]=wv[k];if(wv[k]>mx[k])mx[k]=wv[k];}}
+    const np=t.pl.length/4,PW=new Float64Array(4*np);
+    for(let p=0;p<np;p++){const a=t.pl[4*p],b=t.pl[4*p+1],c=t.pl[4*p+2];PW[4*p]=Rm[0]*a+Rm[1]*b+Rm[2]*c;PW[4*p+1]=Rm[3]*a+Rm[4]*b+Rm[5]*c;PW[4*p+2]=Rm[6]*a+Rm[7]*b+Rm[8]*c;PW[4*p+3]=t.pl[4*p+3]*s;}
+    const x0=Math.max(0,Math.floor((mn[0]+R)/h)),x1=Math.min(nx,Math.ceil((mx[0]+R)/h)),y0=Math.max(0,Math.floor((mn[1]+R)/h)),y1=Math.min(ny,Math.ceil((mx[1]+R)/h)),z0=Math.max(0,Math.floor(mn[2]/h)),z1=Math.min(nz,Math.ceil(mx[2]/h));
+    for(let zz=z0;zz<z1;zz++){const Z=(zz+0.5)*h-pz;
+      for(let y=y0;y<y1;y++){const Y=(y+0.5)*h-R-py;
+        for(let x=x0;x<x1;x++){const Xr=(x+0.5)*h-R-px;
+          let ok=true;for(let p=0;p<np;p++){if(PW[4*p]*Xr+PW[4*p+1]*Y+PW[4*p+2]*Z+PW[4*p+3]>0){ok=false;break;}}
+          if(!ok)continue;const id=zz*sxy+y*nx+x;if(phase[id]===0)continue;
+          if(lab[id]>0)over++;else{lab[id]=i+1;phase[id]=4;}
+        }}}
+    if(i%200===0)progress('pintura',0.15*i/n,'Voxelizando os agregados');
+  }
+  // [W] §3.6: pintura do mastique a partir das bordas dos agregados (as paredes contam como agregado)
+  progress('pintura',0.2,'Distância até os agregados e as paredes',true);
+  const D=new Uint16Array(nvox);
+  for(let zz=0;zz<nz;zz++){const lim=Math.min(3*(zz+1),3*(nz-zz),65535);for(let k=0;k<sxy;k++){const id=zz*sxy+k;D[id]=phase[id]===1?lim:0;}}
+  chamfer(D,nx,ny,nz);
+  const noise=valueNoise(cfg.seed*7+3),cellN=1/h;
+  const dP=new Float32Array(nvox);
+  let ncyl=0;
+  for(let zz=0;zz<nz;zz++)for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){const id=zz*sxy+y*nx+x;if(phase[id]!==0)ncyl++;if(phase[id]===1)dP[id]=D[id]/3+0.15*noise(x/cellN,y/cellN,zz/cellN);}
+  const vv=h*h*h/1000;
+  const Vvoid=comp.V_void*(ncyl*vv)/comp.V;
+  const nVoidT=Math.round(Vvoid/vv),nBubT=Math.round(nVoidT*bub.B/100),nEsqT=nVoidT-nBubT;
+  const NB=4096;
+  function convert(from,to,nsel,desc,skip){
+    if(nsel<=0)return 0;
+    let dmax=0;for(let id=0;id<nvox;id++)if(phase[id]===from&&dP[id]>dmax)dmax=dP[id];
+    const sc=(NB-1)/(dmax+1e-6+0.2),hist=new Int32Array(NB),bin=v=>clamp(Math.floor((v+0.2)*sc),0,NB-1);
+    for(let id=0;id<nvox;id++)if(phase[id]===from&&!(skip&&skip[id]))hist[bin(dP[id])]++;
+    let acc=0,T=desc?NB-1:0;
+    if(desc){for(;T>=0;T--){if(acc+hist[T]>=nsel)break;acc+=hist[T];}}else{for(;T<NB;T++){if(acc+hist[T]>=nsel)break;acc+=hist[T];}}
+    let rem=nsel-acc,done=0;
+    for(let id=0;id<nvox;id++){if(phase[id]!==from||(skip&&skip[id]))continue;const b=bin(dP[id]);
+      if(desc?b>T:b<T){phase[id]=to;done++;}else if(b===T&&rem>0){phase[id]=to;rem--;done++;}}
+    return done;
+  }
+  const count=c=>{let k=0;for(let id=0;id<nvox;id++)if(phase[id]===c)k++;return k;};
+  progress('pintura',0.45,'Pintando o mastique a partir dos agregados',true);
+  convert(1,2,nEsqT,true);
+  const flipped=new Uint8Array(nvox);
+  for(let iter=0;iter<3;iter++){
+    const list=[];
+    for(let zz=1;zz<nz-1;zz++)for(let y=1;y<ny-1;y++)for(let x=1;x<nx-1;x++){const id=zz*sxy+y*nx+x;if(phase[id]!==1)continue;
+      let c=0;for(let dz=-1;dz<=1;dz++)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(phase[id+dz*sxy+dy*nx+dx]===2)c++;}
+      if(c>=10)list.push(id);}
+    if(!list.length)break;
+    for(const id of list){phase[id]=2;flipped[id]=1;}
+    const ex=count(2)-nEsqT;if(ex>0)convert(2,1,ex,false,flipped);
+    progress('pintura',0.5+0.1*iter,'Redução de ruído do mastique',true);
+  }
+  {
+    const seen=new Uint8Array(nvox),qu=new Int32Array(nvox);let removed=0;
+    for(let id0=0;id0<nvox;id0++){if(phase[id0]!==2||seen[id0])continue;
+      let qh=0,qt=0;qu[qt++]=id0;seen[id0]=1;
+      while(qh<qt){const id=qu[qh++],x=id%nx,y=Math.floor(id/nx)%ny,zz=Math.floor(id/sxy);
+        const nb=[x>0?id-1:-1,x<nx-1?id+1:-1,y>0?id-nx:-1,y<ny-1?id+nx:-1,zz>0?id-sxy:-1,zz<nz-1?id+sxy:-1];
+        for(const j of nb)if(j>=0&&!seen[j]&&phase[j]===2){seen[j]=1;qu[qt++]=j;}}
+      if(qt<30){for(let k=0;k<qt;k++)phase[qu[k]]=1;removed+=qt;}
+    }
+    if(removed>0)convert(1,2,removed,true);
+  }
+  // bolhas no mastique, com diâmetro pela Weibull (BSc, BSh)
+  progress('bolhas',0,'Semeando bolhas no mastique',true);
+  const DV=new Uint16Array(nvox);
+  for(let id=0;id<nvox;id++)DV[id]=phase[id]===2?0:65535;
+  chamfer(DV,nx,ny,nz);
+  const cand=[];
+  for(let id=0;id<nvox;id++)if(phase[id]===1&&D[id]/3*h>=2*h&&DV[id]/3*h>=1.0)cand.push(id);
+  const rb=makeRng(cfg.seed+5),bubbles=[],bubC=[],cs=6,hash=new Map();
+  const key=(a,b,c)=>a+','+b+','+c;
+  let nBub=0,fails=0,warn='';
+  while(nBub<nBubT&&cand.length){
+    let d=clamp(10*bub.BSc*Math.pow(-Math.log(1-rb()),1/bub.BSh),2*h,5);
+    let placed=false;
+    for(let shrink=0;shrink<7&&!placed;shrink++,d=Math.max(2*h,d*0.8)){
+      for(let tr=0;tr<120;tr++){
+        const id=cand[rb.int(cand.length)];if(phase[id]!==1)continue;
+        const r=d/2;
+        if(D[id]/3*h<r+h)continue;
+        const x=id%nx,y=Math.floor(id/nx)%ny,zz=Math.floor(id/sxy),cx=(x+0.5)*h-R,cy=(y+0.5)*h-R,cz=(zz+0.5)*h;
+        const gx=Math.floor(cx/cs),gy=Math.floor(cy/cs),gz=Math.floor(cz/cs);let ok=true;
+        for(let a=-1;a<=1&&ok;a++)for(let b=-1;b<=1&&ok;b++)for(let c=-1;c<=1&&ok;c++){const L=hash.get(key(gx+a,gy+b,gz+c));if(!L)continue;
+          for(const o of L){if(Math.hypot(o[0]-cx,o[1]-cy,o[2]-cz)-o[3]-r<h){ok=false;break;}}}
+        if(!ok)continue;
+        const rv=r/h,x0=Math.max(0,Math.floor(x-rv)),x1=Math.min(nx-1,Math.ceil(x+rv)),y0=Math.max(0,Math.floor(y-rv)),y1=Math.min(ny-1,Math.ceil(y+rv)),z0=Math.max(0,Math.floor(zz-rv)),z1=Math.min(nz-1,Math.ceil(zz+rv));
+        for(let Z=z0;Z<=z1;Z++)for(let Y=y0;Y<=y1;Y++)for(let Xx=x0;Xx<=x1;Xx++){const dx=Xx-x,dy=Y-y,dz=Z-zz;if(dx*dx+dy*dy+dz*dz<=rv*rv){const j=Z*sxy+Y*nx+Xx;if(phase[j]===1){phase[j]=3;nBub++;}}}
+        bubbles.push(d);bubC.push(cx,cy,cz,r);const k=key(gx,gy,gz);if(!hash.has(k))hash.set(k,[]);hash.get(k).push([cx,cy,cz,r]);
+        placed=true;break;
+      }
+    }
+    if(!placed){if(++fails>400)break;}else fails=0;
+    if(bubbles.length%40===0)progress('bolhas',Math.min(nBub/Math.max(nBubT,1),1),`Bolhas: ${bubbles.length} semeadas`);
+  }
+  if(nBub<nBubT){const rest=nBubT-nBub;convert(1,2,rest,true);warn=`Faltou espaço para ${br(rest*vv,2)} cm³ de bolhas; completei com vazios do esqueleto.`;}
+
+  /* ---------- estatísticas ---------- */
+  const cnt=[0,0,0,0,0];for(let id=0;id<nvox;id++)cnt[phase[id]]++;
+  const st={ncyl,Vcil:ncyl*vv,Vagg:cnt[4]*vv,Vmast:cnt[1]*vv,Vesq:cnt[2]*vv,Vbol:cnt[3]*vv,over:over*vv,tDem,warn,maxov:out.maxov,forced,
+    nBubbles:bubbles.length,VvoidT:Vvoid,VbolT:nBubT*vv,VesqT:nEsqT*vv};
+  st.AVC=(cnt[2]+cnt[3])/ncyl*100;st.Breal=(cnt[2]+cnt[3])?cnt[3]/(cnt[2]+cnt[3])*100:0;
+  bubbles.sort((a,b)=>a-b);st.bubMed=bubbles.length?bubbles[bubbles.length>>1]:0;
+  const zc=Math.floor(nz/2),prof=new Float64Array(20),pTot=new Float64Array(20),quad=[0,0,0,0],qTot=[0,0,0,0];
+  for(let zz=Math.floor(nz/3);zz<Math.ceil(2*nz/3);zz++)for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){
+    const p=phase[zz*sxy+y*nx+x];if(!p)continue;const k=Math.min(19,Math.floor((x+0.5)/nx*20)),v=(p===2||p===3)?1:0;prof[k]+=v;pTot[k]++;
+    if(zz===zc){const qd=(x>=nx/2?1:0)+(y>=ny/2?2:0);quad[qd]+=v;qTot[qd]++;}}
+  st.profile=[...prof].map((v,k)=>pTot[k]?v/pTot[k]*100:0);st.quad=quad.map((v,k)=>qTot[k]?v/qTot[k]*100:0);
+
+  progress('bolhas',0.97,'Malhando os vazios',true);
+  let step=Math.max(1,Math.round(0.5/h)),mE;
+  for(;;){mE=surfaceMesh(phase,nx,ny,nz,h,R,[2],step);if(mE.idx.length/3<=250000||step>4)break;step++;}
+  const bubF=new Float32Array(bubC);
+  const tplArr=new Int32Array(Ps.tpl),scArr=new Float32Array(Ps.sc),frArr=new Int8Array(Ps.fr);
+  const posF=new Float32Array(S.pos),qF=new Float32Array(S.q);
+  const libOut=lib.map(t=>({v:t.v,f:t.f}));
+  const tr=[lab.buffer,phase.buffer,posF.buffer,qF.buffer,tplArr.buffer,scArr.buffer,frArr.buffer,mE.pos.buffer,mE.idx.buffer,bubF.buffer];
+  post({type:'done',res:{nx,ny,nz,h,R,H,lab,phase,pos:posF,q:qF,tpl:tplArr,sc:scArr,fr:frArr,lib:libOut,meshE:mE,bubbles:bubF,st,NA,bub,rel:P.rel,
+    tTotal:(Date.now()-t0)/1000}},tr);
+}
+
+self.onmessage=e=>{try{runAll(e.data);}catch(err){post({type:'error',message:(err&&err.message)||String(err),stack:err&&err.stack});}};
+</script>
+
+<script>
+'use strict';
+(function(){
+/* ===================== Marshall Digital — página ===================== */
+const $=id=>document.getElementById(id);
+const fmt=(x,d=1)=>(x==null||!isFinite(x))?'—':Number(x).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+// Idioma: o texto original (português) fica guardado; a versão em inglês é aplicada por trechos.
+const I18N_EN=[["Faltou espaço para", "Not enough room for"],["de bolhas; completei com vazios do esqueleto.", "of bubbles; filled with skeleton voids instead."],["B previsto", "Predicted B"],["(alvo", "(target"],["B real", "Actual B"],["AVC real", "Actual AVC"],["AVC por quadrante (meia altura)", "AVC per quadrant (mid-height)"],["terço central", "central third"],["† Esta mistura está fora da faixa em que a [W] Eq. (3) foi calibrada: ela daria", "† This mixture is outside the range where [W] Eq. (3) was calibrated: it would give"],["Usei a mediana da Tabela 3 de [W] (48%). Ajuste em Avançado › Bolhas › Manual, se quiser.", "I used the median of [W] Table 3 (48%). Adjust in Advanced › Air bubbles › Manual if you wish."],["Com M =", "With M ="],[" cm³ e NA =", " cm³ and NA ="],["A Eq. (3) de Awuah et al. foi calibrada para SMA 8 de calcário, betume 40/60 e tamanho máximo de 10 mm (erro médio de ~22% fora disso), e o NA de lá vem de outra calibração de tamanho. Use só como referência.", "Awuah et al. Eq. (3) was calibrated for limestone SMA 8, 40/60 binder and 10 mm maximum size (mean error ~22% outside that), and its NA comes from another size calibration. Use as reference only."],["(pontos de controle)","(control points)"],["% e AVC","% and AVC"],["TNM","NMAS"],["Dmáx","Dmax"],["Linha cheia: curva de projeto · área: faixa · tracejado: densidade máxima (n = 0,45). À direita da linha de 2 mm, os agregados entram na simulação.","Solid line: design curve · area: band · dashed: maximum density (n = 0.45). Right of the 2 mm line, aggregates enter the simulation."],["Forma prevista pelo paper: Min Feret e AR por Weibull truncada, espessura h. Será trocada pelos agregados medidos quando estiverem prontos.","Shape predicted by the paper: Min Feret and AR from truncated Weibull, thickness h. Will be replaced by measured aggregates when ready."],["Faixas granulométricas: biblioteca gradlib (DNIT, AASHTO, TL Asphalt-StB). Valores K ainda precisam ser conferidos na norma.","Gradation bands: gradlib library (DNIT, AASHTO, TL Asphalt-StB). K values still need checking against the standard."],["Compactação sem gravidade e sem atrito; pistões até AVC = 50% pela Eq. (1), depois força crescente até o AVC alvo.","Compaction without gravity or friction; pistons to AVC = 50% by Eq. (1), then increasing force to the target AVC."],["O STL dos agregados de 1000 g passa de 200 mil triângulos. Para exportar, prefira o corpo de prova rápido.","The 1000 g aggregate STL exceeds 200 thousand triangles. For export, prefer the quick specimen."],["O mastique é pintado a partir das bordas dos agregados e das paredes; as bolhas seguem as Eqs. (3)–(5).","Mastic is painted from the aggregate edges and the walls; bubbles follow Eqs. (3)–(5)."],["As entradas mudaram. O 3D ainda mostra o corpo de prova anterior; clique em “Gerar corpo de prova”.","Inputs changed. The 3D view still shows the previous specimen; click “Generate specimen”."],["[W] calibrou as equações com 14 misturas de 1000 g, AVC de 3 a 22% e tamanho máximo de 10 a 20 mm.","[W] calibrated the equations with 14 mixtures of 1000 g, AVC 3 to 22% and maximum size 10 to 20 mm."],["A força radial de [W] foi calibrada só com a mistura 1 e 50 golpes por face. Aqui ela é ajustável.","The [W] radial force was calibrated only with mixture 1 and 50 blows per face. Here it is adjustable."],["Uma peneira por linha: duas colunas (peneira; % passante) ou três (peneira; mínimo; máximo)","One sieve per line: two columns (sieve; % passing) or three (sieve; min; max)"],["Esta visualização não permite baixar arquivos. Use os botões de STL ASCII e copie o texto.","This view cannot download files. Use the ASCII STL buttons and copy the text."],["Só agregados com Min Feret ≥ 2 mm são simulados. Betume, fíler e finos formam o mastique.","Only aggregates with Min Feret ≥ 2 mm are simulated. Binder, filler and fines form the mastic."],["A biblioteca three.js não carregou. Verifique a conexão e recarregue a página.","The three.js library did not load. Check the connection and reload the page."],["A Weibull truncada não reproduz os maiores agregados de cada classe ([W] §5).","The truncated Weibull does not reproduce the largest aggregates of each class ([W] §5)."],["peneira(s) intermediária(s) aproximada(s), conferir na TL Asphalt-StB 07/13","intermediate sieve(s) approximate, check against TL Asphalt-StB 07/13"],["A granulometria não tem agregados acima de 2 mm suficientes para simular.","The gradation does not have enough aggregates above 2 mm to simulate."],["A curva fica salva no arquivo minhas_curvas.json do Marshall Simulator.","The curve is saved in the Marshall Simulator file minhas_curvas.json."],["Projeto = meio da faixa. Edite os valores para criar a sua curva.","Design = mid-band. Edit the values to create your own curve."],["Arraste para girar · roda: zoom · Shift ou botão direito: mover","Drag to rotate · wheel: zoom · Shift or right button: pan"],["O perfil radial de vazios aparece quando a simulação terminar.","The radial void profile appears when the simulation ends."],["As peneiras devem ser > 0 mm e a % passante entre 0 e 100.","Sieves must be > 0 mm and % passing between 0 and 100."],["Cole num editor de texto e salve com a extensão .stl.","Paste into a text editor and save with the .stl extension."],["O perfil tem forma de banheira, como em [W] Fig. 16.","The profile is bath-tub shaped, as in [W] Fig. 16."],["Prefira o molde de Ø102 mm ou uma faixa mais fina.","Use the Ø102 mm mould or a finer band."],["não foi possível salvar (armazenamento bloqueado)","could not save (storage blocked)"],["Força radial (efeito castanha-do-pará, [W] §3.3)","Radial force (Brazil-nut effect, [W] §3.3)"],["abertura da peneira (mm), escala potência 0,45","sieve opening (mm), 0.45 power scale"],["Selecionei o texto. Use Ctrl+C para copiar.","Text selected. Press Ctrl+C to copy."],["Pintando o mastique a partir dos agregados","Painting mastic from the aggregates"],["Curva convertida por peneira (aproximada).","Curve converted per sieve (approximate)."],["Mastique (betume + fíler + finos < 2 mm)","Mastic (binder + filler + fines < 2 mm)"],["Distância até os agregados e as paredes","Distance to aggregates and walls"],["Compactação por força até o AVC alvo","Force-controlled compaction to target AVC"],["Como em [W]: 1000 g em molde Ø102 mm","As in [W]: 1000 g in Ø102 mm mould"],["A curva fica salva neste navegador.","The curve is saved in this browser."],["O perfil não tem forma de banheira.","The profile is not bath-tub shaped."],["Aguardando o sorteio dos agregados.","Waiting for aggregate sampling."],["A % passante cresce na peneira de","% passing increases at sieve"],["Faixas · Alemanha (meio da faixa)","Bands · Germany (mid-band)"],["Misturas de Wan et al. (Tabela 1)","Wan et al. mixtures (Table 1)"],["em 20 faixas ao longo do diâmetro","in 20 bands across the diameter"],["Altura calculada pela densidade:","Height from density:"],["Superpave denso (control points)","Dense Superpave (control points)"],["A linha tracejada é o AVC médio.","The dashed line is the mean AVC."],["Faixas · Brasil (meio da faixa)","Bands · Brazil (mid-band)"],["valor(es) K a conferir na norma","K value(s) to be checked in the standard"],["só pontos de controle Superpave","Superpave control points only"],["Gerando a biblioteca de formas","Generating the shape library"],["Ex.: Pedreira X – brita 1 + pó","E.g.: Quarry X – coarse + dust"],["Informe pelo menos 3 peneiras.","Enter at least 3 sieves."],["Inclua peneiras acima de 2 mm.","Include sieves above 2 mm."],["Mediana do diâmetro das bolhas","Median bubble diameter"],["Mistura e pistões até AVC 50%","Mixing and pistons to AVC 50%"],["Densidade do agregado (g/cm³)","Aggregate density (g/cm³)"],["Rápido: 250 g em molde Ø65 mm","Quick: 250 g in Ø65 mm mould"],["CA denso (concreto asfáltico)","Dense AC (asphalt concrete)"],["Medido em [W] (B · BSc · BSh)","Measured in [W] (B · BSc · BSh)"],["Redução de ruído do mastique","Mastic noise reduction"],["Curva granulométrica e faixa","Gradation curve and band"],["Faixas · EUA (meio da faixa)","Bands · USA (mid-band)"],["Modelo 3D do corpo de prova","3D model of the specimen"],["Semeando bolhas no mastique","Seeding bubbles in the mastic"],["Teor de betume (% da massa)","Binder content (% by mass)"],["Densidade do betume (g/cm³)","Binder density (g/cm³)"],["pede um molde de pelo menos","requires a mould of at least"],["Agregado (calcário, 5 tons)","Aggregate (limestone, 5 shades)"],["Vazios de ar alvo, AVC (%)","Target air voids, AVC (%)"],["Agregado (granito, 5 tons)","Aggregate (granite, 5 shades)"],["Calculadora da [A] Eq. (3)","[A] Eq. (3) calculator"],["Automático – [W] Eqs. 3–5","Automatic – [W] Eqs. 3–5"],["Sobreposição de agregados","Aggregate overlap"],["Voxelizando os agregados","Voxelizing the aggregates"],["Salvar tabela como curva","Save table as curve"],["NA, agregados por 1000 g","NA, aggregates per 1000 g"],["Seção do corpo de prova","Specimen section"],["Agregado ([W] Tabela 2)","Aggregate ([W] Table 2)"],["Binderschicht (ligação)","binder course"],["Deckschicht (rolamento)","surface course"],["Perfil radial de vazios","Radial void profile"],["terço central da altura","central third of the height"],["NA, agregados por 250 g","NA, aggregates per 250 g"],["STL ASCII dos agregados","ASCII STL of aggregates"],["Corpo de prova virtual","Virtual specimen"],["Número de agregados NA","Number of aggregates NA"],["M, mastique por 1000 g","M, mastic per 1000 g"],["Trabalhabilidade ω (%)","Workability ω (%)"],["Calculadora de bolhas","Bubble calculator"],["M, mastique por 250 g","M, mastic per 250 g"],["Montando os arquivos…","Building files…"],["Salvamento cancelado.","Save cancelled."],["Formas dos agregados","Aggregate shapes"],["Gerar corpo de prova","Generate specimen"],["Curva granulométrica","Gradation curve"],["Mediana do Min Feret","Median Min Feret"],["B, bolhas nos vazios","B, bubbles in voids"],["STL ASCII dos vazios","ASCII STL of voids"],["Orientação da seção","Section orientation"],["Pintura do mastique","Mastic painting"],["Dê um nome à curva.","Give the curve a name."],["Vazios do esqueleto","Skeleton voids"],["agregados sorteados","aggregates sampled"],["Estabilidade S (kN)","Stability S (kN)"],["Malhando os vazios","Meshing the voids"],["Excluir esta curva","Delete this curve"],["Confirmar exclusão","Confirm delete"],["Tragschicht (base)","base course"],["Agregados cortados","Cut aggregates"],["distinguir bolhas","highlight bubbles"],["Força nos pistões","Piston force"],["Bolhas por 1000 g","Bubbles per 1000 g"],["+ Adicionar curva","+ Add curve"],["Semente aleatória","Random seed"],["Junto às paredes:","At the walls:"],["fora do intervalo","out of range"],["Baixar STL (.zip)","Download STL (.zip)"],["Corte horizontal","Horizontal cut"],["Posição do corte","Cut position"],["Posição da seção","Section position"],["Pistões · altura","Pistons · height"],["Restaurar padrão","Reset to default"],["Importar CSV/TXT","Import CSV/TXT"],["Faixa do usuário","User band"],["Curva do usuário","User curve"],["B (% dos vazios)","B (% of voids)"],["BSc, escala (mm)","BSc, scale (mm)"],["Calcário (L1–L5)","Limestone (L1–L5)"],["Passante em 2 mm","Passing 2 mm"],["Agregados ≥ 2 mm","Aggregates ≥ 2 mm"],["Gerando o texto…","Generating text…"],["Remover peneira","Remove sieve"],["Status da fonte","Source status"],["Granito (G1–G5)","Granite (G1–G5)"],["Vazios e bolhas","Voids and bubbles"],["AVC, vazios (%)","AVC, voids (%)"],["Fluência F (mm)","Flow F (mm)"],["Corpo de Prova","Specimen"],["Corte vertical","Vertical cut"],["este navegador","this browser"],["Diâmetro médio","Mean diameter"],["Sobre o método","About the method"],["Vazios AVC (%)","Voids AVC (%)"],["Nome da curva","Curve name"],["Minhas curvas","My curves"],["Mediana do AR","Median AR"],["Com mastique","With mastic"],["Só agregados","Aggregates only"],["Bolhas de ar","Air bubbles"],["Salvar curva","Save curve"],["Peneira (mm)","Sieve (mm)"],["Intensidade:","Strength:"],["Vazios de ar","Air voids"],["STL ASCII de","ASCII STL of"],["Texto do STL","STL text"],["Seção atual","Current section"],["Vazio de ar","Air void"],["Massa total","Total mass"],["calculando…","computing…"],["MB de texto","MB of text"],["Tomografia","CT scan"],["Por fração","By fraction"],["Composição","Composition"],["Acomodação","Settling"],["% passante","% passing"],["BSh, forma","BSh, shape"],["AVC medido","measured AVC"],["Mastique M","Mastic M"],["por 1000 g","per 1000 g"],["Sem corte","No cut"],["sem corte","no cut"],["Estilo TC","CT style"],["Pronto em","Done in"],["criada em","created on"],["+ peneira","+ sieve"],["Desligado","Off"],["sugeridos","suggested"],["por 250 g","per 250 g"],["semeadas","seeded"],["Cancelar","Cancel"],["salva em","saved in"],["Avançado","Advanced"],["calcário","limestone"],["O TNM de","The NMAS of"],["Mastique","Mastic"],["Exportar","Export"],["Copiado.","Copied."],["Salvo em","Saved to"],["Bolhas:","Bubbles:"],["(minha)","(mine)"],["Peneira","Sieve"],["Mistura","Mixture"],["granito","granite"],["mistura","mixture"],["Legenda","Legend"],["centro:","centre:"],["Arquivo","File"],["baixado","downloaded"],["Pronto","Done"],["limite","limit"],["Manual","Manual"],["Tabela","Table"],["errata","erratum"],["Betume","Binder"],["betume","binder"],["vazios","voids"],["Bolhas","Bubbles"],["Copiar","Copy"],["Pedra","Stone"],["Vista","View"],["Cores","Colours"],["Corte","Cut"],["Molde","Mould"],[" em Ø"," in Ø"],["usado","used"],["salvo","saved"],["Erro","Error"]];
+I18N_EN.sort((x,y)=>y[0].length-x[0].length);
+let LANG='pt';try{LANG=localStorage.getItem('md-lang')||'pt';}catch(e){}
+const L10N_ORIG=new WeakMap(),L10N_ATTR=['placeholder','title','aria-label','label'];let l10nBusy=false;
+function tEN(t){if(!t)return t;for(const [a,b] of I18N_EN)if(t.includes(a))t=t.split(a).join(b);return t;}
+const l10n=t=>LANG==='pt'?t:tEN(t);
+function l10nNode(n){
+  if(n.nodeType===3){if(n.parentElement&&n.parentElement.closest('script,style,textarea'))return;
+    let o=L10N_ORIG.get(n);if(o==null||(n.nodeValue!==tEN(o)&&n.nodeValue!==o))o=n.nodeValue;L10N_ORIG.set(n,o);const v=l10n(o);if(n.nodeValue!==v)n.nodeValue=v;return;}
+  if(n.nodeType!==1||n.matches('script,style'))return;
+  let m=L10N_ORIG.get(n);if(!m){m={};L10N_ORIG.set(n,m);}
+  for(const a of L10N_ATTR){const cur=n.getAttribute(a);if(cur==null)continue;if(m[a]==null||(cur!==tEN(m[a])&&cur!==m[a]))m[a]=cur;const v=l10n(m[a]);if(cur!==v)n.setAttribute(a,v);}
+  for(const c of n.childNodes)l10nNode(c);
+}
+function l10nAll(){l10nBusy=true;l10nNode(document.body);document.title='Marshall Simulator';l10nBusy=false;}
+new MutationObserver(ms=>{if(l10nBusy||LANG==='pt')return;l10nBusy=true;
+  for(const m of ms){if(m.type==='childList')m.addedNodes.forEach(l10nNode);else l10nNode(m.target);}l10nBusy=false;})
+  .observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:L10N_ATTR});
+function setLang(l){LANG=l;try{localStorage.setItem('md-lang',l);}catch(e){}document.documentElement.lang=l==='en'?'en':'pt-BR';
+  document.querySelectorAll('.lang .btn').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lang===l)));l10nAll();}
+document.querySelectorAll('.lang .btn').forEach(b=>b.addEventListener('click',()=>setLang(b.dataset.lang)));
+setLang(LANG);
+
+const parseNum=s=>{if(typeof s!=='string')return NaN;s=s.trim().replace(/\s/g,'').replace(',','.');return s===''?NaN:Number(s);};
+
+// Biblioteca de faixas granulométricas (gradlib v1.0, pasta "Granulometrric curves"; pontos P removidos)
+const GRADLIB=[{"id":"DE_TL0713_AC32TS","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 32 T S","nmas":31.5,"dmax":45,"pts":[[45,100,100,"K"],[31.5,90,100,"K"],[22.4,75,90,"R"],[11.2,55,70,"R"],[2,25,40,"R"],[0.063,3,7,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[4.0,6.0]},{"id":"DE_TL0713_AC32TN","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 32 T N","nmas":31.5,"dmax":45,"pts":[[45,100,100,"K"],[31.5,90,100,"K"],[22.4,70,90,"R"],[11.2,50,75,"R"],[2,25,45,"R"],[0.063,3,8,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[4.0,6.0]},{"id":"DE_TL0713_AC22TS","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 22 T S","nmas":22.4,"dmax":31.5,"pts":[[31.5,100,100,"K"],[22.4,90,100,"K"],[16,75,90,"R"],[11.2,60,75,"R"],[2,25,40,"R"],[0.063,3,7,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[4.2,5.5]},{"id":"DE_TL0713_AC22TN","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 22 T N","nmas":22.4,"dmax":31.5,"pts":[[31.5,100,100,"K"],[22.4,90,100,"K"],[16,70,90,"R"],[11.2,55,80,"R"],[2,25,45,"R"],[0.063,3,8,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[4.2,5.5]},{"id":"DE_TL0713_AC22BS","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 22 B S","nmas":22.4,"dmax":31.5,"pts":[[31.5,100,100,"K"],[22.4,90,100,"K"],[16,65,80,"R"],[11.2,50,65,"R"],[8,40,55,"R"],[2,20,35,"R"],[0.063,3,7,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[4.2,5.0]},{"id":"DE_TL0713_AC16BS","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 16 B S","nmas":16,"dmax":22.4,"pts":[[22.4,100,100,"K"],[16,90,100,"K"],[11.2,65,80,"R"],[8,50,65,"R"],[2,25,40,"R"],[0.063,3,7,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[4.4,5.0]},{"id":"DE_TL0713_AC16BN","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 16 B N","nmas":16,"dmax":22.4,"pts":[[22.4,100,100,"K"],[16,90,100,"K"],[11.2,70,85,"R"],[8,55,75,"R"],[2,30,45,"R"],[0.063,4,8,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[4.4,4.5]},{"id":"DE_TL0713_AC16DS","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 16 D S","nmas":16,"dmax":22.4,"pts":[[22.4,100,100,"K"],[16,90,100,"K"],[11.2,70,85,"R"],[8,55,70,"R"],[2,25,40,"R"],[0.063,5,9,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[5.4,3.0]},{"id":"DE_TL0713_AC11DS","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 11 D S","nmas":11.2,"dmax":16,"pts":[[16,100,100,"K"],[11.2,90,100,"K"],[8,70,85,"R"],[5.6,55,70,"R"],[2,30,45,"R"],[0.063,6,10,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[6.0,3.0]},{"id":"DE_TL0713_AC8DS","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 8 D S","nmas":8,"dmax":11.2,"pts":[[11.2,100,100,"K"],[8,90,100,"K"],[5.6,70,85,"R"],[2,35,50,"R"],[0.063,7,11,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[6.2,3.0]},{"id":"DE_TL0713_AC11DN","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 11 D N","nmas":11.2,"dmax":16,"pts":[[16,100,100,"K"],[11.2,90,100,"K"],[8,70,90,"R"],[5.6,55,75,"R"],[2,35,55,"R"],[0.063,7,13,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[6.0,2.5]},{"id":"DE_TL0713_AC8DN","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 8 D N","nmas":8,"dmax":11.2,"pts":[[11.2,100,100,"K"],[8,90,100,"K"],[5.6,70,90,"R"],[2,40,60,"R"],[0.063,7,13,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[6.2,2.5]},{"id":"DE_TL0713_AC8DL","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 8 D L","nmas":8,"dmax":11.2,"pts":[[11.2,100,100,"K"],[8,90,100,"K"],[5.6,70,90,"R"],[2,45,65,"R"],[0.063,8,15,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[6.6,2.0]},{"id":"DE_TL0713_AC5DL","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"AC (Asphaltbeton)","des":"AC 5 D L","nmas":5.6,"dmax":8,"pts":[[8,100,100,"K"],[5.6,90,100,"K"],[2,55,75,"R"],[0.063,9,17,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[6.8,2.0]},{"id":"DE_TL0713_PA16","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"PA (Offenporiger Asphalt)","des":"PA 16","nmas":16,"dmax":22.4,"pts":[[22.4,100,100,"K"],[16,90,100,"K"],[11.2,20,40,"R"],[8,8,18,"R"],[5.6,5,12,"R"],[2,5,10,"R"],[0.063,3,5,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[5.5,24.0]},{"id":"DE_TL0713_PA11","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"PA (Offenporiger Asphalt)","des":"PA 11","nmas":11.2,"dmax":16,"pts":[[16,100,100,"K"],[11.2,90,100,"K"],[8,10,30,"R"],[5.6,5,15,"R"],[2,5,10,"R"],[0.063,3,5,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[6.0,24.0]},{"id":"DE_TL0713_PA8","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"PA (Offenporiger Asphalt)","des":"PA 8","nmas":8,"dmax":11.2,"pts":[[11.2,100,100,"K"],[8,90,100,"K"],[5.6,10,30,"R"],[2,5,10,"R"],[0.063,3,5,"R"]],"ctl":false,"src":["EN13108_CONV","TL_ASPHALT_07_13"],"sug":[6.0,24.0]},{"id":"BR_DNIT031-2024_A-25","pais":"BR","norma":"DNIT 031/2024-ES","ed":"2024 (errata 2025)","fam":"CA denso (concreto asfáltico)","des":"Faixa A-25","nmas":25.4,"dmax":38.1,"pts":[[38.1,100.0,100.0,"V1"],[25.4,90.0,100.0,"V1"],[19.1,75.0,89.0,"V1"],[12.7,58.0,78.0,"V1"],[9.5,48.0,71.0,"V1"],[6.3,35.0,61.0,"V1"],[4.8,29.0,55.0,"V1"],[2.36,19.0,45.0,"V1"],[1.18,13.0,36.0,"V1"],[0.6,9.0,28.0,"V1"],[0.3,5.0,21.0,"V1"],[0.15,2.0,14.0,"V1"],[0.075,1.0,7.0,"V1"]],"ctl":false,"src":["DNIT031_2024"]},{"id":"BR_DNIT031-2024_B-19","pais":"BR","norma":"DNIT 031/2024-ES","ed":"2024 (errata 2025)","fam":"CA denso (concreto asfáltico)","des":"Faixa B-19","nmas":19.1,"dmax":25.4,"pts":[[25.4,100.0,100.0,"V1"],[19.1,90.0,100.0,"V1"],[12.7,70.0,89.0,"V1"],[9.5,55.0,82.0,"V1"],[6.3,42.0,70.0,"V1"],[4.8,35.0,63.0,"V1"],[2.36,23.0,49.0,"V1"],[1.18,16.0,37.0,"V1"],[0.6,10.0,28.0,"V1"],[0.3,6.0,20.0,"V1"],[0.15,4.0,13.0,"V1"],[0.075,2.0,8.0,"V1"]],"ctl":false,"src":["DNIT031_2024"]},{"id":"BR_DNIT031-2024_C-12,5","pais":"BR","norma":"DNIT 031/2024-ES","ed":"2024 (errata 2025)","fam":"CA denso (concreto asfáltico)","des":"Faixa C-12,5","nmas":12.7,"dmax":19.1,"pts":[[19.1,100.0,100.0,"V1"],[12.7,90.0,100.0,"V1"],[9.5,73.0,89.0,"V1"],[6.3,53.0,78.0,"V1"],[4.8,44.0,72.0,"V1"],[2.36,28.0,58.0,"V1"],[1.18,17.0,45.0,"V1"],[0.6,11.0,35.0,"V1"],[0.3,6.0,25.0,"V1"],[0.15,3.0,17.0,"V1"],[0.075,2.0,10.0,"V1"]],"ctl":false,"src":["DNIT031_2024"]},{"id":"BR_DNIT031-2024_D-9,5","pais":"BR","norma":"DNIT 031/2024-ES","ed":"2024 (errata 2025)","fam":"CA denso (concreto asfáltico)","des":"Faixa D-9,5","nmas":9.5,"dmax":12.7,"pts":[[12.7,100.0,100.0,"V1"],[9.5,90.0,100.0,"V1"],[6.3,65.0,89.0,"V1"],[4.8,53.0,83.0,"V1"],[2.36,32.0,67.0,"V1"],[1.18,20.0,52.0,"V1"],[0.6,13.0,40.0,"V1"],[0.3,8.0,29.0,"V1"],[0.15,4.0,19.0,"V1"],[0.075,2.0,10.0,"V1"]],"ctl":false,"src":["DNIT031_2024"]},{"id":"BR_DNIT031-2006_A","pais":"BR","norma":"DNIT 031/2006-ES","ed":"2006 (cancelada)","fam":"CA denso (concreto asfáltico)","des":"Faixa A","nmas":38.1,"dmax":50.8,"pts":[[50.8,100.0,100.0,"K"],[38.1,95.0,100.0,"K"],[25.4,75.0,100.0,"K"],[19.1,60.0,90.0,"K"],[9.5,35.0,65.0,"K"],[4.8,25.0,50.0,"K"],[2.0,20.0,40.0,"K"],[0.42,10.0,30.0,"K"],[0.18,5.0,20.0,"K"],[0.075,1.0,8.0,"K"]],"ctl":false,"src":["DNIT031_2006"]},{"id":"BR_DNIT031-2006_B","pais":"BR","norma":"DNIT 031/2006-ES","ed":"2006 (cancelada)","fam":"CA denso (concreto asfáltico)","des":"Faixa B","nmas":25.4,"dmax":38.1,"pts":[[38.1,100.0,100.0,"K"],[25.4,95.0,100.0,"K"],[19.1,80.0,100.0,"K"],[9.5,45.0,80.0,"K"],[4.8,28.0,60.0,"K"],[2.0,20.0,45.0,"K"],[0.42,10.0,32.0,"K"],[0.18,8.0,20.0,"K"],[0.075,3.0,8.0,"K"]],"ctl":false,"src":["DNIT031_2006"]},{"id":"BR_DNIT031-2006_C","pais":"BR","norma":"DNIT 031/2006-ES","ed":"2006 (cancelada)","fam":"CA denso (concreto asfáltico)","des":"Faixa C","nmas":12.7,"dmax":19.1,"pts":[[19.1,100.0,100.0,"K"],[12.7,80.0,100.0,"K"],[9.5,70.0,90.0,"K"],[4.8,44.0,72.0,"K"],[2.0,22.0,50.0,"K"],[0.42,8.0,26.0,"K"],[0.18,4.0,16.0,"K"],[0.075,2.0,10.0,"K"]],"ctl":false,"src":["DNIT031_2006"]},{"id":"US_M323_37.5","pais":"US","norma":"AASHTO M 323","ed":"M 323 (atual)","fam":"Superpave denso (control points)","des":"37.5 mm NMAS","nmas":37.5,"dmax":50.0,"pts":[[50.0,100.0,100.0,"V2"],[37.5,90.0,100.0,"V2"],[25.0,null,90.0,"V2"],[2.36,15.0,41.0,"V2"],[0.075,0.0,6.0,"V2"]],"ctl":true,"src":["INDOT_401_2026","WisDOT_460"]},{"id":"US_M323_25.0","pais":"US","norma":"AASHTO M 323","ed":"M 323 (atual)","fam":"Superpave denso (control points)","des":"25.0 mm NMAS","nmas":25.0,"dmax":37.5,"pts":[[37.5,100.0,100.0,"V2"],[25.0,90.0,100.0,"V2"],[19.0,null,90.0,"V2"],[2.36,19.0,45.0,"V2"],[0.075,1.0,7.0,"V2"]],"ctl":true,"src":["INDOT_401_2026","WisDOT_460"]},{"id":"US_M323_19.0","pais":"US","norma":"AASHTO M 323","ed":"M 323 (atual)","fam":"Superpave denso (control points)","des":"19.0 mm NMAS","nmas":19.0,"dmax":25.0,"pts":[[25.0,100.0,100.0,"V2"],[19.0,90.0,100.0,"V2"],[12.5,null,90.0,"V2"],[2.36,23.0,49.0,"V2"],[0.075,2.0,8.0,"V2"]],"ctl":true,"src":["INDOT_401_2026","WisDOT_460"]},{"id":"US_M323_12.5","pais":"US","norma":"AASHTO M 323","ed":"M 323 (atual)","fam":"Superpave denso (control points)","des":"12.5 mm NMAS","nmas":12.5,"dmax":19.0,"pts":[[19.0,100.0,100.0,"V2"],[12.5,90.0,100.0,"V2"],[9.5,null,90.0,"V2"],[2.36,28.0,58.0,"V2"],[0.075,2.0,10.0,"V2"]],"ctl":true,"src":["INDOT_401_2026","WisDOT_460"]},{"id":"US_M323_9.5","pais":"US","norma":"AASHTO M 323","ed":"M 323 (atual)","fam":"Superpave denso (control points)","des":"9.5 mm NMAS","nmas":9.5,"dmax":12.5,"pts":[[12.5,100.0,100.0,"V2"],[9.5,90.0,100.0,"V2"],[4.75,null,90.0,"V2"],[2.36,32.0,67.0,"V2"],[0.075,2.0,10.0,"V2"]],"ctl":true,"src":["INDOT_401_2026","WisDOT_460"]},{"id":"US_M323_4.75","pais":"US","norma":"AASHTO M 323","ed":"M 323 (atual)","fam":"Superpave denso (control points)","des":"4.75 mm NMAS","nmas":4.75,"dmax":9.5,"pts":[[9.5,100.0,100.0,"K"],[4.75,90.0,100.0,"K"],[1.18,30.0,60.0,"K"],[0.075,6.0,12.0,"K"]],"ctl":true,"src":["AASHTO_M323"]},{"id":"US_M325_SMA_25.0","pais":"US","norma":"AASHTO M 325 (NCHRP 9-8)","ed":"NCHRP Rep. 425 / M 325","fam":"SMA","des":"SMA 25.0 mm NMAS","nmas":25.0,"dmax":37.5,"pts":[[37.5,100.0,100.0,"K"],[25.0,90.0,100.0,"K"],[19.0,30.0,86.0,"K"],[12.5,26.0,63.0,"K"],[9.5,24.0,52.0,"K"],[4.75,20.0,28.0,"V2"],[2.36,16.0,24.0,"V2"],[1.18,13.0,21.0,"K"],[0.6,12.0,18.0,"V2"],[0.3,12.0,15.0,"V2"],[0.075,8.0,10.0,"V2"]],"ctl":false,"src":["NCHRP_9-8"]},{"id":"US_M325_SMA_19.0","pais":"US","norma":"AASHTO M 325 (NCHRP 9-8)","ed":"NCHRP Rep. 425 / M 325","fam":"SMA","des":"SMA 19.0 mm NMAS","nmas":19.0,"dmax":25.0,"pts":[[25.0,100.0,100.0,"K"],[19.0,90.0,100.0,"K"],[12.5,50.0,74.0,"K"],[9.5,25.0,60.0,"K"],[4.75,20.0,28.0,"V2"],[2.36,16.0,24.0,"V2"],[1.18,13.0,21.0,"K"],[0.6,12.0,18.0,"V2"],[0.3,12.0,15.0,"V2"],[0.075,8.0,10.0,"V2"]],"ctl":false,"src":["NCHRP_9-8"]},{"id":"US_M325_SMA_12.5","pais":"US","norma":"AASHTO M 325 (NCHRP 9-8)","ed":"NCHRP Rep. 425 / M 325","fam":"SMA","des":"SMA 12.5 mm NMAS","nmas":12.5,"dmax":19.0,"pts":[[19.0,100.0,100.0,"K"],[12.5,90.0,100.0,"K"],[9.5,26.0,78.0,"K"],[4.75,20.0,28.0,"V2"],[2.36,16.0,24.0,"V2"],[1.18,13.0,21.0,"K"],[0.6,12.0,18.0,"V2"],[0.3,12.0,15.0,"V2"],[0.075,8.0,10.0,"V2"]],"ctl":false,"src":["NCHRP_9-8"]},{"id":"US_M325_SMA_9.5","pais":"US","norma":"AASHTO M 325 (NCHRP 9-8)","ed":"NCHRP Rep. 425 / M 325","fam":"SMA","des":"SMA 9.5 mm NMAS","nmas":9.5,"dmax":12.5,"pts":[[12.5,100.0,100.0,"K"],[9.5,90.0,100.0,"K"],[4.75,26.0,60.0,"V2"],[2.36,20.0,28.0,"V2"],[1.18,13.0,21.0,"K"],[0.6,12.0,18.0,"V2"],[0.3,12.0,15.0,"V2"],[0.075,8.0,10.0,"V2"]],"ctl":false,"src":["NCHRP_9-8"]},{"id":"US_M325_SMA_4.75","pais":"US","norma":"AASHTO M 325 (NCHRP 9-8)","ed":"NCHRP Rep. 425 / M 325","fam":"SMA","des":"SMA 4.75 mm NMAS","nmas":4.75,"dmax":9.5,"pts":[[9.5,100.0,100.0,"K"],[4.75,90.0,100.0,"V2"],[2.36,28.0,65.0,"V2"],[1.18,22.0,36.0,"V2"],[0.6,18.0,28.0,"V2"],[0.3,15.0,22.0,"V2"],[0.075,12.0,15.0,"V2"]],"ctl":false,"src":["CDOT_703","NCHRP_9-8"]},{"id":"DE_TL0713_SMA11S","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"SMA (Splittmastixasphalt)","des":"SMA 11 S","nmas":11.2,"dmax":16.0,"pts":[[16.0,100.0,100.0,"K"],[11.2,90.0,100.0,"K"],[5.6,35.0,45.0,"V2"],[2.0,20.0,30.0,"V2"],[0.063,8.0,12.0,"V2"]],"ctl":false,"src":["EN13108_CONV","RUB_REKOTI_SMA"]},{"id":"DE_TL0713_SMA8S","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"SMA (Splittmastixasphalt)","des":"SMA 8 S","nmas":8.0,"dmax":11.2,"pts":[[11.2,100.0,100.0,"K"],[8.0,90.0,100.0,"K"],[5.6,35.0,55.0,"V2"],[2.0,20.0,30.0,"V2"],[0.063,8.0,12.0,"V2"]],"ctl":false,"src":["EN13108_CONV","RUB_REKOTI_SMA"]},{"id":"DE_TL0713_SMA8N","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"SMA (Splittmastixasphalt)","des":"SMA 8 N","nmas":8.0,"dmax":11.2,"pts":[[11.2,100.0,100.0,"K"],[8.0,90.0,100.0,"K"],[5.6,35.0,60.0,"V2"],[2.0,20.0,30.0,"V2"],[0.063,7.0,12.0,"V2"]],"ctl":false,"src":["EN13108_CONV","RUB_REKOTI_SMA"]},{"id":"DE_TL0713_SMA5S","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"SMA (Splittmastixasphalt)","des":"SMA 5 S","nmas":5.6,"dmax":8.0,"pts":[[8.0,100.0,100.0,"K"],[5.6,90.0,100.0,"V2"],[2.0,30.0,40.0,"V2"],[0.063,7.0,12.0,"V2"]],"ctl":false,"src":["EN13108_CONV","RUB_REKOTI_SMA"]},{"id":"DE_TL0713_SMA5N","pais":"DE","norma":"TL Asphalt-StB 07/13","ed":"2007/2013","fam":"SMA (Splittmastixasphalt)","des":"SMA 5 N","nmas":5.6,"dmax":8.0,"pts":[[8.0,100.0,100.0,"K"],[5.6,90.0,100.0,"V2"],[2.0,30.0,40.0,"V2"],[0.063,7.0,12.0,"V2"]],"ctl":false,"src":["EN13108_CONV","RUB_REKOTI_SMA"]}];
+const DEFAULT_CURVE='BR_DNIT031-2024_C-12,5';
+const DEFAULTS={pb:5.5,avc:4.0,ra:2.70,rb:1.04,lib:'WL',seed:2024};
+// [W] Tabela 1 e Tabela 3: [pedra, 20,14,10,6,4(pó), fíler, betume, AVC, B, BSc, BSh, NA, M]
+const WMIX=[
+ ['L',0,59.4,14.5,3.2,22.9,0,5.0,10.94,.23,.07,1.63,2707,122.02],['L',18.7,18.6,13.6,9.2,33.9,6,4.0,10.98,.47,.06,1.44,3910,167.16],
+ ['L',0,0,72.4,4.5,23.1,0,7.0,11.24,.14,.06,2.00,3099,144.96],['L',0,0,0,42.9,51.1,6,7.0,3.96,.36,.04,1.43,8100,250.01],
+ ['L',0,0,0,49.0,51.0,0,6.0,11.68,.96,.12,1.37,8321,220.23],['G',0,0,70.8,4.7,24.5,0,5.5,22.23,.58,.16,1.54,4572,131.71],
+ ['G',18.7,18.5,13.3,9.5,34.0,6,7.0,3.18,.20,.04,1.37,2406,194.73],['G',0,0,0,47.2,52.8,0,5.3,20.68,.80,.13,1.53,8078,218.09],
+ ['G',0,0,0,44.4,49.6,6,7.0,8.97,1.00,.12,1.49,7789,244.99],['G',0,0,59.4,5.4,26.2,9,6.5,7.64,.89,.12,1.32,4397,177.13],
+ ['G',0,0,51.9,14.8,25.3,8,7.3,11.54,.67,.13,1.23,4950,179.39],['G',0,0,63.2,13.5,18.3,5,5.5,20.90,.49,.17,2.30,4683,131.30],
+ ['G',0,0,57.6,10.1,28.3,4,5.7,16.49,.04,.05,1.65,4683,159.22],['G',0,64.4,0,4.7,26.9,4,5.2,10.45,.34,.11,1.35,2865,149.71]];
+const FINES={L:[0.79,0.99,2.38,3.58,82.61],G:[0.78,1.42,1.46,4.01,81.88]}; // % massa < 2 mm de L5..L1 / G5..G1
+const TYPE_RANGE=[[14,20],[10,14],[6,10],[4,6],[0.063,4]];
+function wGradation(m){
+  const stone=m[0],shares=m.slice(1,6),filler=m[6];
+  const sieves=[20,16,14,12.5,10,8,6.3,4,2.8,2,1,0.5,0.25,0.125,0.063];
+  const parts=[];
+  shares.forEach((sh,k)=>{if(!sh)return;const pf=FINES[stone][k]/100,[lo,hi]=TYPE_RANGE[k];
+    parts.push({m:sh*pf,a:0.063,b:2});parts.push({m:sh*(1-pf),a:Math.max(lo,2),b:hi});});
+  const below=(p,s)=>Math.min(1,Math.max(0,(Math.log(s)-Math.log(p.a))/(Math.log(p.b)-Math.log(p.a))));
+  let pass=sieves.map(s=>filler+parts.reduce((t,p)=>t+p.m*below(p,s),0));
+  const tot=filler+shares.reduce((a,b)=>a+b,0);pass=pass.map(v=>Math.round(v/tot*1000)/10);
+  let first=pass.findIndex(v=>v<100);first=Math.max(0,first-1);
+  return {sieves:sieves.slice(first),pass:pass.slice(first).map((v,i)=>i===0?100:v)};
+}
+const midOf=p=>p[1]!=null&&p[2]!=null?(p[1]+p[2])/2:(p[2]!=null?p[2]:p[1]);
+let USERCURVES=[];
+const curveById=id=>GRADLIB.find(c=>c.id===id)||USERCURVES.find(c=>c.id===id);
+// curvas do usuário: arquivo minhas_curvas.json (Marshall Simulator em Python) ou armazenamento do navegador
+const hasPy=()=>!!(window.pywebview&&window.pywebview.api&&window.pywebview.api.load_curves);
+const store={
+  async load(){if(hasPy()){try{return JSON.parse(await window.pywebview.api.load_curves()||'[]');}catch(e){return [];}}
+    try{return JSON.parse(localStorage.getItem('md-curvas')||'[]');}catch(e){return [];}},
+  async save(list){const t=JSON.stringify(list);if(hasPy()){await window.pywebview.api.save_curves(t);return 'minhas_curvas.json';}
+    try{localStorage.setItem('md-curvas',t);return 'este navegador';}catch(e){return null;}}
+};
+const curveLabel=c=>`${c.norma} · ${c.des.replace('Faixa ','')}${c.ctl?' (pontos de controle)':''}`;
+
+/* ---------- estado ---------- */
+let rows=[],preset='lib:'+DEFAULT_CURVE,band=null,result=null,worker=null,running=false,sampled=null,lastCfg=null,stale=false;
+
+/* ---------- formulário ---------- */
+function setRows(list){rows=list.map(r=>({s:String(r.s).replace('.',','),p:String(r.p).replace('.',',')}));renderRows();}
+function bandAt(s){if(!band||(band.user&&!band.band))return null;return band.pts.find(p=>Math.abs(p[0]-s)/s<0.02)||null;}
+function renderRows(){
+  const tb=$('gbody');tb.innerHTML='';
+  rows.forEach((r,i)=>{const tr=document.createElement('tr');
+    tr.innerHTML=`<td><input type="text" class="numin" id="g-s-${i}" inputmode="decimal" aria-label="Peneira ${i+1} (mm)"></td><td><input type="text" class="numin" id="g-p-${i}" inputmode="decimal" aria-label="% passante ${i+1}"></td><td class="band" id="g-b-${i}"></td><td><button type="button" class="btn icon" aria-label="Remover peneira ${i+1}">×</button></td>`;
+    tb.appendChild(tr);
+    const si=tr.querySelector(`#g-s-${i}`),pi=tr.querySelector(`#g-p-${i}`);si.value=r.s;pi.value=r.p;
+    si.addEventListener('input',()=>{r.s=si.value;onInputs();});pi.addEventListener('input',()=>{r.p=pi.value;onInputs();});
+    tr.querySelector('button').addEventListener('click',()=>{if(rows.length>2){rows.splice(i,1);renderRows();onInputs();}});
+  });
+  updateBandCells();
+}
+function updateBandCells(){
+  rows.forEach((r,i)=>{const s=parseNum(r.s),p=parseNum(r.p),b=isFinite(s)?bandAt(s):null,cell=$('g-b-'+i),inp=$('g-p-'+i);if(!cell)return;
+    if(b){const lo=b[1],hi=b[2];cell.innerHTML=`${lo==null?'—':fmt(lo,0)}–${hi==null?'—':fmt(hi,0)}<span class="tag${b[3]==='K'?' k':''}" title="${b[3]==='K'?'Valor K: conferir na norma':'Status da fonte'}">${b[3]}</span>`;
+      const out=isFinite(p)&&((lo!=null&&p<lo-1e-9)||(hi!=null&&p>hi+1e-9));inp.classList.toggle('out',out);inp.title=out?'Fora da faixa':'';}
+    else{cell.textContent='';inp.classList.remove('out');inp.title='';}});
+}
+function setVal(id,v){$(id).value=String(v).replace('.',',');}
+function loadCurve(id){
+  const c=curveById(id)||GRADLIB[0];band=c;preset='lib:'+c.id;$('f-curve').value=preset;
+  $('f-nome').value=c.des.replace('Faixa ','');
+  setRows(c.pts.map(p=>({s:p[0],p:Math.round(midOf(p)*10)/10})));
+  const k=c.pts.filter(p=>p[3]==='K').length,r=c.pts.filter(p=>p[3]==='R').length;
+  if(c.sug){setVal('f-pb',c.sug[0]);setVal('f-avc',c.sug[1]);}else if(loadCurve.sug){setVal('f-pb',DEFAULTS.pb);setVal('f-avc',DEFAULTS.avc);}
+  loadCurve.sug=!!c.sug;
+  $('b-delcurve').hidden=!c.user;
+  if(c.user){$('n-curve').textContent=`${c.fam} · criada em ${c.ed} · TNM ${fmt(c.nmas,1)} mm · Dmáx ${fmt(c.dmax,1)} mm`;syncForm();onInputs();return;}
+  $('n-curve').textContent=`${c.fam} · ${c.ed} · TNM ${fmt(c.nmas,1)} mm · Dmáx ${fmt(c.dmax,1)} mm${k?` · ${k} valor(es) K a conferir na norma`:''}${r?` · ${r} peneira(s) intermediária(s) aproximada(s), conferir na TL Asphalt-StB 07/13`:''}${c.sug?` · betume ${fmt(c.sug[0],1)}% e AVC ${fmt(c.sug[1],1)}% sugeridos`:''}${c.ctl?' · só pontos de controle Superpave':''}`;
+  syncForm();onInputs();
+}
+function loadW(i){
+  const m=WMIX[i],g=wGradation(m);band=null;preset='w:'+i;$('f-curve').value=preset;$('b-delcurve').hidden=true;
+  $('f-nome').value='W'+(i+1);setRows(g.sieves.map((s,k)=>({s,p:g.pass[k]})));setVal('f-pb',m[7]);setVal('f-ra',2.70);setVal('f-rb',1.04);setVal('f-avc',m[8]);
+  $('f-lib').value=m[0]==='L'?'WL':'WG';$('f-bub').value='auto';
+  $('n-curve').textContent=`[W] Tabela 1, mistura ${i+1}: ${m[0]==='L'?'calcário':'granito'}, betume ${fmt(m[7],1)}%, AVC medido ${fmt(m[8],2)}%. Curva convertida por peneira (aproximada).`;
+  syncForm();onInputs();
+}
+function loadDefault(){
+  setVal('f-pb',DEFAULTS.pb);setVal('f-avc',DEFAULTS.avc);setVal('f-ra',DEFAULTS.ra);setVal('f-rb',DEFAULTS.rb);setVal('f-seed',DEFAULTS.seed);
+  $('f-lib').value=DEFAULTS.lib;$('f-bub').value='auto';$('f-seg').checked=true;$('f-segk').value=1;$('f-size').value='p';
+  loadCurve(DEFAULT_CURVE);
+}
+function syncForm(){
+  document.querySelectorAll('[data-man]').forEach(e=>e.hidden=$('f-bub').value!=='manual');
+  $('v-segk').textContent=fmt(+$('f-segk').value,1);$('f-segk').disabled=!$('f-seg').checked;
+}
+function buildCurveSelect(){
+  const sel=$('f-curve'),byC={BR:'Brasil',US:'EUA',DE:'Alemanha'};
+  let html='';
+  if(USERCURVES.length)html+='<optgroup label="Minhas curvas">'+USERCURVES.map(c=>`<option value="lib:${c.id}">${c.des.replace(/</g,'&lt;')}</option>`).join('')+'</optgroup>';
+  for(const pais of ['BR','US','DE']){const cs=GRADLIB.filter(c=>c.pais===pais);if(!cs.length)continue;
+    html+=`<optgroup label="Faixas · ${byC[pais]} (meio da faixa)">`+cs.map(c=>`<option value="lib:${c.id}">${curveLabel(c)}</option>`).join('')+'</optgroup>';}
+  html+='<optgroup label="Misturas de Wan et al. (Tabela 1)">'+WMIX.map((m,i)=>`<option value="w:${i}">Mistura ${i+1} (${m[0]==='L'?'calcário':'granito'}, AVC ${fmt(m[8],1)}%)</option>`).join('')+'</optgroup>';
+  sel.innerHTML=html;sel.value=preset;
+}
+buildCurveSelect();
+$('f-curve').addEventListener('change',()=>{const v=$('f-curve').value;v.startsWith('w:')?loadW(+v.slice(2)):loadCurve(v.slice(4));});
+function parseCurveText(txt){
+  const pts=[];
+  for(let line of txt.split(/\r?\n/)){line=line.trim();if(!line)continue;
+    let cols=/[;\t]/.test(line)?line.split(/[;\t]+/):(/\d\.\d/.test(line)&&line.includes(','))?line.split(','):line.split(/\s+/);
+    cols=cols.map(c=>parseNum(c.trim())).filter(v=>!isNaN(v));
+    if(cols.length===2)pts.push([cols[0],cols[1],cols[1]]);else if(cols.length>=3)pts.push([cols[0],Math.min(cols[1],cols[2]),Math.max(cols[1],cols[2])]);}
+  pts.sort((x,y)=>y[0]-x[0]);
+  if(pts.length<3)return {err:'Informe pelo menos 3 peneiras.'};
+  if(pts.some(p=>p[0]<=0||p[1]<0||p[2]>100))return {err:'As peneiras devem ser > 0 mm e a % passante entre 0 e 100.'};
+  for(let i=1;i<pts.length;i++)if(midOf(pts[i])>midOf(pts[i-1])+1e-9)return {err:`A % passante cresce na peneira de ${fmt(pts[i][0],3)} mm.`};
+  if(!pts.some(p=>p[0]>2))return {err:'Inclua peneiras acima de 2 mm.'};
+  if(midOf(pts[0])<100)pts.unshift([+(pts[0][0]*1.5).toFixed(1),100,100]);
+  return {pts};
+}
+function openCurveBox(fromTable){
+  $('nc-box').hidden=false;$('nc-err').textContent='';
+  $('nc-where').textContent=hasPy()?'A curva fica salva no arquivo minhas_curvas.json do Marshall Simulator.':'A curva fica salva neste navegador.';
+  if(fromTable){$('nc-nome').value=$('f-nome').value+' (minha)';$('nc-txt').value=rows.map(r=>`${r.s}; ${r.p}`).join('\n');}
+  else{$('nc-nome').value='';$('nc-txt').value='';}
+  $('nc-nome').focus();
+}
+$('b-newcurve').addEventListener('click',()=>openCurveBox(false));
+$('b-savecurve').addEventListener('click',()=>openCurveBox(true));
+$('nc-cancel').addEventListener('click',()=>{$('nc-box').hidden=true;});
+$('nc-file').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{$('nc-txt').value=rd.result;if(!$('nc-nome').value)$('nc-nome').value=f.name.replace(/\.[^.]+$/,'');};rd.readAsText(f);e.target.value='';});
+$('nc-ok').addEventListener('click',async()=>{
+  const nome=$('nc-nome').value.trim();if(!nome){$('nc-err').textContent='Dê um nome à curva.';return;}
+  const r=parseCurveText($('nc-txt').value);if(r.err){$('nc-err').textContent=r.err;return;}
+  const hasBand=r.pts.some(p=>p[2]-p[1]>1e-9),gi=r.pts.findIndex(p=>midOf(p)<90);
+  const c={id:'user:'+Date.now().toString(36),pais:'USR',norma:'Minha curva',des:nome,fam:hasBand?'Faixa do usuário':'Curva do usuário',ed:new Date().toLocaleDateString('pt-BR'),
+    nmas:gi>0?r.pts[gi-1][0]:r.pts[0][0],dmax:r.pts[0][0],pts:r.pts.map(p=>[p[0],p[1],p[2],'U']),ctl:false,user:true,band:hasBand};
+  USERCURVES.push(c);const where=await store.save(USERCURVES);
+  preset='lib:'+c.id;buildCurveSelect();loadCurve(c.id);$('nc-box').hidden=true;
+  $('n-curve').textContent+=where?` · salva em ${where}`:' · não foi possível salvar (armazenamento bloqueado)';
+});
+$('b-delcurve').addEventListener('click',async()=>{
+  const b=$('b-delcurve');
+  if(b.dataset.armed!=='1'){b.dataset.armed='1';b.textContent='Confirmar exclusão';setTimeout(()=>{b.dataset.armed='';b.textContent='Excluir esta curva';},4000);return;}
+  b.dataset.armed='';b.textContent='Excluir esta curva';
+  USERCURVES=USERCURVES.filter(c=>'lib:'+c.id!==preset);await store.save(USERCURVES);
+  preset='lib:'+DEFAULT_CURVE;buildCurveSelect();loadCurve(DEFAULT_CURVE);
+});
+async function reloadUserCurves(){USERCURVES=await store.load();buildCurveSelect();}
+reloadUserCurves();window.addEventListener('pywebviewready',reloadUserCurves);
+['f-bub','f-seg','f-segk','f-size','f-lib'].forEach(id=>$(id).addEventListener('input',()=>{syncForm();onInputs();}));
+['f-nome','f-pb','f-ra','f-rb','f-avc','f-seed','f-bB','f-bSc','f-bSh'].forEach(id=>$(id).addEventListener('input',onInputs));
+$('b-addrow').addEventListener('click',()=>{rows.push({s:'',p:''});renderRows();onInputs();});
+$('b-reset').addEventListener('click',loadDefault);
+
+function readForm(){
+  const errs={},cfg={};
+  cfg.nome=$('f-nome').value.trim()||'Mistura';
+  const g=rows.map(r=>({s:parseNum(r.s),p:parseNum(r.p)}));
+  let ge='';
+  if(g.some(r=>!isFinite(r.s)||!isFinite(r.p)||r.s<=0||r.p<0||r.p>100))ge='Preencha todas as peneiras (mm > 0) e % passante entre 0 e 100.';
+  else{g.sort((a,b)=>b.s-a.s);
+    for(let i=1;i<g.length;i++)if(g[i].p>g[i-1].p+1e-9){ge=`A % passante não pode crescer com peneiras menores (${fmt(g[i].s,3)} mm).`;break;}
+    if(!ge&&Math.abs(g[0].p-100)>1e-6)ge='A peneira de maior abertura deve ter 100% passante.';
+    if(!ge&&!g.some(r=>r.s>2))ge='Inclua peneiras acima de 2 mm.';}
+  if(ge)errs.grad=ge;cfg.grad=g;
+  cfg.pb=parseNum($('f-pb').value);if(!(cfg.pb>=2&&cfg.pb<=10))errs.pb='Use um teor de betume entre 2 e 10%.';
+  cfg.avc=parseNum($('f-avc').value);if(!(cfg.avc>=0.5&&cfg.avc<=30))errs.avc='Use vazios entre 0,5 e 30%.';
+  cfg.ra=parseNum($('f-ra').value);if(!(cfg.ra>=1.5&&cfg.ra<=4))errs.ra='Use uma densidade entre 1,5 e 4,0.';
+  cfg.rb=parseNum($('f-rb').value);if(!(cfg.rb>=0.9&&cfg.rb<=1.2))errs.rb='Use uma densidade entre 0,9 e 1,2.';
+  cfg.seed=Math.round(parseNum($('f-seed').value))||2024;
+  cfg.lib=$('f-lib').value;cfg.size=$('f-size').value;
+  cfg.bub={mode:$('f-bub').value,B:parseNum($('f-bB').value),BScmm:parseNum($('f-bSc').value),BSh:parseNum($('f-bSh').value)};
+  if(cfg.bub.mode==='manual'&&!(cfg.bub.B>=0&&cfg.bub.B<=100&&cfg.bub.BScmm>0&&cfg.bub.BSh>0))errs.grad=(errs.grad?errs.grad+' ':'')+'Revise os valores manuais das bolhas.';
+  cfg.seg={on:$('f-seg').checked,k:+$('f-segk').value};
+  cfg.preset=preset;
+  return {cfg,errs};
+}
+function showErrs(errs){
+  [['grad','e-grad'],['pb','e-pb'],['avc','e-avc'],['ra','e-ra'],['rb','e-rb']].forEach(([k,id])=>{$(id).textContent=errs[k]||'';});
+  [['pb','f-pb'],['avc','f-avc'],['ra','f-ra'],['rb','f-rb']].forEach(([k,id])=>$(id).classList.toggle('bad',!!errs[k]));
+}
+
+/* ---------- composição (massa fixa, como em [W]: 1000 g em Ø102 mm) ---------- */
+function interp(g,x){ // g ordenado desc; interpolação linear em log da abertura (como gradlib.interp)
+  if(x>=g[0].s)return g[0].p;if(x<=g[g.length-1].s)return g[g.length-1].p;
+  for(let i=1;i<g.length;i++)if(x>=g[i].s){const a=g[i],b=g[i-1],t=(Math.log(x)-Math.log(a.s))/(Math.log(b.s)-Math.log(a.s));return a.p+(b.p-a.p)*t;}
+  return 0;
+}
+function composicao(cfg){
+  const mass=cfg.size==='w'?1000:250,D=cfg.size==='w'?102:65,R=D/2;
+  const Gmm=100/((100-cfg.pb)/cfg.ra+cfg.pb/cfg.rb),Gmb=Gmm*(1-cfg.avc/100),V=mass/Gmb,H=V*1000/(Math.PI*R*R);
+  const m_agg=mass*(1-cfg.pb/100),m_bit=mass*cfg.pb/100,p2=interp(cfg.grad,2),m_fino=m_agg*p2/100,m_graudo=m_agg-m_fino;
+  const edges=[...new Set(cfg.grad.map(r=>r.s).filter(s=>s>2).concat([2]))].sort((a,b)=>a-b),fracoes=[];
+  for(let i=0;i<edges.length-1;i++){const lo=edges[i],hi=edges[i+1],pct=interp(cfg.grad,hi)-interp(cfg.grad,lo);if(pct>0)fracoes.push([lo,hi,pct]);}
+  const dmax=cfg.grad[0].s;
+  return {D,H,R,V,Gmm,Gmb,mass,m_agg,m_bit,p2,m_fino,m_graudo,V_graudo:m_graudo/cfg.ra,M:m_fino/cfg.ra+m_bit/cfg.rb,V_void:V*cfg.avc/100,k250:250/mass,k1000:1000/mass,fracoes,dmax};
+}
+
+/* ---------- [A] Awuah et al. (2024), Eq. (3) e Tabela 6 — extra ---------- */
+const EQA={w:[1.70e9,1.07e7,-9.90e5,5.90e5,-6.86e3],S:[6.25,-1.50e-3,-1.92e-3,-9.52e-3,-2.51e-4],F:[2.62e-1,3.97e-2,-5.13e-4,-1.00e-2,-2.62e-4],AVC:[4.36e8,-2.62e6,-2.0e5,5.62e5,2.13e2]};
+const eqA=(M,NA)=>{const o={};for(const k in EQA){const b=EQA[k];o[k]=(b[0]+b[1]*M+b[2]*NA)/(1+b[3]*M+b[4]*NA);}return o;};
+const LIMS={w:v=>v>=50&&v<=80,S:v=>v>6.7,F:v=>v>=2&&v<=4,AVC:v=>v>=3&&v<=5};
+function eqW(NA,M,AVC){
+  const den=NA-23.01*M+2106,Braw=(81.38*NA-125.2*M-170800)/den;let B=Braw,Bfb=false;
+  if(!(B>=0&&B<=100)||Math.abs(den)<200){B=48;Bfb=true;}
+  let BSc=(73.22*AVC+60.94*B-1065)/(AVC+426.7*B+4318),BSh=(507.9*AVC+1189*B-8587)/(AVC+910.6*B-5781),fb=false;
+  if(!(BSh>=0.8&&BSh<=4)||!(BSc>=0.02&&BSc<=0.3)){BSc=0.115;BSh=1.47;fb=true;}
+  return {B,BSc,BSh,fallback:fb,Bfallback:Bfb,Braw};
+}
+
+/* ---------- cores ---------- */
+const STONE={WL:[[184,178,166],[164,158,147],[199,192,178],[146,141,132],[210,203,190]],WG:[[150,148,150],[118,116,120],[176,170,168],[96,94,98],[196,186,180]]};
+const FRACC=[[232,197,71],[214,135,64],[91,141,196],[64,92,168],[176,72,140],[120,170,110],[150,110,200],[90,180,190]];
+const C_MAST=[30,29,28],C_VOID=[226,61,40],C_BUB=[240,128,96];
+const toneOf=i=>(Math.imul(i,2654435761)>>>0)%5;
+const fracColor=f=>FRACC[f%FRACC.length];
+const stonePal=()=>STONE[(result&&result.stone)||(lastCfg&&lastCfg.lib)||'WL'];
+
+/* ---------- gráfico da curva granulométrica (escala potência 0,45, como no exemplo da pasta) ---------- */
+function renderGradChart(){
+  const g=rows.map(r=>({s:parseNum(r.s),p:parseNum(r.p)})).filter(r=>isFinite(r.s)&&r.s>0&&isFinite(r.p)).sort((a,b)=>b.s-a.s);
+  const el=$('gchart');if(g.length<2){el.innerHTML='';return;}
+  const W=420,Hh=170,ml=30,mr=8,mt=8,mb=30,smin=Math.min(0.075,g[g.length-1].s),smax=Math.max(...g.map(r=>r.s),band?band.pts[0][0]:0);
+  const X=s=>ml+(Math.pow(s,0.45)-Math.pow(smin,0.45))/(Math.pow(smax,0.45)-Math.pow(smin,0.45))*(W-ml-mr),Y=p=>mt+(1-p/100)*(Hh-mt-mb);
+  let s='';
+  for(let p=0;p<=100;p+=20)s+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(p)}" y2="${Y(p)}" stroke="var(--line)"/><text x="${ml-4}" y="${Y(p)+3}" text-anchor="end" font-size="9" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${p}</text>`;
+  const ticks=[0.075,0.3,0.6,1.18,2.36,4.75,9.5,12.5,19,25,37.5,50].filter(t=>t>=smin*0.99&&t<=smax*1.01);
+  ticks.forEach(t=>{s+=`<line x1="${X(t)}" x2="${X(t)}" y1="${mt}" y2="${Hh-mb}" stroke="var(--line)" stroke-dasharray="2 3"/><text x="${X(t)}" y="${Hh-mb+12}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${fmt(t,t<1?(t<0.1?3:2):t<10?2:1).replace(/,?0+$/,'')}</text>`;});
+  if(band&&!(band.user&&!band.band)){const pts=band.pts.filter(p=>p[1]!=null&&p[2]!=null);
+    if(pts.length>1){const up=pts.map(p=>`${X(p[0])},${Y(p[2])}`),lo=pts.slice().reverse().map(p=>`${X(p[0])},${Y(p[1])}`);
+      s+=`<polygon points="${up.concat(lo).join(' ')}" fill="var(--band)" fill-opacity="0.14" stroke="var(--band)" stroke-width="1.2"/>`;}
+    band.pts.filter(p=>p[1]==null||p[2]==null).forEach(p=>{const v=p[1]!=null?p[1]:p[2];s+=`<line x1="${X(p[0])}" x2="${X(p[0])}" y1="${Y(p[1]!=null?p[1]:0)}" y2="${Y(p[2]!=null?p[2]:100)}" stroke="var(--band)" stroke-width="4" stroke-opacity="0.5"/>`;});}
+  const dm=g[0].s,mdl=[];for(let k=0;k<=40;k++){const sv=smin*Math.pow(dm/smin,k/40);mdl.push(`${X(sv)},${Y(Math.min(100,100*Math.pow(sv/dm,0.45)))}`);}
+  s+=`<polyline points="${mdl.join(' ')}" fill="none" stroke="var(--muted)" stroke-dasharray="4 3" stroke-width="1"/>`;
+  s+=`<polyline points="${g.map(r=>`${X(r.s)},${Y(r.p)}`).join(' ')}" fill="none" stroke="var(--fg)" stroke-width="1.8"/>`;
+  g.forEach(r=>{s+=`<circle cx="${X(r.s)}" cy="${Y(r.p)}" r="2.6" fill="var(--fg)"/>`;});
+  s+=`<line x1="${X(2)}" x2="${X(2)}" y1="${mt}" y2="${Hh-mb}" stroke="var(--accent)" stroke-width="1"/><text x="${X(2)+3}" y="${mt+9}" font-size="9" fill="var(--accent)">2 mm</text>`;
+  s+=`<text x="${(ml+W-mr)/2}" y="${Hh-4}" text-anchor="middle" font-size="9" fill="var(--muted)">abertura da peneira (mm), escala potência 0,45</text>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Curva granulométrica e faixa">${s}</svg><div class="note">Linha cheia: curva de projeto · área: faixa · tracejado: densidade máxima (n = 0,45). À direita da linha de 2 mm, os agregados entram na simulação.</div>`;
+}
+
+/* ---------- painel ---------- */
+let colorMode='s',mastMode=true,cutMode='x',showVoids=true,distBub=false;
+function renderLegend(){
+  const c=lastCfg&&lastCfg.comp,L=$('legend');const it=[];
+  const sw=(rgb,t)=>`<div><span class="sw" style="background:rgb(${rgb})"></span>${t}</div>`;
+  if(colorMode==='s')it.push(sw(stonePal()[0],`Agregado (${((result&&result.stone)||(lastCfg&&lastCfg.lib))==='WG'?'granito':'calcário'}, 5 tons)`));
+  else{const rel=(result&&result.rel)||(sampled&&sampled.rel);
+    if(c)c.fracoes.forEach(([lo,hi],k)=>{const r=rel&&rel[k];it.push(sw(fracColor(k),`${fmt(lo,lo<10?2:1)}–${fmt(hi,hi<10?2:1)} mm${r?` · ${r.classe} · ${fmt(r.n,0)}`:''}`));});}
+  it.push(sw(C_MAST,'Mastique (betume + fíler + finos < 2 mm)'));
+  it.push(sw(C_VOID,distBub?'Vazio do esqueleto':'Vazio de ar'));
+  if(distBub)it.push(sw(C_BUB,'Bolha no mastique'));
+  L.innerHTML=it.join('');
+}
+function renderPanel(){
+  if(!lastCfg)return;
+  const cfg=lastCfg,c=cfg.comp,live=result&&!stale?result:null,NA=live?live.NA:sampled?sampled.NA:null,k=c.k250,k1=c.k1000;
+  const st=live&&live.st;
+  $('comp').innerHTML=[
+    ['Massa total',fmt(c.mass,0)+' g'],['Molde',`Ø${fmt(c.D,0)} × ${fmt(c.H,1)} mm`],[`Betume (${fmt(cfg.pb,1)}%)`,fmt(c.m_bit,1)+' g'],
+    ['Passante em 2 mm',fmt(c.p2,1)+'%'],
+    ['Agregados ≥ 2 mm',`${fmt(c.m_graudo,1)} g · ${fmt(st?st.Vagg:c.V_graudo,1)} cm³`],
+    ['Número de agregados NA',NA?`${fmt(NA,0)} (${fmt(NA*k1,0)} por 1000 g)`:'calculando…'],
+    ['Mastique M',`${fmt(st?st.Vmast:c.M,1)} cm³ (${fmt(c.M*k1,1)} por 1000 g)`],
+    ['Vazios de ar',fmt(st?st.Vesq+st.Vbol:c.V_void,2)+' cm³'],
+    ['Gmm · Gmb',`${fmt(c.Gmm,3)} · ${fmt(c.Gmb,3)}`]
+  ].map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
+  const b=sampled&&sampled.bub,wi=cfg.preset&&cfg.preset.startsWith('w:')?+cfg.preset.slice(2):-1,wref=wi>=0?WMIX[wi]:null;
+  const vr=[];
+  if(b){vr.push(['B previsto',b.mode==='off'?'desligado':fmt(b.B,1)+'%'+(b.mode==='manual'?' (manual)':b.Bfallback?' †':'')]);
+    if(b.mode!=='off')vr.push(['BSc · BSh',`${fmt(b.BSc*10,2)} mm · ${fmt(b.BSh,2)}`+(b.fallback?' *':'')]);}
+  if(wref)vr.push(['Medido em [W] (B · BSc · BSh)',`${fmt(wref[9]*100,0)}% · ${fmt(wref[10]*10,1)} mm · ${fmt(wref[11],2)}`],['NA · M em [W] (1000 g)',`${fmt(wref[12],0)} · ${fmt(wref[13],1)} cm³`]);
+  if(st){vr.push(['Vazios do esqueleto',`${fmt(st.Vesq,2)} cm³ (alvo ${fmt(st.VesqT,2)})`],['Bolhas',`${fmt(st.Vbol,2)} cm³ (alvo ${fmt(st.VbolT,2)}) · ${fmt(st.nBubbles,0)}`],
+    ['B real',fmt(st.Breal,1)+'%'],['Mediana do diâmetro das bolhas',fmt(st.bubMed,2)+' mm'],['AVC real',fmt(st.AVC,2)+'%'],
+    ['AVC por quadrante (meia altura)',st.quad.map(v=>fmt(v,1)).join(' · ')],['Sobreposição de agregados',fmt(st.over,2)+' cm³']);}
+  $('voids').innerHTML=vr.map(([a,v])=>`<dt>${a}</dt><dd>${v}</dd>`).join('')+(b&&b.Bfallback&&b.mode==='auto'?`<dt class="note" style="grid-column:1/-1">† Esta mistura está fora da faixa em que a [W] Eq. (3) foi calibrada: ela daria ${fmt(b.Braw,0)}%. Usei a mediana da Tabela 3 de [W] (48%). Ajuste em Avançado › Bolhas › Manual, se quiser.</dt>`:'')+
+    (b&&b.fallback?'<dt class="note" style="grid-column:1/-1">* A [W] Eq. (4) ou (5) saiu da faixa válida; usei as medianas da Tabela 3 de [W].</dt>':'')+
+    (st&&st.warn?`<dt class="warn" style="grid-column:1/-1">${st.warn}</dt>`:'')+(st&&st.forced?'<dt class="warn" style="grid-column:1/-1">O esqueleto travou antes do AVC alvo; os pistões foram levados à altura final assim mesmo.</dt>':'');
+  renderRadial(st);
+  // extra: Awuah
+  const props=NA?eqA(c.M*k,NA*k):null,rowsP=[['w','Trabalhabilidade ω (%)'],['S','Estabilidade S (kN)'],['F','Fluência F (mm)'],['AVC','Vazios AVC (%)']];
+  const cell=(kk,v)=>v==null?'—':`<span class="pill ${LIMS[kk](v)?'ok':'bad'}">${fmt(v,kk==='F'?2:1)}</span>`;
+  $('props').innerHTML='<tr><th></th><th>[A] Eq. (3)</th></tr>'+rowsP.map(([kk,l])=>`<tr><td>${l}</td><td>${props?cell(kk,props[kk]):'…'}</td></tr>`).join('');
+  $('propnote').textContent=NA?`Com M = ${fmt(c.M*k,1)} cm³ e NA = ${fmt(NA*k,0)} por 250 g. A Eq. (3) de Awuah et al. foi calibrada para SMA 8 de calcário, betume 40/60 e tamanho máximo de 10 mm (erro médio de ~22% fora disso), e o NA de lá vem de outra calibração de tamanho. Use só como referência.`:'Aguardando o sorteio dos agregados.';
+}
+function renderRadial(st){
+  const el=$('radial');
+  if(!st){el.innerHTML='';$('radial-note').textContent='O perfil radial de vazios aparece quando a simulação terminar.';return;}
+  const W=320,Hh=150,ml=34,mr=8,mt=14,mb=26,p=st.profile,R=result.R;
+  const ymax=Math.max(2,Math.ceil(Math.max(...p)/2)*2),xs=i=>ml+(i+0.5)/20*(W-ml-mr),ys=v=>mt+(1-v/ymax)*(Hh-mt-mb);
+  let g='';
+  for(let t=0;t<=ymax+1e-9;t+=ymax/4){g+=`<line x1="${ml}" x2="${W-mr}" y1="${ys(t)}" y2="${ys(t)}" stroke="var(--line)" stroke-width="1"/><text x="${ml-5}" y="${ys(t)+4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${fmt(t,0)}</text>`;}
+  [-R,0,R].forEach((x,i)=>{const X=ml+(x+R)/(2*R)*(W-ml-mr);g+=`<text x="${X}" y="${Hh-8}" text-anchor="${['start','middle','end'][i]}" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${fmt(x,0)} mm</text>`;});
+  const pts=p.map((v,i)=>`${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(' ');
+  g+=`<polygon points="${xs(0)},${ys(0)} ${pts} ${xs(19)},${ys(0)}" fill="var(--accent)" fill-opacity="0.12"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+  p.forEach((v,i)=>{g+=`<circle cx="${xs(i)}" cy="${ys(v)}" r="2.5" fill="var(--accent)"/>`;});
+  g+=`<line x1="${ml}" x2="${W-mr}" y1="${ys(st.AVC)}" y2="${ys(st.AVC)}" stroke="var(--fg)" stroke-dasharray="3 3" stroke-width="1"/>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Perfil radial de vazios"><text x="${ml}" y="9" font-size="10" fill="var(--muted)">AVC (%) em 20 faixas ao longo do diâmetro · terço central</text>${g}</svg>`;
+  const wall=(p[0]+p[1]+p[18]+p[19])/4,mid=p.slice(7,13).reduce((a,b)=>a+b,0)/6;
+  $('radial-note').textContent=`Junto às paredes: ${fmt(wall,1)}% · centro: ${fmt(mid,1)}%. ${wall>mid?'O perfil tem forma de banheira, como em [W] Fig. 16.':'O perfil não tem forma de banheira.'} A linha tracejada é o AVC médio.`;
+}
+function renderCalc(){
+  const NA=+$('s-NA').value,M=+$('s-M').value,AVC=+$('s-AVC').value;
+  $('v-NA').textContent=fmt(NA,0);$('v-M').textContent=fmt(M,1)+' cm³';$('v-AVC').textContent=fmt(AVC,1)+'%';
+  const w=eqW(NA,M,AVC),mean=10*w.BSc*gammaFn(1+1/w.BSh);
+  const box=(l,v)=>`<div>${l}<b>${v}</b></div>`;
+  $('calc-out').innerHTML=box('B, bolhas nos vazios',w.Bfallback?`48% †<span class="note" style="display:block;font-weight:400">Eq. (3) daria ${fmt(w.Braw,0)}%: fora da faixa</span>`:fmt(w.B,1)+'%')+box('BSc · BSh',`${fmt(w.BSc*10,2)} mm · ${fmt(w.BSh,2)}${w.fallback?' *':''}`)+box('Diâmetro médio',fmt(mean,2)+' mm')+box('Bolhas por 1000 g',fmt(1000/((lastCfg&&lastCfg.comp.Gmb)||2.4)*AVC/100*w.B/100,1)+' cm³');
+  const aM=+$('s-aM').value,aNA=+$('s-aNA').value,a=eqA(aM,aNA);
+  $('v-aM').textContent=fmt(aM,1)+' cm³';$('v-aNA').textContent=fmt(aNA,0);
+  const ab=(l,v,ok)=>`<div>${l}<b style="color:var(--${ok?'ok':'bad'})">${v}</b></div>`;
+  $('acalc-out').innerHTML=ab('ω (%)',fmt(a.w,1),LIMS.w(a.w))+ab('S (kN)',fmt(a.S,2),LIMS.S(a.S))+ab('F (mm)',fmt(a.F,2),LIMS.F(a.F))+ab('AVC (%)',fmt(a.AVC,2),LIMS.AVC(a.AVC));
+}
+function gammaFn(x){const g=[676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if(x<0.5)return Math.PI/(Math.sin(Math.PI*x)*gammaFn(1-x));x-=1;let a=0.99999999999980993;const t=x+7.5;for(let i=0;i<8;i++)a+=g[i]/(x+i+1);return Math.sqrt(2*Math.PI)*Math.pow(t,x+0.5)*Math.exp(-t)*a;}
+['s-M','s-NA','s-AVC','s-aM','s-aNA'].forEach(id=>$(id).addEventListener('input',renderCalc));
+
+function onInputs(){
+  const {cfg,errs}=readForm();showErrs(errs);updateBandCells();renderGradChart();
+  $('h-nome').textContent=cfg.nome;
+  if(Object.keys(errs).length)return;
+  const comp=composicao(cfg);
+  $('n-size').textContent=`Altura calculada pela densidade: ${fmt(comp.H,1)} mm.${cfg.size==='w'?' Leva de 10 a 30 min no navegador.':''}`;
+  // TNM: uma peneira acima da primeira com menos de 90% passante; molde deve ter pelo menos 4 × TNM
+  const gi=cfg.grad.findIndex(r=>r.p<90),tnm=gi>0?cfg.grad[gi-1].s:cfg.grad[0].s;
+  const big=4*tnm>comp.D+1e-9;$('w-size').hidden=!big;if(big)$('w-size').textContent=`O TNM de ${fmt(tnm,1)} mm pede um molde de pelo menos Ø${fmt(4*tnm,0)} mm. Prefira o molde de Ø102 mm ou uma faixa mais fina.`;
+  if(running)return;
+  const prev=lastCfg,changed=!prev||JSON.stringify(prev.comp)!==JSON.stringify(comp)||prev.lib!==cfg.lib||prev.seed!==cfg.seed;
+  if(changed&&result){stale=true;sampled=null;$('stale-note').hidden=false;}
+  lastCfg=Object.assign(cfg,{comp});
+  renderPanel();renderLegend();
+}
+
+/* ---------- worker ---------- */
+let workerURL=null;
+function getWorkerURL(){if(!workerURL)workerURL=URL.createObjectURL(new Blob([$('worker-src').textContent],{type:'text/javascript'}));return workerURL;}
+const STAGES=['comp','formas','mistura','compac','pintura','bolhas','pronto'];
+const STAGE_W={comp:[0,2],formas:[2,8],mistura:[8,35],compac:[35,82],pintura:[82,92],bolhas:[92,99],pronto:[100,100]};
+function setStage(s,pct,text){
+  const i=STAGES.indexOf(s);
+  document.querySelectorAll('#steps li').forEach((li,k)=>{li.classList.toggle('done',k<i);li.classList.toggle('on',k===i);});
+  const [a,b]=STAGE_W[s]||[0,100];$('pbar').style.width=(a+(b-a)*Math.min(Math.max(pct||0,0),1))+'%';
+  if(text!=null)$('ptext').textContent=text;
+}
+function generate(){
+  const {cfg,errs}=readForm();showErrs(errs);
+  if(Object.keys(errs).length){$('e-grad').scrollIntoView({block:'nearest'});return;}
+  const comp=composicao(cfg);
+  if(!comp.fracoes.length){showErrs({grad:'Não há agregados acima de 2 mm nesta granulometria.'});return;}
+  lastCfg=Object.assign(cfg,{comp});sampled=null;stale=false;$('stale-note').hidden=true;
+  const c=band;
+  $('h-spec').textContent=`${c?(c.user?c.des:`${c.norma} · ${c.des}`):`Wan et al. (2024), Tabela 1`} · ${cfg.lib==='WG'?'granito':'calcário'} [W] · betume ${fmt(cfg.pb,1)}% · AVC ${fmt(cfg.avc,1)}% · ${fmt(comp.mass,0)} g em Ø${fmt(comp.D,0)} × ${fmt(comp.H,1)} mm · Wan et al. (2024)`;
+  renderPanel();renderLegend();setExport(false);
+  if(worker)worker.terminate();
+  running=true;$('overlay').hidden=false;$('errbox').textContent='';setStage('comp',1,'Composição calculada');
+  try{worker=new Worker(getWorkerURL());}catch(e){running=false;showError('Não consegui iniciar o Web Worker: '+e.message);return;}
+  worker.onmessage=ev=>{const m=ev.data;
+    if(m.type==='progress')setStage(m.stage,m.pct,m.text);
+    else if(m.type==='sampled'){sampled=m;renderPanel();renderLegend();
+      $('ptext').textContent=`${fmt(m.NA,0)} agregados sorteados (${fmt(m.NA*comp.k1000,0)} por 1000 g)`;}
+    else if(m.type==='done'){running=false;result=Object.assign(m.res,{stone:cfg.lib});setStage('pronto',1,`Pronto em ${fmt(m.res.tTotal,0)} s`);
+      try{buildScene(result);}catch(e){showError('Falha ao montar a cena 3D: '+e.message);return;}
+      renderPanel();renderLegend();setExport(true);setTimeout(()=>{if(!running)$('overlay').hidden=true;},700);initSection();}
+    else if(m.type==='error'){running=false;showError('Erro na simulação: '+m.message);}
+  };
+  worker.onerror=e=>{running=false;showError('Erro no worker: '+(e.message||'desconhecido'));};
+  worker.postMessage({comp:{R:comp.R,H:comp.H,V:comp.V,m_agg:comp.m_agg,fracoes:comp.fracoes,k250:comp.k250,k1000:comp.k1000,V_void:comp.V_void,M:comp.M,V_graudo:comp.V_graudo},
+    rhoA:cfg.ra,seed:cfg.seed,lib:cfg.lib,bub:cfg.bub,seg:cfg.seg,avc:cfg.avc,voxel:cfg.size==='w'?0.4:0.25,dt:2e-5,coat:0.25});
+}
+function showError(msg){$('overlay').hidden=false;$('errbox').textContent=msg;$('ptext').textContent='';}
+$('form').addEventListener('submit',e=>{e.preventDefault();generate();});
+
+/* ---------- cena 3D ---------- */
+let renderer,scene,camera,group,instMeshes=[],skin,capTop,capBot,capCut,voidE,voidB,clipPlane,dirty=true;
+const cam={th:0.75,ph:1.05,r:150,tx:0,ty:20,tz:0};
+function initThree(){
+  if(typeof THREE==='undefined')throw new Error('A biblioteca three.js não carregou. Verifique a conexão e recarregue a página.');
+  const cv=$('c3d');
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+  renderer.outputEncoding=THREE.sRGBEncoding;renderer.localClippingEnabled=true;renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(32,1,1,4000);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x5a5550,0.75));
+  const d=new THREE.DirectionalLight(0xffffff,0.9);d.position.set(120,200,140);scene.add(d);
+  const f=new THREE.DirectionalLight(0xffffff,0.3);f.position.set(-150,60,-120);scene.add(f);
+  group=new THREE.Group();group.rotation.x=-Math.PI/2;scene.add(group);
+  clipPlane=new THREE.Plane(new THREE.Vector3(-1,0,0),1e5);
+  new ResizeObserver(()=>resize()).observe($('view'));resize();
+  controls(cv);
+  const loop=()=>{if(dirty){updateCam();renderer.render(scene,camera);dirty=false;}requestAnimationFrame(loop);};loop();
+}
+function resize(){const v=$('view'),w=v.clientWidth,h=v.clientHeight;if(!renderer||!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();dirty=true;}
+function updateCam(){const s=Math.sin(cam.ph);camera.position.set(cam.tx+cam.r*s*Math.sin(cam.th),cam.ty+cam.r*Math.cos(cam.ph),cam.tz+cam.r*s*Math.cos(cam.th));camera.lookAt(cam.tx,cam.ty,cam.tz);}
+function controls(cv){
+  const ptrs=new Map();let mode=null,last=null,pinch0=0;
+  cv.addEventListener('contextmenu',e=>e.preventDefault());
+  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+    mode=(e.button===2||e.shiftKey)?'pan':'rot';last=[e.clientX,e.clientY];
+    if(ptrs.size===2){const p=[...ptrs.values()];pinch0=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);mode='pinch';}});
+  cv.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+    if(mode==='pinch'&&ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);if(pinch0>0){cam.r=Math.min(1200,Math.max(20,cam.r*pinch0/d));pinch0=d;dirty=true;}return;}
+    const dx=e.clientX-last[0],dy=e.clientY-last[1];last=[e.clientX,e.clientY];
+    if(mode==='rot'){cam.th-=dx*0.006;cam.ph=Math.min(3.1,Math.max(0.05,cam.ph-dy*0.006));}
+    else if(mode==='pan'){const k=cam.r*0.0016,ct=Math.cos(cam.th),stt=Math.sin(cam.th);cam.tx-=dx*k*ct;cam.tz+=dx*k*stt;cam.ty+=dy*k;}
+    dirty=true;});
+  const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2&&mode==='pinch')mode=null;if(ptrs.size===1){last=[...ptrs.values()][0];mode='rot';}};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{e.preventDefault();cam.r=Math.min(1200,Math.max(20,cam.r*Math.exp(e.deltaY*0.0012)));dirty=true;},{passive:false});
+}
+function lin(rgb){return new THREE.Color(rgb[0]/255,rgb[1]/255,rgb[2]/255).convertSRGBToLinear();}
+function particleRGB(i){return colorMode==='s'?stonePal()[toneOf(i)]:fracColor(result.fr[i]);}
+function disposeScene(){
+  while(group.children.length){const o=group.children.pop();if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}}
+  instMeshes=[];
+}
+function buildScene(r){
+  disposeScene();
+  const byT=new Map();for(let i=0;i<r.tpl.length;i++){const t=r.tpl[i];if(!byT.has(t))byT.set(t,[]);byT.get(t).push(i);}
+  const m4=new THREE.Matrix4(),qq=new THREE.Quaternion(),pp=new THREE.Vector3(),ss=new THREE.Vector3();
+  const mat=new THREE.MeshStandardMaterial({flatShading:true,roughness:0.92,metalness:0,side:THREE.DoubleSide,clippingPlanes:[clipPlane]});
+  for(const [t,list] of byT){
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(r.lib[t].v,3));g.setIndex(new THREE.BufferAttribute(r.lib[t].f,1));g.computeVertexNormals();
+    const im=new THREE.InstancedMesh(g,mat,list.length);im.userData.ids=list;
+    list.forEach((i,k)=>{pp.set(r.pos[3*i],r.pos[3*i+1],r.pos[3*i+2]);qq.set(r.q[4*i+1],r.q[4*i+2],r.q[4*i+3],r.q[4*i]);const s=r.sc[i];ss.set(s,s,s);
+      m4.compose(pp,qq,ss);im.setMatrixAt(k,m4);im.setColorAt(k,lin(particleRGB(i)));});
+    im.instanceMatrix.needsUpdate=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;
+    group.add(im);instMeshes.push(im);
+  }
+  {const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(r.meshE.pos,3));g.setIndex(new THREE.BufferAttribute(r.meshE.idx,1));g.computeVertexNormals();
+    voidE=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:lin(C_VOID),roughness:0.6,side:THREE.DoubleSide,clippingPlanes:[clipPlane]}));group.add(voidE);}
+  {const nb=r.bubbles.length/4,g=new THREE.IcosahedronGeometry(1,2);
+    voidB=new THREE.InstancedMesh(g,new THREE.MeshStandardMaterial({color:lin(C_VOID),roughness:0.6,clippingPlanes:[clipPlane]}),Math.max(nb,1));voidB.count=nb;
+    const q0=new THREE.Quaternion();
+    for(let k=0;k<nb;k++){const b=r.bubbles;pp.set(b[4*k],b[4*k+1],b[4*k+2]);ss.setScalar(b[4*k+3]);m4.compose(pp,q0,ss);voidB.setMatrixAt(k,m4);}
+    voidB.instanceMatrix.needsUpdate=true;group.add(voidB);}
+  const cg=new THREE.CylinderGeometry(r.R+0.05,r.R+0.05,r.H,128,1,true);cg.rotateX(Math.PI/2);cg.translate(0,0,r.H/2);
+  skin=new THREE.Mesh(cg,new THREE.MeshStandardMaterial({color:new THREE.Color(0x1b1a19).convertSRGBToLinear(),roughness:0.85,side:THREE.DoubleSide,clippingPlanes:[clipPlane]}));group.add(skin);
+  const capMat=clip=>new THREE.MeshBasicMaterial({alphaTest:0.5,side:THREE.DoubleSide,clippingPlanes:clip?[clipPlane]:[]});
+  capTop=new THREE.Mesh(new THREE.PlaneGeometry(2*r.R,2*r.R),capMat(true));capTop.position.z=r.H+0.03;group.add(capTop);
+  capBot=new THREE.Mesh(new THREE.PlaneGeometry(2*r.R,2*r.R),capMat(true));capBot.position.z=-0.03;group.add(capBot);
+  capCut=new THREE.Mesh(new THREE.PlaneGeometry(1,1),capMat(false));group.add(capCut);
+  cam.r=Math.max(r.R,r.H)*5.6;cam.tx=0;cam.ty=r.H/2;cam.tz=0;
+  $('cut').value=500;updateCaps(true);applyModes();
+}
+function sectionCanvas(kind,idx,style){
+  const r=result,nx=r.nx,ny=r.ny,nz=r.nz,sxy=nx*ny,W=kind==='z'?nx:ny,H=kind==='z'?ny:nz;
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d'),img=ctx.createImageData(W,H),d=img.data;
+  const tc=style==='tc',agcache=new Map();
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+    const id=kind==='z'?idx*sxy+(ny-1-j)*nx+i:(nz-1-j)*sxy+i*nx+idx;
+    const p=r.phase[id],o=4*(j*W+i);let c=null;
+    if(p===1)c=tc?[12,12,12]:C_MAST;else if(p===2)c=tc?[245,245,245]:C_VOID;else if(p===3)c=tc?[245,245,245]:(distBub?C_BUB:C_VOID);
+    else if(p===4){const L=r.lab[id]-1;if(tc){const t=toneOf(L);c=[128+t*9,128+t*9,128+t*9];}else{if(!agcache.has(L))agcache.set(L,particleRGB(L));c=agcache.get(L);}}
+    if(c){d[o]=c[0];d[o+1]=c[1];d[o+2]=c[2];d[o+3]=255;}
+  }
+  ctx.putImageData(img,0,0);return cv;
+}
+function tex(cv){const t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;t.magFilter=THREE.NearestFilter;t.minFilter=THREE.LinearFilter;t.generateMipmaps=false;return t;}
+function setMap(m,cv){if(m.material.map)m.material.map.dispose();m.material.map=tex(cv);m.material.needsUpdate=true;}
+function cutValue(){const r=result,f=+$('cut').value/1000;return cutMode==='z'?f*r.H:(f*2-1)*r.R;}
+function updateCaps(all){
+  if(!result)return;const r=result;
+  if(all){setMap(capTop,sectionCanvas('z',r.nz-1));setMap(capBot,sectionCanvas('z',0));}
+  const c=cutValue();
+  if(cutMode==='x'){
+    const ix=Math.min(r.nx-1,Math.max(0,Math.floor((c+r.R)/r.h)));
+    capCut.geometry.dispose();const g=new THREE.PlaneGeometry(2*r.R,r.H);
+    g.applyMatrix4(new THREE.Matrix4().makeBasis(new THREE.Vector3(0,1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(1,0,0)));
+    capCut.geometry=g;capCut.position.set(c-0.03,0,r.H/2);setMap(capCut,sectionCanvas('x',ix));
+    clipPlane.normal.set(-1,0,0);clipPlane.constant=c;$('cut-lbl').textContent=`x = ${fmt(c,1)} mm`;
+  }else if(cutMode==='z'){
+    const iz=Math.min(r.nz-1,Math.max(0,Math.floor(c/r.h)));
+    capCut.geometry.dispose();capCut.geometry=new THREE.PlaneGeometry(2*r.R,2*r.R);capCut.position.set(0,0,c-0.03);setMap(capCut,sectionCanvas('z',iz));
+    clipPlane.normal.set(0,-1,0);clipPlane.constant=c;$('cut-lbl').textContent=`z = ${fmt(c,1)} mm`;
+  }else{clipPlane.normal.set(-1,0,0);clipPlane.constant=1e5;$('cut-lbl').textContent='sem corte';}
+  applyModes();dirty=true;
+}
+function applyModes(){
+  if(!result)return;
+  skin.visible=mastMode;capBot.visible=mastMode;capTop.visible=mastMode&&cutMode!=='z';capCut.visible=mastMode&&cutMode!=='n';
+  voidE.visible=showVoids;
+  voidB.material.color.copy(lin(distBub?C_BUB:C_VOID));voidB.visible=showVoids&&voidB.count>0;
+  $('cut').disabled=cutMode==='n';dirty=true;
+}
+function recolor(){
+  if(!result)return;
+  for(const im of instMeshes){im.userData.ids.forEach((i,k)=>im.setColorAt(k,lin(particleRGB(i))));im.instanceColor.needsUpdate=true;}
+  updateCaps(true);renderLegend();if(!$('tomo').hidden)drawSection();
+}
+function segGroup(id,cb){const el=$(id);el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));cb(b.dataset.v);});}
+segGroup('seg-mast',v=>{mastMode=v==='1';applyModes();});
+segGroup('seg-cor',v=>{colorMode=v;recolor();});
+segGroup('seg-corte',v=>{cutMode=v;$('cut').value=500;updateCaps(false);});
+$('cut').addEventListener('input',()=>updateCaps(false));
+$('chk-void').addEventListener('change',e=>{showVoids=e.target.checked;applyModes();});
+$('chk-bub').addEventListener('change',e=>{distBub=e.target.checked;applyModes();updateCaps(true);renderLegend();if(!$('tomo').hidden)drawSection();});
+segGroup('seg-tab',v=>{const t=v==='tomo';$('tomo').hidden=!t;$('c3d').hidden=t;$('tb3d').hidden=t;$('tbtomo').hidden=!t;$('hint').hidden=t;$('tomo-card').hidden=!t;if(t)drawSection();else{resize();dirty=true;}});
+
+/* ---------- tomografia ---------- */
+let secKind='z';
+function initSection(){if(!result)return;$('sec').max=secKind==='z'?result.nz-1:result.nx-1;$('sec').value=Math.floor(+$('sec').max/2);if(!$('tomo').hidden)drawSection();}
+segGroup('seg-sec',v=>{secKind=v;initSection();drawSection();});
+$('sec').addEventListener('input',drawSection);$('chk-tc').addEventListener('change',drawSection);
+function drawSection(){
+  if(!result)return;const r=result,idx=+$('sec').value,cv=$('csec');
+  const src=sectionCanvas(secKind,idx,$('chk-tc').checked?'tc':null);
+  const box=cv.parentElement,k=Math.max(1,Math.min((box.clientWidth-24)/src.width,(box.clientHeight-112)/src.height));
+  cv.width=Math.round(src.width*k);cv.height=Math.round(src.height*k);const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(src,0,0,cv.width,cv.height);
+  $('sec-lbl').textContent=secKind==='z'?`z = ${fmt((idx+0.5)*r.h,1)} mm`:`x = ${fmt((idx+0.5)*r.h-r.R,1)} mm`;
+  sectionStats(idx);
+}
+function sectionStats(idx){
+  const r=result,nx=r.nx,ny=r.ny,nz=r.nz,sxy=nx*ny,W=secKind==='z'?nx:ny,H=secKind==='z'?ny:nz,h=r.h;
+  let tot=0,vo=0;const q=[0,0,0,0],qt=[0,0,0,0],parts=new Map();
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+    const id=secKind==='z'?idx*sxy+j*nx+i:j*sxy+i*nx+idx,p=r.phase[id];if(!p)continue;tot++;const v=(p===2||p===3)?1:0;vo+=v;
+    if(secKind==='z'){const qd=(i>=W/2?1:0)+(j>=H/2?2:0);q[qd]+=v;qt[qd]++;}
+    if(p===4){const L=r.lab[id];let a=parts.get(L);if(!a){a=[];parts.set(L,a);}a.push(i,j);}
+  }
+  const mf=[],ar=[];
+  for(const a of parts.values()){if(a.length<16)continue;let mn=1e9,mxv=0;
+    for(let k=0;k<18;k++){const t=k*Math.PI/18,c=Math.cos(t),s=Math.sin(t);let lo=1e9,hi=-1e9;for(let m=0;m<a.length;m+=2){const pr=a[m]*c+a[m+1]*s;if(pr<lo)lo=pr;if(pr>hi)hi=pr;}const wv=hi-lo+1;if(wv<mn)mn=wv;if(wv>mxv)mxv=wv;}
+    mf.push(mn*h);ar.push(mn/mxv);}
+  const med=x=>{if(!x.length)return NaN;const s=[...x].sort((a,b)=>a-b);return s[s.length>>1];};
+  const items=[['AVC da seção',fmt(tot?vo/tot*100:0,2)+'%'],['Agregados cortados',fmt(mf.length,0)],['Mediana do Min Feret',fmt(med(mf),2)+' mm'],['Mediana do AR',fmt(med(ar),2)]];
+  if(secKind==='z')items.push(['AVC por quadrante',q.map((v,k)=>fmt(qt[k]?v/qt[k]*100:0,1)).join(' · ')+'%']);
+  $('tstats').innerHTML=items.map(([a,b])=>`<div><span class="lbl">${a}</span><div class="num">${b}</div></div>`).join('');
+}
+
+/* ---------- exportação ---------- */
+function setExport(on){['b-zip','b-stla','b-stlv'].forEach(id=>$(id).disabled=!on);if(!on){$('stl-box').hidden=true;$('stl-txt').value='';}}
+function aggTriangles(cb){
+  const r=result,m=new THREE.Matrix4(),q=new THREE.Quaternion(),p=new THREE.Vector3(),s=new THREE.Vector3(),v=new THREE.Vector3();
+  for(let i=0;i<r.tpl.length;i++){const t=r.lib[r.tpl[i]];p.set(r.pos[3*i],r.pos[3*i+1],r.pos[3*i+2]);q.set(r.q[4*i+1],r.q[4*i+2],r.q[4*i+3],r.q[4*i]);s.setScalar(r.sc[i]);m.compose(p,q,s);
+    const W=new Float32Array(t.v.length);for(let k=0;k<t.v.length;k+=3){v.set(t.v[k],t.v[k+1],t.v[k+2]).applyMatrix4(m);W[k]=v.x;W[k+1]=v.y;W[k+2]=v.z;}
+    for(let f=0;f<t.f.length;f+=3)cb(W,3*t.f[f],3*t.f[f+1],3*t.f[f+2]);}
+}
+function voidTriangles(cb){
+  const m=result.meshE;for(let k=0;k<m.idx.length;k+=3)cb(m.pos,3*m.idx[k],3*m.idx[k+1],3*m.idx[k+2]);
+  const ico=new THREE.IcosahedronGeometry(1,1).toNonIndexed().attributes.position.array,b=result.bubbles,W=new Float32Array(ico.length);
+  for(let k=0;k<b.length;k+=4){for(let i=0;i<ico.length;i+=3){W[i]=b[k]+ico[i]*b[k+3];W[i+1]=b[k+1]+ico[i+1]*b[k+3];W[i+2]=b[k+2]+ico[i+2]*b[k+3];}
+    for(let i=0;i<ico.length;i+=9)cb(W,i,i+3,i+6);}
+}
+function normalOf(P,a,b,c){const ux=P[b]-P[a],uy=P[b+1]-P[a+1],uz=P[b+2]-P[a+2],vx=P[c]-P[a],vy=P[c+1]-P[a+1],vz=P[c+2]-P[a+2];let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const L=Math.hypot(nx,ny,nz)||1;return [nx/L,ny/L,nz/L];}
+function stlBinary(gen,name){
+  let n=0;gen(()=>n++);const buf=new ArrayBuffer(84+50*n),dv=new DataView(buf);
+  for(let i=0;i<80;i++)dv.setUint8(i,i<name.length?name.charCodeAt(i)&127:32);dv.setUint32(80,n,true);let o=84;
+  gen((P,a,b,c)=>{const nn=normalOf(P,a,b,c);for(const x of nn){dv.setFloat32(o,x,true);o+=4;}for(const i of [a,b,c])for(let k=0;k<3;k++){dv.setFloat32(o,P[i+k],true);o+=4;}o+=2;});
+  return new Uint8Array(buf);
+}
+function stlAscii(gen,name){
+  const out=[`solid ${name}`],f=x=>x.toExponential(5);
+  gen((P,a,b,c)=>{const nn=normalOf(P,a,b,c);out.push(` facet normal ${f(nn[0])} ${f(nn[1])} ${f(nn[2])}\n  outer loop\n   vertex ${f(P[a])} ${f(P[a+1])} ${f(P[a+2])}\n   vertex ${f(P[b])} ${f(P[b+1])} ${f(P[b+2])}\n   vertex ${f(P[c])} ${f(P[c+1])} ${f(P[c+2])}\n  endloop\n endfacet`);});
+  out.push(`endsolid ${name}`);return out.join('\n');
+}
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function zip(files){
+  const enc=new TextEncoder(),chunks=[],central=[];let off=0;
+  for(const f of files){const nm=enc.encode(f.name),crc=crc32(f.data),L=new DataView(new ArrayBuffer(30));
+    L.setUint32(0,0x04034b50,true);L.setUint16(4,20,true);L.setUint16(12,33,true);L.setUint32(14,crc,true);L.setUint32(18,f.data.length,true);L.setUint32(22,f.data.length,true);L.setUint16(26,nm.length,true);
+    chunks.push(new Uint8Array(L.buffer),nm,f.data);
+    const C=new DataView(new ArrayBuffer(46));C.setUint32(0,0x02014b50,true);C.setUint16(4,20,true);C.setUint16(6,20,true);C.setUint16(14,33,true);C.setUint32(16,crc,true);C.setUint32(20,f.data.length,true);C.setUint32(24,f.data.length,true);C.setUint16(28,nm.length,true);C.setUint32(42,off,true);
+    central.push(new Uint8Array(C.buffer),nm);off+=30+nm.length+f.data.length;}
+  const cs=central.reduce((a,b)=>a+b.length,0),E=new DataView(new ArrayBuffer(22));
+  E.setUint32(0,0x06054b50,true);E.setUint16(8,files.length,true);E.setUint16(10,files.length,true);E.setUint32(12,cs,true);E.setUint32(16,off,true);
+  return new Blob([...chunks,...central,new Uint8Array(E.buffer)],{type:'application/zip'});
+}
+let downloadsNS=null;
+(async()=>{try{if(window.claude&&window.claude.use)downloadsNS=await window.claude.use('downloads');}catch(e){downloadsNS=null;}})();
+$('b-zip').addEventListener('click',async()=>{
+  const nm=(lastCfg&&lastCfg.nome||'mistura').replace(/[^\w-]+/g,'_');$('exp-note').textContent='Montando os arquivos…';
+  await new Promise(r=>setTimeout(r,30));
+  const blob=zip([{name:`${nm}_agregados.stl`,data:stlBinary(aggTriangles,nm+' agregados')},{name:`${nm}_vazios.stl`,data:stlBinary(voidTriangles,nm+' vazios')}]);
+  if(window.pywebview&&window.pywebview.api&&window.pywebview.api.save_file){
+    const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.readAsDataURL(blob);});
+    const path=await window.pywebview.api.save_file(`${nm}_STL.zip`,b64);$('exp-note').textContent=path?`Salvo em ${path}`:'Salvamento cancelado.';return;}
+  if(!downloadsNS){
+    if(!(window.claude&&window.claude.use)){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${nm}_STL.zip`;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),5000);$('exp-note').textContent=`Arquivo ${nm}_STL.zip baixado (${fmt(blob.size/1e6,1)} MB).`;return;}
+    $('exp-note').textContent='Esta visualização não permite baixar arquivos. Use os botões de STL ASCII e copie o texto.';return;}
+  try{await downloadsNS.save({filename:`${nm}_STL.zip`,data:blob});$('exp-note').textContent=`Arquivo ${nm}_STL.zip salvo (${fmt(blob.size/1e6,1)} MB).`;}
+  catch(e){const c=e&&e.code;$('exp-note').textContent=c==='declined'?'Download cancelado.':c==='rate_limited'?'Já há um pedido de download aberto. Tente de novo em instantes.':'Não foi possível baixar aqui. Use os botões de STL ASCII.';}
+});
+function showAscii(gen,label){
+  $('exp-note').textContent='Gerando o texto…';
+  setTimeout(()=>{const nm=(lastCfg&&lastCfg.nome||'mistura').replace(/[^\w-]+/g,'_');const t=stlAscii(gen,`${nm}_${label}`);
+    $('stl-txt').value=t;$('stl-box').hidden=false;$('copy-msg').textContent='';$('exp-note').textContent=`STL ASCII de ${label}: ${fmt(t.length/1e6,1)} MB de texto.`;},30);
+}
+$('b-stla').addEventListener('click',()=>showAscii(aggTriangles,'agregados'));
+$('b-stlv').addEventListener('click',()=>showAscii(voidTriangles,'vazios'));
+$('b-copy').addEventListener('click',()=>{const ta=$('stl-txt');
+  navigator.clipboard.writeText(ta.value).then(()=>{$('copy-msg').textContent='Copiado.';},()=>{ta.focus();ta.select();$('copy-msg').textContent='Selecionei o texto. Use Ctrl+C para copiar.';});});
+
+/* ---------- início ---------- */
+try{
+  loadDefault();renderCalc();renderPanel();
+  initThree();
+  generate();
+}catch(e){showError('Falha ao iniciar: '+(e&&e.message||e));}
+window.__md={get result(){return result;},eqA,eqW,composicao,readForm,wGradation};
+})();
+</script>

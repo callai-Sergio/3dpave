@@ -1,0 +1,23 @@
+{
+  "name": "Phase 5 input validation: each case must give a validation message or a clean run",
+  "base": { "seed": 11 },
+  "cases": [
+    { "id": "non-monotonic", "grad": [[19.1,100],[12.7,80],[9.5,85],[2.36,40],[0.075,6]] },
+    { "id": "top-below-100", "grad": [[19.1,95],[9.5,60],[2.36,30],[0.075,5]] },
+    { "id": "nothing-above-2", "grad": [[2,100],[1.18,70],[0.075,8]] },
+    { "id": "one-fraction-NA-small", "grad": [[2.36,100],[2,99],[0.075,5]] },
+    { "id": "duplicate-sieve", "grad": [[19.1,100],[9.5,70],[9.5,70],[2.36,40],[0.075,6]] },
+    { "id": "above-L5-class", "grad": [[50,100],[37.5,90],[25,70],[2.36,30],[0.075,4]] },
+    { "id": "zero-intermediate", "grad": [[12.5,100],[9.5,0],[2.36,0],[0.075,0]] },
+    { "id": "ra-1.5", "ra": 1.5 },
+    { "id": "ra-4.0", "ra": 4.0 },
+    { "id": "rb-0.9", "rb": 0.9 },
+    { "id": "rb-1.2", "rb": 1.2 },
+    { "id": "pb-2", "pb": 2 },
+    { "id": "pb-10", "pb": 10 },
+    { "id": "avc-30", "avc": 30 },
+    { "id": "bub-manual-B100-tiny", "bub": { "mode": "manual", "B": 100, "BScmm": 0.2, "BSh": 1.5 } },
+    { "id": "bub-manual-B100-huge", "bub": { "mode": "manual", "B": 100, "BScmm": 3, "BSh": 0.8 } },
+    { "id": "segk-4-out-of-range", "seg": { "on": true, "k": 4 } }
+  ]
+}

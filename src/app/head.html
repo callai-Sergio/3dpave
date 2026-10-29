@@ -1,0 +1,356 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Marshall Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: bancada de laboratório — área 3D à esquerda com o formulário da mistura abaixo, fichas de resultados num painel de 360 px à direita */
+:root{
+  --bg:#eeece8; --card:#f8f7f4; --fg:#1f1e1c; --muted:#6c6862; --line:#dcd8d1; --soft:#e6e3dd;
+  --accent:#b3611b; --accent-fg:#ffffff; --viewport:#d9d6d0; --ok:#2f7d4a; --bad:#b8362a; --okbg:#e3efe6; --badbg:#f6e2df; --band:#5b8dc4;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#171615; --card:#201f1d; --fg:#ece9e4; --muted:#a29d95; --line:#34312d; --soft:#2a2825;
+  --accent:#e0913f; --accent-fg:#1b1207; --viewport:#100f0e; --ok:#6cc58a; --bad:#f07c6c; --okbg:#1f3326; --badbg:#3a211d; --band:#7fa9d8; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171615; --card:#201f1d; --fg:#ece9e4; --muted:#a29d95; --line:#34312d; --soft:#2a2825;
+  --accent:#e0913f; --accent-fg:#1b1207; --viewport:#100f0e; --ok:#6cc58a; --bad:#f07c6c; --okbg:#1f3326; --badbg:#3a211d; --band:#7fa9d8; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.lang{float:right;display:inline-flex;gap:4px}.lang .btn{font-size:12px;padding:2px 8px}.lang .btn[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1380px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header h1{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,3.4vw,38px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+header h1 span{color:var(--accent)}
+.spec{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:6px}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.card h2{font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 10px;color:var(--muted)}
+.card h3{font-family:var(--f-display);font-weight:700;font-size:15px;margin:0 0 8px}
+.view{position:relative;background:var(--viewport);border-radius:6px;overflow:hidden;height:min(72vh,720px);min-height:380px;border:1px solid var(--line)}
+.view canvas{display:block;width:100%;height:100%;touch-action:none}
+#c3d{cursor:grab}
+#c3d:active{cursor:grabbing}
+.tabs{position:absolute;top:10px;left:10px;display:flex;gap:4px;z-index:3}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg button{font:500 12px var(--f-body);border:0;background:transparent;color:var(--fg);padding:6px 10px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.seg button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.toolbar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;z-index:3}
+.toolbar .slider{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:4px 10px;font-size:12px}
+.toolbar input[type=range]{width:140px}
+.chk{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer}
+.hint{position:absolute;top:12px;right:12px;font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:5px;padding:4px 8px;z-index:3}
+@media (max-width:600px){.hint{display:none}}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:4;background:color-mix(in srgb,var(--viewport) 70%,transparent)}
+.overlay .box{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px 18px;width:min(440px,92%)}
+.steps{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.steps li{display:flex;gap:8px;align-items:center;color:var(--muted)}
+.steps li::before{content:"";width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor;flex:none}
+.steps li.on{color:var(--fg);font-weight:600}
+.steps li.on::before{background:var(--accent);border-color:var(--accent)}
+.steps li.done{color:var(--fg)}
+.steps li.done::before{background:var(--fg);border-color:var(--fg)}
+.bar{height:6px;background:var(--soft);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.ptext{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:8px;min-height:1.5em}
+.errbox{color:var(--bad);font-family:var(--f-mono);font-size:12px;white-space:pre-wrap}
+#tomo{position:absolute;inset:0;display:flex;flex-direction:column}
+#tomo .tc{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:52px 12px 60px}
+#tomo canvas{width:auto;height:auto;max-width:100%;max-height:100%;image-rendering:pixelated}
+.form{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+@media (max-width:760px){.form{grid-template-columns:minmax(0,1fr)}}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;align-content:start}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field.wide{grid-column:1/-1}
+label,.lbl{font-size:12px;color:var(--muted);font-weight:500}
+input[type=text],select{font:14px var(--f-body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;width:100%;min-width:0}
+input.numin{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+input.bad{border-color:var(--bad)}
+input.out{border-color:var(--bad);color:var(--bad)}
+.err{color:var(--bad);font-size:12px}
+.gtab{width:100%;border-collapse:collapse}
+.gtab th{font-size:12px;color:var(--muted);font-weight:500;text-align:left;padding:0 6px 4px}
+.gtab td{padding:2px 4px;vertical-align:middle}
+.gtab td.band{font-family:var(--f-mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.gtab td:last-child{width:32px}
+.tag{display:inline-block;font-size:10px;padding:0 4px;border-radius:3px;background:var(--soft);color:var(--muted);margin-left:4px}
+.tag.k{background:var(--badbg);color:var(--bad)}
+.gbox{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:6px}
+.gchart svg{width:100%;height:auto;display:block}
+.btn{font:600 13px var(--f-body);border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:5px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.icon{padding:3px 8px;font-weight:500}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-weight:600;font-size:13px}
+.note{font-size:12px;color:var(--muted)}
+.warn{font-size:12px;color:var(--bad)}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.ptab{width:100%;border-collapse:collapse;font-size:13px}
+.ptab th{font-weight:500;color:var(--muted);text-align:right;padding:3px 4px;font-size:12px}
+.ptab th:first-child,.ptab td:first-child{text-align:left}
+.ptab td{padding:4px;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;border-top:1px solid var(--line)}
+.ptab td:first-child{font-family:var(--f-body)}
+.pill{display:inline-block;padding:0 6px;border-radius:3px}
+.pill.ok{background:var(--okbg);color:var(--ok)}
+.pill.bad{background:var(--badbg);color:var(--bad)}
+.legend{display:flex;flex-direction:column;gap:5px;font-size:13px}
+.legend span.sw{display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:8px;vertical-align:-2px;border:1px solid var(--line)}
+.calc label{display:flex;justify-content:space-between}
+.calc input[type=range]{width:100%}
+.calc .out{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}
+.calc .out div{background:var(--soft);border-radius:4px;padding:6px 8px;font-size:12px}
+.calc .out b{display:block;font-family:var(--f-mono);font-size:15px;font-weight:500}
+textarea{width:100%;height:120px;font:11px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px;resize:vertical}
+.chart svg{width:100%;height:auto;display:block}
+.tstats{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-top:8px}
+ul.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.extra{border-style:dashed}
+.animbar{position:absolute;left:10px;right:10px;top:48px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;z-index:3}
+.animbar .slider{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:4px 10px;font-size:12px;flex:1 1 220px;min-width:0}
+.animbar input[type=range]{flex:1;min-width:80px}
+.flabel{font-size:12px;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:4px 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+[data-proto]{display:none!important}
+#form[data-p="marshall"] [data-proto~="marshall"],#form[data-p="giratorio"] [data-proto~="giratorio"],#form[data-p="w"] [data-proto~="w"]{display:flex!important}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Corpo de Prova <span id="h-nome">C-12,5</span><span class="lang" role="group" aria-label="Idioma / Language"><button type="button" class="btn icon" data-lang="pt">PT</button><button type="button" class="btn icon" data-lang="en">EN</button></span></h1>
+    <div class="spec" id="h-spec">DNIT 031/2024-ES · Faixa C-12,5 · calcário · Wan et al. (2024)</div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <div class="view" id="view">
+        <canvas id="c3d" aria-label="Modelo 3D do corpo de prova"></canvas>
+        <div id="tomo" hidden>
+          <div class="tc"><canvas id="csec" aria-label="Seção do corpo de prova"></canvas></div>
+        </div>
+        <div class="tabs">
+          <div class="seg" id="seg-tab" role="group" aria-label="Vista">
+            <button type="button" data-v="3d" aria-pressed="true">3D</button>
+            <button type="button" data-v="tomo" aria-pressed="false">Tomografia</button>
+          </div>
+        </div>
+        <div class="animbar" id="animbar" hidden>
+          <div class="seg" id="seg-modo" role="group" aria-label="Vista da compactação">
+            <button type="button" data-v="a" aria-pressed="false">Animação</button>
+            <button type="button" data-v="c" aria-pressed="true">Corpo de prova</button>
+          </div>
+          <button type="button" class="btn icon" id="b-play">▶ Reproduzir</button>
+          <div class="seg" id="seg-speed" role="group" aria-label="Velocidade"><button type="button" data-v="0.5" aria-pressed="false">0,5×</button><button type="button" data-v="1" aria-pressed="true">1×</button><button type="button" data-v="3" aria-pressed="false">3×</button></div>
+          <span class="slider"><span id="fnum" class="num">0 / 0</span><input type="range" id="frame" min="0" max="0" value="0" aria-label="Quadro da animação"></span>
+          <span class="flabel" id="flabel"></span>
+        </div>
+        <div class="hint" id="hint">Arraste para girar · roda: zoom · Shift ou botão direito: mover</div>
+        <div class="toolbar" id="tb3d">
+          <div class="seg" id="seg-mast" role="group" aria-label="Mastique">
+            <button type="button" data-v="1" aria-pressed="true">Com mastique</button>
+            <button type="button" data-v="0" aria-pressed="false">Só agregados</button>
+          </div>
+          <div class="seg" id="seg-cor" role="group" aria-label="Cores">
+            <button type="button" data-v="s" aria-pressed="true">Pedra</button>
+            <button type="button" data-v="f" aria-pressed="false">Por fração</button>
+          </div>
+          <div class="seg" id="seg-corte" role="group" aria-label="Corte">
+            <button type="button" data-v="n" aria-pressed="false">Sem corte</button>
+            <button type="button" data-v="x" aria-pressed="true">Corte vertical</button>
+            <button type="button" data-v="z" aria-pressed="false">Corte horizontal</button>
+          </div>
+          <span class="slider"><span id="cut-lbl" class="num">x = 0 mm</span><input type="range" id="cut" min="0" max="1000" value="500" aria-label="Posição do corte"></span>
+          <label class="chk"><input type="checkbox" id="chk-void" checked> vazios</label>
+          <label class="chk"><input type="checkbox" id="chk-bub"> distinguir bolhas</label>
+        </div>
+        <div class="toolbar" id="tbtomo" hidden>
+          <div class="seg" id="seg-sec" role="group" aria-label="Orientação da seção">
+            <button type="button" data-v="z" aria-pressed="true">Horizontal</button>
+            <button type="button" data-v="x" aria-pressed="false">Vertical</button>
+          </div>
+          <span class="slider"><span id="sec-lbl" class="num">z = 0 mm</span><input type="range" id="sec" min="0" max="100" value="50" aria-label="Posição da seção"></span>
+          <label class="chk"><input type="checkbox" id="chk-tc"> Estilo TC</label>
+        </div>
+        <div class="overlay" id="overlay">
+          <div class="box">
+            <ul class="steps" id="steps">
+              <li data-s="comp">Composição</li><li data-s="formas">Formas dos agregados</li><li data-s="mistura">Mistura e deposição</li>
+              <li data-s="compac">Compactação</li><li data-s="pintura">Pintura do mastique</li><li data-s="bolhas">Bolhas</li><li data-s="pronto">Pronto</li>
+            </ul>
+            <div class="bar"><i id="pbar"></i></div>
+            <div class="ptext" id="ptext">Preparando…</div>
+            <div class="errbox" id="errbox"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="tomo-card" hidden>
+        <h2>Seção atual</h2>
+        <div class="tstats" id="tstats"></div>
+      </div>
+
+      <form class="card" id="form" novalidate data-p="marshall">
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <h3 style="margin:0">Mistura</h3>
+          <div class="row">
+            <button type="button" class="btn" id="b-reset">Restaurar padrão</button>
+            <button type="submit" class="btn primary" id="b-gen">Gerar corpo de prova</button>
+          </div>
+        </div>
+        <div class="form">
+          <div class="field">
+            <label for="f-curve">Curva granulométrica</label>
+            <select id="f-curve"></select>
+            <span class="note" id="n-curve"></span>
+            <div class="row" style="margin-top:6px">
+              <button type="button" class="btn icon" id="b-newcurve">+ Adicionar curva</button>
+              <button type="button" class="btn icon" id="b-savecurve">Salvar tabela como curva</button>
+              <button type="button" class="btn icon" id="b-delcurve" hidden>Excluir esta curva</button>
+            </div>
+            <div id="nc-box" hidden style="margin-top:8px;border:1px solid var(--line);border-radius:5px;padding:10px;display:flex;flex-direction:column;gap:6px">
+              <label for="nc-nome">Nome da curva</label><input type="text" id="nc-nome" placeholder="Ex.: Pedreira X – brita 1 + pó">
+              <label for="nc-txt">Uma peneira por linha: duas colunas (peneira; % passante) ou três (peneira; mínimo; máximo)</label>
+              <textarea id="nc-txt" style="height:140px" placeholder="19,1; 100&#10;12,5; 94&#10;9,5; 82&#10;4,75; 58&#10;2,36; 42&#10;..."></textarea>
+              <div class="row"><label class="btn icon" style="cursor:pointer">Importar CSV/TXT<input type="file" id="nc-file" accept=".csv,.txt,text/csv,text/plain" hidden></label>
+                <button type="button" class="btn primary" id="nc-ok">Salvar curva</button><button type="button" class="btn" id="nc-cancel">Cancelar</button></div>
+              <span class="err" id="nc-err"></span>
+              <span class="note" id="nc-where"></span>
+            </div>
+            <div class="gchart" id="gchart" style="margin-top:6px"></div>
+            <div class="gbox" style="margin-top:6px">
+              <table class="gtab"><thead><tr><th>Peneira (mm)</th><th>% passante</th><th>Faixa</th><th></th></tr></thead><tbody id="gbody"></tbody></table>
+            </div>
+            <div class="row" style="margin-top:6px"><button type="button" class="btn icon" id="b-addrow">+ peneira</button><span class="note">Projeto = meio da faixa. Edite os valores para criar a sua curva.</span></div>
+            <div class="err" id="e-grad"></div>
+          </div>
+          <div class="fields">
+            <div class="field"><label for="f-nome">Nome</label><input type="text" id="f-nome"></div>
+            <div class="field"><label for="f-seed">Semente aleatória</label><input type="text" class="numin" id="f-seed" inputmode="numeric" value="2024"></div>
+            <div class="field wide"><label for="f-lib">Agregado (forma)</label>
+              <select id="f-lib"><optgroup label="Formas reais medidas"><option value="RS">Diabásio SMA, tomografia F001</option><option value="RT">Todas: F001 + STL F004</option></optgroup><optgroup label="Formas previstas por Wan et al. (Tabela 2)"><option value="WL" selected>Calcário (L1–L5)</option><option value="WG">Granito (G1–G5)</option></optgroup></select>
+              <span class="note">Formas reais: cascas convexas medidas (tomografia F001 e STL F004), reduzidas até o volume real da pedra, com o Min Feret pela Weibull ajustada aos dados. [W]: forma prevista pelo paper (Min Feret e AR por Weibull truncada, espessura h).</span></div>
+            <div class="field"><label for="f-pb">Teor de betume (% da massa)</label><input type="text" class="numin" id="f-pb" inputmode="decimal"><span class="err" id="e-pb"></span></div>
+            <div class="field"><label for="f-avc">Vazios de ar alvo, AVC (%)</label><input type="text" class="numin" id="f-avc" inputmode="decimal"><span class="err" id="e-avc"></span></div>
+            <div class="field"><label for="f-ra">Densidade do agregado (g/cm³)</label><input type="text" class="numin" id="f-ra" inputmode="decimal"><span class="err" id="e-ra"></span></div>
+            <div class="field"><label for="f-rb">Densidade do betume (g/cm³)</label><input type="text" class="numin" id="f-rb" inputmode="decimal"><span class="err" id="e-rb"></span></div>
+            <div class="field wide"><label for="f-size">Corpo de prova virtual</label>
+              <select id="f-size"><option value="p">Rápido: 250 g em molde Ø65 mm</option><option value="w">Como em [W]: 1000 g em molde Ø102 mm</option><option value="m">Marshall normal: 1200 g em Ø101,6 mm</option><option value="g">Giratório normal: 4700 g em Ø150 mm</option></select>
+              <span class="note" id="n-size"></span>
+              <span class="warn" id="w-size" hidden></span>
+            </div>
+            <div class="field wide"><label for="f-proto">Compactação</label>
+              <select id="f-proto"><option value="marshall">Marshall (soquete, golpes por face)</option><option value="giratorio">Giratório (SGC, pressão e giros)</option><option value="w">[W] pistões, sem gravidade (Wan et al. 2024)</option></select>
+              <span class="note" id="n-proto"></span></div>
+            <div class="field wide" data-proto="marshall giratorio"><label for="f-avcmode">Modo de AVC</label>
+              <select id="f-avcmode"><option value="travado">AVC travado: o CP termina no AVC alvo</option><option value="livre">AVC livre: o AVC sai dos golpes ou giros</option></select>
+              <span class="note" id="n-avcmode"></span></div>
+            <div class="field" data-proto="marshall"><label for="f-golpes">Golpes por face</label>
+              <select id="f-golpes"><option value="35">35</option><option value="50">50</option><option value="75" selected>75</option></select></div>
+            <div class="field" data-proto="marshall"><label for="f-gsim">Golpes simulados por face</label>
+              <select id="f-gsim"><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="25">25</option><option value="0" selected>todos</option></select></div>
+            <div class="field" data-proto="giratorio"><label for="f-ngir">Giros (Ndes)</label><input type="text" class="numin" id="f-ngir" inputmode="numeric" value="100"></div>
+            <div class="field" data-proto="giratorio"><label for="f-gsimg">Giros simulados</label>
+              <select id="f-gsimg"><option value="15">15</option><option value="30" selected>30</option><option value="60">60</option><option value="0">todos</option></select></div>
+            <div class="field" data-proto="giratorio"><label for="f-press">Pressão vertical (kPa)</label><input type="text" class="numin" id="f-press" inputmode="decimal" value="600"></div>
+            <div class="field" data-proto="giratorio"><label for="f-ang">Ângulo interno (°)</label><input type="text" class="numin" id="f-ang" inputmode="decimal" value="1,16"></div>
+            <div class="field" data-proto="marshall giratorio"><label for="f-grade">Betume (grau)</label>
+              <select id="f-grade"><option value="35/50">35/50</option><option value="40/60">40/60</option><option value="50/70" selected>50/70</option><option value="70/100">70/100</option><option value="100/150">100/150</option><option value="160/220">160/220</option><option value="PG 58-28">PG 58-28</option><option value="PG 64-22">PG 64-22</option><option value="PG 70-22">PG 70-22</option><option value="PG 76-22">PG 76-22</option></select></div>
+            <div class="field" data-proto="marshall giratorio"><label for="f-temp">Temperatura de compactação (°C)</label><input type="text" class="numin" id="f-temp" inputmode="decimal" value="150"><span class="err" id="e-temp"></span></div>
+            <div class="field wide" data-proto="marshall giratorio"><span class="note" id="n-visc"></span></div>
+            <details class="field wide" id="adv">
+              <summary>Avançado</summary>
+              <div class="fields" style="margin-top:10px">
+                <div class="field wide"><label for="f-bub">Bolhas de ar</label>
+                  <select id="f-bub"><option value="auto">Automático – [W] Eqs. 3–5</option><option value="manual">Manual</option><option value="off">Desligado</option></select></div>
+                <div class="field" data-man><label for="f-bB">B (% dos vazios)</label><input type="text" class="numin" id="f-bB" inputmode="decimal" value="40"></div>
+                <div class="field" data-man><label for="f-bSc">BSc, escala (mm)</label><input type="text" class="numin" id="f-bSc" inputmode="decimal" value="1,0"></div>
+                <div class="field" data-man><label for="f-bSh">BSh, forma</label><input type="text" class="numin" id="f-bSh" inputmode="decimal" value="1,5"></div>
+                <div class="field wide" data-proto="marshall giratorio"><span class="note">Calibração do modelo do mastique. As pedras do DEM são cerca de 1000 vezes mais moles que as reais, então a energia do soquete e a pressão do giratório entram escaladas.</span></div>
+                <div class="field" data-proto="marshall giratorio"><label for="f-lam">Película de mastique, λ</label><input type="text" class="numin" id="f-lam" inputmode="decimal" value="0,3"></div>
+                <div class="field" data-proto="marshall giratorio"><label for="f-etak">Fator de viscosidade</label><input type="text" class="numin" id="f-etak" inputmode="decimal" value="1"></div>
+                <div class="field" data-proto="marshall"><label for="f-escE">Escala de energia do soquete</label><input type="text" class="numin" id="f-escE" inputmode="decimal" value="0,005"></div>
+                <div class="field" data-proto="giratorio"><label for="f-escP">Escala de pressão</label><input type="text" class="numin" id="f-escP" inputmode="decimal" value="0,001"></div>
+                <div class="field"><label for="f-facew">Peso das faces na pintura</label><input type="text" class="numin" id="f-facew" inputmode="decimal" value="2,5"></div>
+                <div class="field wide" data-proto="w"><label class="chk" style="border:0;padding:0;background:none"><input type="checkbox" id="f-seg" checked> Força radial (efeito castanha-do-pará, [W] §3.3)</label></div>
+                <div class="field wide" data-proto="w"><label for="f-segk">Intensidade: <span id="v-segk" class="num">1,0</span></label><input type="range" id="f-segk" min="0" max="2" step="0.1" value="1"></div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="col">
+      <section class="card"><h2>Legenda</h2><div class="legend" id="legend"></div></section>
+      <section class="card"><h2>Composição</h2><p class="warn" id="stale-note" hidden style="margin:0 0 8px">As entradas mudaram. O 3D ainda mostra o corpo de prova anterior; clique em “Gerar corpo de prova”.</p><dl class="kv" id="comp"></dl></section>
+      <section class="card" id="ccard"><h2>Compactação</h2><dl class="kv" id="ccomp"></dl>
+        <div class="chart" id="cchart" style="margin-top:10px"></div>
+        <div class="chart" id="vprof" style="margin-top:10px"></div><p class="note" id="vprof-note" style="margin:4px 0 0"></p></section>
+      <section class="card"><h2>Vazios e bolhas</h2><dl class="kv" id="voids"></dl>
+        <div class="chart" id="radial" style="margin-top:10px"></div>
+        <p class="note" id="radial-note" style="margin:6px 0 0"></p>
+      </section>
+      <section class="card calc"><h2>Calculadora de bolhas · [W] Eqs. (3)–(5)</h2>
+        <label for="s-NA">NA, agregados por 1000 g <span class="num" id="v-NA"></span></label><input type="range" id="s-NA" min="1500" max="9000" step="10" value="4000">
+        <label for="s-M">M, mastique por 1000 g <span class="num" id="v-M"></span></label><input type="range" id="s-M" min="100" max="260" step="0.5" value="160">
+        <label for="s-AVC">AVC, vazios (%) <span class="num" id="v-AVC"></span></label><input type="range" id="s-AVC" min="2" max="25" step="0.1" value="4">
+        <div class="out" id="calc-out"></div>
+        <p class="note" style="margin:8px 0 0">[W] calibrou as equações com 14 misturas de 1000 g, AVC de 3 a 22% e tamanho máximo de 10 a 20 mm.</p>
+      </section>
+      <section class="card"><h2>Exportar</h2>
+        <div class="row">
+          <button type="button" class="btn" id="b-zip" disabled>Baixar STL (.zip)</button>
+          <button type="button" class="btn" id="b-stla" disabled>STL ASCII dos agregados</button>
+          <button type="button" class="btn" id="b-stlv" disabled>STL ASCII dos vazios</button>
+        </div>
+        <p class="note" id="exp-note" style="margin:8px 0">O STL dos agregados de 1000 g passa de 200 mil triângulos. Para exportar, prefira o corpo de prova rápido.</p>
+        <div id="stl-box" hidden>
+          <textarea id="stl-txt" readonly aria-label="Texto do STL"></textarea>
+          <div class="row" style="margin-top:6px"><button type="button" class="btn" id="b-copy">Copiar</button><span class="note" id="copy-msg"></span></div>
+          <p class="note" style="margin:6px 0 0">Cole num editor de texto e salve com a extensão .stl.</p>
+        </div>
+      </section>
+      <section class="card"><h2>Sobre o método</h2>
+        <ul class="lim">
+          <li>Wan, Garcia-Hernández, Dopazo-Hilario, Cui &amp; Liu (2024), <i>Algorithms to create realistic virtual asphalt mixtures</i>, Computers and Structures 298, 107391.</li>
+          <li>Só agregados com Min Feret ≥ 2 mm são simulados. Betume, fíler e finos formam o mastique.</li>
+          <li>Compactação sem gravidade e sem atrito; pistões até AVC = 50% pela Eq. (1), depois força crescente até o AVC alvo.</li>
+          <li>O mastique é pintado a partir das bordas dos agregados e das paredes; as bolhas seguem as Eqs. (3)–(5).</li>
+          <li>A Weibull truncada não reproduz os maiores agregados de cada classe ([W] §5).</li>
+          <li>A força radial de [W] foi calibrada só com a mistura 1 e 50 golpes por face. Aqui ela é ajustável.</li>
+          <li>Faixas granulométricas: biblioteca gradlib (DNIT, AASHTO, TL Asphalt-StB). Valores K ainda precisam ser conferidos na norma.</li>
+        </ul>
+      </section>
+      <section class="card extra"><h2>Extra · Awuah et al. (2024)</h2>
+        <table class="ptab" id="props"></table>
+        <p class="note" id="propnote" style="margin:8px 0 0"></p>
+        <details style="margin-top:8px"><summary>Calculadora da [A] Eq. (3)</summary>
+          <div class="calc" style="margin-top:8px">
+            <label for="s-aM">M, mastique por 250 g <span class="num" id="v-aM"></span></label><input type="range" id="s-aM" min="25" max="65" step="0.1" value="40">
+            <label for="s-aNA">NA, agregados por 250 g <span class="num" id="v-aNA"></span></label><input type="range" id="s-aNA" min="400" max="2500" step="1" value="1000">
+            <div class="out" id="acalc-out"></div>
+          </div>
+        </details>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script type="text/x-worker" id="worker-src">

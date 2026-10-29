@@ -1,0 +1,73 @@
+{
+  "_comentario": "Caminhos relativos a pasta 'Aggregate types'. Rode: python scripts/pipeline.py --config scripts/config_pipeline.json",
+
+  "md_core": "../marshall_digital(1)/marshall_digital/md_core.py",
+  "config_base_marshall": "../marshall_digital(1)/marshall_digital/config_V5.json",
+  "processos": 32,
+
+  "stl": [
+    {"fonte": "F004", "grupo": "A", "pasta": "00_bruto/F004/Aggregate Data Base According to a Particle Size Distribution", "escala_para_mm": 1.0},
+    {"fonte": "F004", "grupo": "B", "pasta": "00_bruto/F004/Raw Aggregate stl files", "escala_para_mm": 1.0}
+  ],
+
+  "ct": [
+    {
+      "_comentario": "SMA 11 S, amostra 2-1 (DARUS-1641), antes da compressao. A pasta local 00_bruto/F003 contem na verdade estes arquivos do F001.",
+      "fonte": "F001", "grupo": "20200429_antes", "pasta": "00_bruto/F001", "scan": "reconstructed_20200429_01",
+      "voxel_mm": null, "usar": true
+    },
+    {
+      "_comentario": "Mesmo corpo de prova depois da compressao: sao as mesmas particulas (nao somar com o 'antes' no ajuste).",
+      "fonte": "F001", "grupo": "20201015_depois", "pasta": "00_bruto/F001", "scan": "reconstructed_20201015_01",
+      "voxel_mm": null, "usar": false
+    }
+  ],
+
+  "segmentacao": {
+    "binning": 2,
+    "raio_roi_frac": 0.96,
+    "corte_z_frac": 0.02,
+    "sigma_suavizacao_vox": 1.0,
+    "_metodo_limiar": "textura (padrao: intensidade + desvio-padrao local, pega agregado cinza e claro) | otsu3 | otsu2",
+    "metodo_limiar": "textura",
+    "sigma_textura_vox": 4,
+    "limiar_agregado": null,
+    "fechamento_vox": 1,
+    "abertura_vox": 1,
+    "sigma_distancia_vox": 1.5,
+    "ws_h_mm": 0.4,
+    "ws_dist_min_mm": 1.5,
+    "sigma_gradiente_vox": 1.0,
+    "ws_compactacao": 0.0,
+    "d_min_mm": 1.5,
+    "suavizar_malha_iter": 10,
+    "salvar_rotulos": true,
+    "amostra_fatias": 300
+  },
+
+  "descritores": {
+    "d_peneira": "I",
+    "n_direcoes_feret": 2000
+  },
+
+  "ajuste": {
+    "d_min_mm": 2.0,
+    "classes_ate_mm": [4, 8, 999],
+    "n_min_classe": 25,
+    "bootstrap": 300,
+    "conjuntos": {
+      "sma_diabasio": [{"fonte": "F001", "grupo": "20200429_antes"}],
+      "f004_A": [{"fonte": "F004", "grupo": "A"}],
+      "todos": [{"fonte": "F001", "grupo": "20200429_antes"}, {"fonte": "F004", "grupo": "A"}]
+    },
+    "calibrar_gerador": true,
+    "calibracao": {"n_formas": 150, "maxiter": 40, "popsize": 12, "ngrid": 12, "semente": 2024,
+                   "_limites": "AR_escala, AR_forma, h, angulosidade. AR_forma >= 4 evita o pico falso no corte AR = 0,40 do gerador.",
+                   "limites": [[0.40, 1.0], [4.0, 25.0], [0.42, 0.95], [0.0, 1.0]]}
+  },
+
+  "biblioteca": {
+    "formas_por_classe": 60,
+    "max_vertices": 48
+  }
+}

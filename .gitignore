@@ -1,0 +1,20 @@
+# Dados brutos grandes (tomografia, STL, scans): ficam no PC e no vid1
+Aggregate types/00_bruto/
+Aggregate types/01_limpo/
+Aggregate types/3D Scanned Aggregates/
+Aggregate types/srtuttugart/
+__pycache__/
+*.pyc
+# PDFs de terceiros (direitos autorais)
+papers/*.pdf
+# Builds e binários
+native/*.exe
+pacote/dist/
+pacote/build/
+*.egg-info/
+*.zip
+# Logs e locais
+stress/logs/
+*.log
+.claude/settings.local.json
+node_modules/

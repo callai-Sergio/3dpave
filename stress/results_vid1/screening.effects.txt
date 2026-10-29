@@ -1,0 +1,160 @@
+99 runs in 33 cells. Overall: 87 broke, 0 crash, 0 hang.
+
+broke: mean 0.875, centre 1.00, Lenth ME 0.28
+       -0.250  AVC×p2 = 1000 g×radial k
+     +   0.167  Pb×Dmax = granite×bubbles
+       -0.167  AVC×radial k = p2×1000 g
+       -0.167  AVC×1000 g = Pb×granite = p2×radial k = Dmax×bubbles
+     +   0.167  ×××
+       -0.167  AVC×Dmax = 1000 g×bubbles
+     curvature (centre − factorial): 0.125
+
+K1_avcErr_pp: mean 0.00175, centre 0.000628, Lenth ME 0.0067
+     + 0.00349  bubbles
+     + 0.00319  p2
+     + 0.00319  p2×bubbles = Dmax×radial k
+     -0.00311  AVC
+     -0.00311  AVC×bubbles = Dmax×1000 g
+     -0.00281  AVC×p2 = 1000 g×radial k
+     curvature (centre − factorial): -0.00112, centre seed SD 0.00076
+
+K3_mastErr: mean 0.0356, centre 0.0320, Lenth ME 0.011
+   *  -0.0531  p2
+   *  -0.0167  Pb
+   * +  0.0145  Pb×p2 = granite×radial k
+   *  -0.0119  gap-graded×bubbles
+   * +  0.0109  AVC×Pb = 1000 g×granite
+     -0.00780  AVC
+     curvature (centre − factorial): -0.00361, centre seed SD 0.031
+
+K5_bubErr: mean -0.0506, centre 0.000324, Lenth ME 0.0051
+   *   -0.105  AVC
+   *   -0.105  AVC×bubbles = Dmax×1000 g
+   * +   0.104  p2
+   * +   0.104  p2×bubbles = Dmax×radial k
+   * +   0.101  AVC×p2 = 1000 g×radial k
+   * +   0.101  Pb×gap-graded
+     curvature (centre − factorial): 0.0510, centre seed SD 0.00040
+
+K7_overlap (log10): mean -1.88, centre -1.82, Lenth ME 0.040
+   *   -0.345  p2
+   * +   0.156  1000 g
+   * +   0.117  AVC×1000 g = Pb×granite = p2×radial k = Dmax×bubbles
+   *   -0.103  AVC
+   * +  0.0958  Dmax
+   * +  0.0915  AVC×radial k = p2×1000 g
+     curvature (centre − factorial): 0.0575, centre seed SD 0.058
+
+K9_outside (log10): mean -3.13, centre -2.74, Lenth ME 0.11
+   *   -0.884  p2
+   *   -0.277  AVC
+   *   -0.267  AVC×1000 g = Pb×granite = p2×radial k = Dmax×bubbles
+   *   -0.232  1000 g
+   * +   0.222  Dmax
+     +  0.0999  Pb×p2 = granite×radial k
+     curvature (centre − factorial): 0.383, centre seed SD 0.28
+
+K11b_gapErr_mm (log10): mean -6.00, centre -6.00, Lenth ME NaN
+     +    0.00  AVC
+     +    0.00  Pb
+     +    0.00  AVC×Pb = 1000 g×granite
+     +    0.00  p2
+     +    0.00  AVC×p2 = 1000 g×radial k
+     +    0.00  Pb×p2 = granite×radial k
+     curvature (centre − factorial): 0.00
+
+K12_keRest (log10): mean -3.43, centre -3.30, Lenth ME 0.10
+   *   -0.107  Dmax
+      -0.0925  gap-graded×radial k
+      -0.0857  AVC
+     +  0.0825  ×××
+      -0.0811  gap-graded×bubbles
+      -0.0764  AVC×p2 = 1000 g×radial k
+     curvature (centre − factorial): 0.129, centre seed SD 0.10
+
+K14_bathtub: mean 2.54, centre 12.5, Lenth ME 1.2
+   * +    2.31  radial k
+        -1.05  AVC×radial k = p2×1000 g
+       -0.989  AVC
+     +   0.669  AVC×1000 g = Pb×granite = p2×radial k = Dmax×bubbles
+       -0.590  Pb×p2 = granite×radial k
+       -0.489  1000 g
+     curvature (centre − factorial): 9.98, centre seed SD 13
+
+K15_quadCV: mean 0.247, centre 0.486, Lenth ME 0.15
+   * +   0.163  Dmax
+   *   -0.159  AVC
+   *   -0.156  bubbles
+       -0.108  AVC×radial k = p2×1000 g
+       -0.104  1000 g
+      -0.0953  AVC×p2 = 1000 g×radial k
+     curvature (centre − factorial): 0.239, centre seed SD 0.26
+
+K16_vertRatio: mean 37.3, centre 1.63, Lenth ME 2.1e+2
+        -71.0  radial k
+     +    70.3  1000 g
+        -69.9  AVC×p2 = 1000 g×radial k
+     +    68.7  p2
+        -68.4  AVC×1000 g = Pb×granite = p2×radial k = Dmax×bubbles
+        -67.7  bubbles
+     curvature (centre − factorial): -35.6, centre seed SD 0.72
+
+K17_segregation: mean 0.815, centre 0.670, Lenth ME 0.032
+   *   -0.792  radial k
+   *  -0.0723  p2×bubbles = Dmax×radial k
+   *  -0.0504  gap-graded×radial k
+   * +  0.0436  Dmax×gap-graded
+   * +  0.0418  Pb×Dmax = granite×bubbles
+   *  -0.0392  AVC×gap-graded
+     curvature (centre − factorial): -0.145, centre seed SD 0.070
+
+K19_bubTouch (log10): mean -4.46, centre -3.14, Lenth ME 0.29
+   * +    3.09  bubbles
+   *   -0.807  p2
+   *   -0.807  p2×bubbles = Dmax×radial k
+       -0.223  Dmax
+       -0.223  AVC×1000 g = Pb×granite = p2×radial k = Dmax×bubbles
+     +   0.219  AVC
+     curvature (centre − factorial): 1.32, centre seed SD 0.090
+
+K21_wall_s (log10): mean 2.32, centre 2.05, Lenth ME 0.038
+   * +   0.725  1000 g
+   *   -0.431  p2
+   * +   0.299  radial k
+   *   -0.245  Dmax
+   *   -0.150  gap-graded
+   *   -0.112  Pb×gap-graded
+     curvature (centre − factorial): -0.274, centre seed SD 0.040
+
+K22_heapPeakMB (log10): mean 2.26, centre 2.25, Lenth ME 0.039
+   * +   0.113  1000 g
+   *  -0.0987  AVC×Dmax = 1000 g×bubbles
+   *  -0.0933  AVC×radial k = p2×1000 g
+   * +  0.0789  p2
+   * +  0.0666  AVC
+   * +  0.0519  p2×Dmax = radial k×bubbles
+     curvature (centre − factorial): -0.00899, centre seed SD 0.031
+
+Break rate per factor level (factorial cells):
+   A AVC          low  43/48   high  41/48
+   B Pb           low  45/48   high  39/48
+   C p2           low  43/48   high  41/48
+   D Dmax         low  41/48   high  43/48
+   E gap-graded   low  40/48   high  44/48
+   F 1000 g       low  45/48   high  39/48
+   G granite      low  43/48   high  41/48
+   H radial k     low  45/48   high  39/48
+   J bubbles      low  43/48   high  41/48
+
+How often each KPI breaks (all runs):
+   K16_vertRatio          53
+   K3_mastErr             22
+   K19_bubTouch           15
+   K5_bubErr              12
+   K6_Bgap_pp             12
+   K15_quadCV             11
+   K8_maxPen_rel          3
+   K2_aggClosure          1
+   K9_outside             1
+   K14_bathtub            1
+Flags: placeFail 41, bubbleDeficit 12, BfallbackEq3 3
