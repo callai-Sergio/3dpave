@@ -181,8 +181,11 @@ export function computeKPIs(run, spec = {}) {
   // A10: [W] stopped where the skeleton locked and the app warned; the AVC miss is the declared result, not an error
   const skelLocked = !!(st.comp && st.comp.stalled);
   if (skelLocked) grades.K1_avcErr_pp = 'na';
+  // A8: bubbles that did not fit became skeleton voids and the app said which B it reached; K5/K6 are then the declared result
+  if (st.bubDeficit) { grades.K5_bubErr = 'na'; grades.K6_Bgap_pp = 'na'; }
   const flags = {
-    forced: k.K10_forced, phase1TimedOut: k.K11_phase1TimedOut, bubbleDeficit: !!st.warn,
+    forced: k.K10_forced, phase1TimedOut: k.K11_phase1TimedOut, bubbleDeficit: !!st.bubDeficit,
+    warned: !!st.warn,
     BfallbackEq3: !!res.bub.Bfallback, BScBShFallback: !!res.bub.fallback, placeFail: probe.placeFail,
     // placement no longer gives up (25_protocolos.js): it raises the drop column instead; M9 records how often
     raised: st.comp ? st.comp.raised ?? null : null,
@@ -190,7 +193,7 @@ export function computeKPIs(run, spec = {}) {
   };
   const breaks = Object.entries(grades).filter(([, g]) => g === 'break').map(([k]) => k);
   const warns = Object.entries(grades).filter(([, g]) => g === 'warn').map(([k]) => k);
-  const category = breaks.length ? 'D' : (flags.bubbleDeficit || flags.placeFail) ? 'C' : warns.length ? 'warn' : 'pass';
+  const category = breaks.length ? 'D' : (flags.warned || flags.placeFail) ? 'C' : warns.length ? 'warn' : 'pass';
   return {
     status: 'ok', category, breaks, warns, kpi: k, grades, flags,
     detail: {

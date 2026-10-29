@@ -130,6 +130,12 @@ function runAll(cfg){
           for(const o of L){if(Math.hypot(o[0]-cx,o[1]-cy,o[2]-cz)-o[3]-r<h){ok=false;break;}}}
         if(!ok)continue;
         const rv=r/h,x0=Math.max(0,Math.floor(x-rv)),x1=Math.min(nx-1,Math.ceil(x+rv)),y0=Math.max(0,Math.floor(y-rv)),y1=Math.min(ny-1,Math.ceil(y+rv)),z0=Math.max(0,Math.floor(zz-rv)),z1=Math.min(nz-1,Math.ceil(zz+rv));
+        // A8: a bolha fica inteira no mastique: nenhum voxel dela nem da casca de um voxel em volta é agregado, parede ou
+        // vazio do esqueleto (a distância chanfrada do centro é só aproximada e deixava bolhas encostadas na pedra, K19)
+        const rs=rv+1;
+        for(let Z=Math.max(0,Math.floor(zz-rs));Z<=Math.min(nz-1,Math.ceil(zz+rs))&&ok;Z++)for(let Y=Math.max(0,Math.floor(y-rs));Y<=Math.min(ny-1,Math.ceil(y+rs))&&ok;Y++)for(let Xx=Math.max(0,Math.floor(x-rs));Xx<=Math.min(nx-1,Math.ceil(x+rs));Xx++){
+          const dx=Xx-x,dy=Y-y,dz=Z-zz;if(dx*dx+dy*dy+dz*dz>rs*rs)continue;const f=phase[Z*sxy+Y*nx+Xx];if(f===0||f===2||f===4){ok=false;break;}}
+        if(!ok)continue;
         for(let Z=z0;Z<=z1;Z++)for(let Y=y0;Y<=y1;Y++)for(let Xx=x0;Xx<=x1;Xx++){const dx=Xx-x,dy=Y-y,dz=Z-zz;if(dx*dx+dy*dy+dz*dz<=rv*rv){const j=Z*sxy+Y*nx+Xx;if(phase[j]===1){phase[j]=3;nBub++;}}}
         bubbles.push(d);bubC.push(cx,cy,cz,r);const k=key(gx,gy,gz);if(!hash.has(k))hash.set(k,[]);hash.get(k).push([cx,cy,cz,r]);
         placed=true;break;
@@ -138,12 +144,15 @@ function runAll(cfg){
     if(!placed){if(++fails>400)break;}else fails=0;
     if(bubbles.length%40===0)progress('bolhas',Math.min(nBub/Math.max(nBubT,1),1),`Bolhas: ${bubbles.length} semeadas`);
   }
-  if(nBub<nBubT){const rest=nBubT-nBub;convert(1,2,rest,true);warn=`Faltou espaço para ${br(rest*vv,2)} cm³ de bolhas; completei com vazios do esqueleto.`;}
+  // A8: o que não coube vira vazio do esqueleto (o AVC não muda) e o app diz qual B ficou
+  let bubDeficit=false;
+  if(nBub<nBubT){const rest=nBubT-nBub;convert(1,2,rest,true);bubDeficit=true;
+    warn=`Faltou espaço para ${br(rest*vv,2)} cm³ de bolhas; completei com vazios do esqueleto. As bolhas não cabem inteiras no mastique entre as pedras: B ficou em ${br(100*nBub/Math.max(nVoidT,1),0)}% dos vazios (pedido: ${br(bub.B,0)}%).`;}
 
   /* ---------- estatísticas ---------- */
   const cnt=[0,0,0,0,0];for(let id=0;id<nvox;id++)cnt[phase[id]]++;
   const st={ncyl,Vcil:ncyl*vv,Vagg:cnt[4]*vv,Vmast:cnt[1]*vv,Vesq:cnt[2]*vv,Vbol:cnt[3]*vv,over:over*vv,tDem,warn,maxov:out.maxov,forced,
-    nBubbles:bubbles.length,VvoidT:Vvoid,VbolT:nBubT*vv,VesqT:nEsqT*vv};
+    nBubbles:bubbles.length,bubDeficit,VvoidT:Vvoid,VbolT:nBubT*vv,VesqT:nEsqT*vv};
   st.AVC=(cnt[2]+cnt[3])/ncyl*100;st.Breal=(cnt[2]+cnt[3])?cnt[3]/(cnt[2]+cnt[3])*100:0;
   bubbles.sort((a,b)=>a-b);st.bubMed=bubbles.length?bubbles[bubbles.length>>1]:0;
   const zc=Math.floor(nz/2),prof=new Float64Array(20),pTot=new Float64Array(20),quad=[0,0,0,0],qTot=[0,0,0,0];

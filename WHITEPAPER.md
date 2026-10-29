@@ -62,6 +62,7 @@ Cada protocolo roda em dois modos: **AVC travado** (um ajuste final leva o CP à
 - O mastique é pintado em voxels a partir das bordas dos agregados e das paredes ([W] §3.6). Os vazios ficam nos voxels mais distantes.
 - **Diferença de [W]:** as faces dos pistões pesam menos na distância (`faceW`), para deixar vazios junto às faces, como mostram as tomografias de CPs reais (banheira vertical).
 - A fração de bolhas B e o seu tamanho seguem [W] Eqs. (3)–(5); o restante dos vazios é vazio de esqueleto.
+- **Bolhas inteiras no mastique (A8):** uma bolha só é semeada se nenhum voxel dela, nem da casca de um voxel em volta, for agregado, parede ou vazio do esqueleto. Antes, a distância chanfrada do centro era só aproximada e ~0,2 % dos voxels de bolha encostavam na pedra (K19); agora é zero por construção. Se as bolhas não cabem (AVC alto, B alto), o que falta vira vazio do esqueleto, o AVC não muda e o app diz qual B ficou (PT/EN).
 
 ### 3.6 Saídas
 Modelo 3D com cortes, composição, AVC por quadrante, perfis radial e vertical de vazios, curva AVC × golpe ou giro, animação da compactação, STL de agregados, mastique e vazios, e a ficha de propriedades de Awuah et al. (2024).
@@ -95,7 +96,7 @@ Núcleo em C × JS: o golden bate (Vagg 52,30 × 52,32); 1,55× mais rápido com
 - As formas da Weibull truncada não reproduzem os maiores grãos de cada classe ([W] §5); as formas reais ainda são convexas (cascas).
 - A Eq. (3) de Awuah usa só M e NA: as propriedades previstas não veem a forma das pedras.
 - Peneiras intermediárias das faixas alemãs AC/PA aproximadas (conferir na TL Asphalt-StB 07/13).
-- Quando o esqueleto trava no [W] (A10), o AVC final fica acima do alvo e as bolhas da Eq. (3) às vezes não cabem (K5, K6): o encaixe das bolhas nesse caso é o item A8.
+- Com AVC acima de ~12 % ou B = 100 %, as bolhas inteiras cabem só em parte do mastique (B real 15–45 % nos casos testados). O app avisa; ainda não há estimativa antes de rodar.
 - Pequenas diferenças entre plataformas (Node 22 × 24, Windows × Linux): compare sempre na mesma máquina e com Node 24.11.1.
 
 ## 7. Referências
@@ -137,3 +138,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 | 2026-10-29 | A4: mola de pedra proporcional ao tamanho do contato e trava relativa (JS e C). Nos piores casos da calibração o K33 caiu de ~2 % para 0,3 %, o leito solto ficou mais denso (AVC 60 → 45 %) e o AVC previsto caiu 2–3 pp; a calibração será refeita |
 | 2026-10-29 | A7: o excesso de mastique em misturas graúdas vinha do sorteio (massa até 3,9 % abaixo do alvo) e de uma régua errada no AVC livre (M15), não da pintura. O sorteio fecha a massa em ±0,5 %; o golden passa a ter NA = 569 |
 | 2026-10-29 | A10: no [W], o pistão para quando o esqueleto trava, em vez de forçar as pedras umas dentro das outras (JS e C). Nos 5 casos que não cabiam no AVC alvo, o K8 caiu de 0,22–1,43 para 0,10–0,13 e o K33 de 5–21 % para 0,6–2,4 %; o AVC final fica entre 12,5 e 18 %, com aviso no app. Golden idêntico |
+| 2026-10-29 | A8: bolhas só são semeadas inteiras no mastique, sem encostar em pedra, parede ou vazio do esqueleto (K19 de ~0,2 % para 0); quando não cabem, o app diz qual B ficou. Golden: Vmast e Vbol mudaram na 3ª casa, referência regravada |

@@ -60,7 +60,7 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | A5 | BR §6.1 | Calibração com 1 semente | Grade `calib_albayati_m2.json`: λ 0,45–0,6 × escE **0,001/0,002** × 3 sementes × 4 Pb (96 rodadas, 8 × 4 núcleos = 32) | `stress/grids/` | V1 | MAE ≤ 0,5 pp, inclinação ±30 % | alta | **rodando no vid1** desde 2026-10-29 15:11 (aprovada; reiniciada para incluir a A7 — as 30 rodadas feitas com o sorteio antigo ficaram em `stress/results/calib_albayati_m2_preA7.jsonl` no vid1). escE mudou de 0,002/0,003 para 0,001/0,002 porque, depois da A4, λ 0,5 com 0,002 já fica abaixo do laboratório (4,9 × 6,1 % no Pb 4) |
 | A6 | BR §6.4 | Padrões do app (λ 0,3, escE 0,005) erram 3,7 pp | Aplicar λ/escE calibrados | `src/ui` | V1, golden | MAE ≤ 0,5 pp | alta | falta (depois de A4 e A5) |
 | A7 | PM P2, ST 2 | Mastique +5–11 % com p2 = 20 | A hipótese da pintura não se confirmou: o mastique é o que sobra no cilindro. Causas reais: (1) o sorteio parava no 1º candidato grande demais e deixava a massa até 3,9 % abaixo do alvo; (2) sobreposição (10–100× menor desde F1/A4); (3) régua errada no AVC livre (M15). Correção: sortear outro candidato em vez de parar (até 200) e fechar com o mais próximo | `10_formas.js` | K3 | |K3| ≤ 3 % em todas as células | alta | **feito**: nos 11 casos de 250 g que quebravam, massa ±0,5 % (antes até −3,9 %), K4 ~10× menor; K3 6 pass + 5 warn (3,2–4,7 %, todos [W] com AVC 2 % forçado → A10). Golden: NA 578 → 569 (referência regravada) |
-| A8 | PM P3, ST 3 | Bolhas não cabem com AVC 12 % e B = 100 %; bolhas tocam agregado | Estimar antes, limitar B e avisar (PT/EN); proibir semeadura encostada | pipeline + UI | K5, K6, K19 | K19 = 0; \|K5\| ≤ 5 % | média | falta |
+| A8 | PM P3, ST 3 | Bolhas não cabem com AVC 12 % e B = 100 %; bolhas tocam agregado | Bolha só entra inteira no mastique (nem ela nem a casca de 1 voxel tocam agregado, parede ou vazio do esqueleto); no déficit, aviso com o B que ficou (PT/EN) e `st.bubDeficit`; harness: K5/K6 `na` no déficit declarado (categoria C) | `40_pipeline.js`, `kpi.mjs` | K5, K6, K19 | K19 = 0; |K5| ≤ 5 % | média | **feito**: K19 = 0 em todos os casos; |K5| ≤ 0,6 % onde cabe. Onde não cabe (AVC 12–18 %), B real 15–45 %, declarado. A estimativa antes de rodar não foi feita (a capacidade depende da geometria). Golden regravado (Vmast/Vbol na 3ª casa); a referência do vid1 precisa ser regravada no próximo deploy |
 | A9 | PM P4, ST 5 | `placeFail` > 0 em 41 % dos casos | Resolvido na unificação (F1): a colocação nunca desiste | `25_protocolos.js` | placeFail | 0 | média | **feito** (placeFail = 0 por construção) |
 | A10 | PM P5 | K8 = 0,61 isolado | No smoke, `synth-gap-p2-20` ([W], esqueleto aberto) ainda tinha K8 = 0,47 e K33 = 0,07 depois da A7: o [W] forçava a altura do AVC alvo mesmo quando o esqueleto não cabe. Agora o pistão para quando uma pedra entra > 0,1 mm em outra por 0,1 s, o CP fica com o AVC medido e o app avisa (PT/EN); JS e C | `25_protocolos.js`, `mdsim.c`, `40_pipeline.js`, `10_painel.js` | K8, K33 | ≤ 0,10 | média | **feito**: K8 0,10–0,13 (warn), K33 ≤ 0,024; golden idêntico. Novo núcleo C ainda não foi para o vid1 (a A5 está rodando) |
 | A11 | PM P6 | K14 instável com k = 1 | Investigar k = 1 × k = 2; aviso de calibração de [W] junto do campo (PT/EN) | UI | K14 | 1,3–4 | média | falta |
@@ -197,3 +197,19 @@ Grade `stress/grids/a10_k8.json` (os casos com K8 alto da A7 e do smoke), PC loc
 Primeira versão (parar no primeiro passo acima de 0,1 mm): synth-gap ficava em AVC 13,0 %. Com a espera de 0,1 s para as pedras se rearranjarem, 12,5 %; nos demais o ganho foi pequeno, porque sem atrito e com o pistão parado a carga não sai do contato. O K8 final fica um pouco acima de 0,10 (warn) pela acomodação depois da parada.
 
 Golden e determinismo: idênticos (o limite nunca é atingido). Smoke (`a10_smoke.jsonl`): os outros 4 casos com KPIs idênticos. Continuam quebrando nos casos travados K5/K6/K19/K23: as bolhas da Eq. (3) não cabem com AVC de 12–18 % (A8). No harness, o K1 vira `na` quando o esqueleto trava (`flags.skelLocked`), e K16b/K28/K30 usam o AVC do CP.
+
+### A8 (2026-10-29): bolhas inteiras no mastique
+
+Grade `stress/grids/a8_bolhas.json`, PC local, Node 24.11.1. Antes = `a10_smoke.jsonl` / `a10_k8.jsonl`; depois = `a8_bolhas.jsonl`.
+
+| Caso | B pedido | K19 antes → depois | K5 antes → depois | B real antes → depois |
+|---|---|---|---|---|
+| golden (semente 2024) | 48 | 0,0019 → 0 | 0,000 → 0,000 | 48,0 → 48,0 |
+| golden-seed2 | 48 | 0,0020 → 0 | 0,000 → 0,001 | 48,0 → 48,0 |
+| avc0.5 | 48 | 0,0018 → 0 | 0,016 → 0,006 | 48,4 → 48,2 |
+| one-sieve-above-2 | 29 | 0,0001 → 0 | 0,000 → 0,001 | 28,9 → 28,9 |
+| synth-gap-p2-20 (AVC 12,5) | 48 | 0,0359 → 0 | −0,61 → −0,69 (na) | 18,8 → 14,8 |
+| S09 s23 (AVC 14,7) | 100 | 0,0158 → 0 | −0,49 → −0,55 (na) | 50,9 → 45,1 |
+| S18 s37 (AVC 18,0) | 100 | 0,0157 → 0 | −0,58 → −0,63 (na) | 41,7 → 37,2 |
+
+Onde as bolhas não cabem, a regra estrita cabe um pouco menos (antes, parte das bolhas encostava na pedra ou se fundia com vazios do esqueleto). O que sobra nesses casos é K23 (malha grande, F8) e K30 (A14). Golden: verdict warn (K15, K23, K30 = 0,16); Vmast 48,752 → 48,753, Vbol 2,024 → 2,023; determinismo idêntico; referência win32 regravada.
