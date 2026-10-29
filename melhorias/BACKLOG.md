@@ -45,6 +45,7 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | M10 | PM M10, P7 | Golden: parede radial ± 2 pp apertada; varia por semente e plataforma | Referência exata por plataforma em `stress/golden_ref.json` (`--record`), mantendo as tolerâncias e o K26; a parede ± 2 pp **não** foi afrouxada | `golden.mjs` | golden | bit a bit na mesma plataforma | média | **feito** (referência do PC gravada; falta gravar a do vid1 no próximo deploy) |
 | M11 | PM K32 | Sem KPI de reprodutibilidade entre plataformas | K32: diferença de Vagg PC × vid1 | `golden.mjs` | K32 | ≤ 0,05 % / ≤ 0,5 % | baixa | **feito** (aparece quando houver referência de outra plataforma) |
 | M12 | PU §8.3 | KPIs novos sem teste de mutação | Mutação: faces como agregado → K27/K28 quebram; colisão por esferas → K33 quebra | `stress/` | — | quebram com o defeito | média | falta |
+| M15 | novo (A7) | K2/K3/K7 escalavam pelo volume do CP de alvo (`comp.V`); no AVC livre a altura é a medida, e o K3 da calibração mostrava 4–6 % com o mastique real só 0,3–2,8 % acima | `scale = Vcil / (π R² H voxelizado)` | `kpi.mjs` | K3 | — | alta | **feito** (no modo travado não muda) |
 | M14 | novo (A4) | Pelo núcleo C, o golden falha na parede radial (9,27 contra 6 ± 2 pp; JS dá 5,41) antes e depois da A4: volumes iguais, trajetória diferente | Investigar a divergência C × JS (ordem de soma no OpenMP, rotações) ou dar ao C a sua própria referência; não afrouxar a tolerância | `native/mdsim.c`, `golden.mjs` | golden via C | parede ± 2 pp | média | falta |
 | M13 | PM 10, IN §4.6 | Limites ainda são os iniciais | Recalibrar depois da Fase 2 e analisar pelos KPIs contínuos | `kpi.mjs`, `effects.mjs` | — | — | média | falta (depois do bloco 2) |
 
@@ -58,7 +59,7 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | A4 | BR §6.2, §5 | K33 = 6–8 % com λ 0,5 (o golpe afunda pedras pela película) | Causa: a mola de pedra tinha kn fixo e saturava em 0,25 mm (`min(-g, 0,25)`); pedras grandes, sob o golpe, afundavam além disso com força constante (todas as rodadas com K33 alto tinham penetração > 0,25 mm). Correção: kn × max(1, sa·sb/(sa+sb)) (Hertz linearizado) e trava = 0,125 × Min Feret da menor, em JS e C | `20_dem.js`, `mdsim.c` | K33, K8 | K33 ≤ 2 %; K8 ≤ 0,10 | alta | **feito**: piores casos (λ 0,5, Pb 4 %) K33 0,017–0,021 → 0,003; o AVC cai 2–3 pp e o leito solto passa de AVC 60 % para 45 % → **refazer a calibração (A5)**. Golden [W] idêntico |
 | A5 | BR §6.1 | Calibração com 1 semente | Grade `calib_albayati_m2.json`: λ 0,45–0,6 × escE **0,001/0,002** × 3 sementes × 4 Pb (96 rodadas, 8 × 4 núcleos = 32) | `stress/grids/` | V1 | MAE ≤ 0,5 pp, inclinação ±30 % | alta | **rodando no vid1** desde 2026-10-29 12:45 (aprovada). escE mudou de 0,002/0,003 para 0,001/0,002 porque, depois da A4, λ 0,5 com 0,002 já fica abaixo do laboratório (4,9 × 6,1 % no Pb 4) |
 | A6 | BR §6.4 | Padrões do app (λ 0,3, escE 0,005) erram 3,7 pp | Aplicar λ/escE calibrados | `src/ui` | V1, golden | MAE ≤ 0,5 pp | alta | falta (depois de A4 e A5) |
-| A7 | PM P2, ST 2 | Mastique +5–11 % com p2 = 20 (sobreposição vira mastique) | Revisar o fechamento em `convert()` com esqueleto aberto | `40_pipeline.js` | K3 | \|K3\| ≤ 3 % em todas as células | alta | falta |
+| A7 | PM P2, ST 2 | Mastique +5–11 % com p2 = 20 | A hipótese da pintura não se confirmou: o mastique é o que sobra no cilindro. Causas reais: (1) o sorteio parava no 1º candidato grande demais e deixava a massa até 3,9 % abaixo do alvo; (2) sobreposição (10–100× menor desde F1/A4); (3) régua errada no AVC livre (M15). Correção: sortear outro candidato em vez de parar (até 200) e fechar com o mais próximo | `10_formas.js` | K3 | |K3| ≤ 3 % em todas as células | alta | **feito**: nos 11 casos de 250 g que quebravam, massa ±0,5 % (antes até −3,9 %), K4 ~10× menor; K3 6 pass + 5 warn (3,2–4,7 %, todos [W] com AVC 2 % forçado → A10). Golden: NA 578 → 569 (referência regravada) |
 | A8 | PM P3, ST 3 | Bolhas não cabem com AVC 12 % e B = 100 %; bolhas tocam agregado | Estimar antes, limitar B e avisar (PT/EN); proibir semeadura encostada | pipeline + UI | K5, K6, K19 | K19 = 0; \|K5\| ≤ 5 % | média | falta |
 | A9 | PM P4, ST 5 | `placeFail` > 0 em 41 % dos casos | Resolvido na unificação (F1): a colocação nunca desiste | `25_protocolos.js` | placeFail | 0 | média | **feito** (placeFail = 0 por construção) |
 | A10 | PM P5 | K8 = 0,61 isolado | No smoke, `synth-gap-p2-20` ([W], esqueleto aberto) ainda tem K8 = 0,72 e K33 = 0,09 depois da A4 (antes 1,18 e 0,16): o [W] força a altura do AVC alvo mesmo quando o esqueleto não cabe. Avaliar avisar/limitar em vez de forçar | `25_protocolos.js` | K8, K33 | ≤ 0,10 | média | falta (causa identificada) |
@@ -158,3 +159,25 @@ Casos de `stress/grids/a4_k33.json` (Albayati, Marshall 1200 g, AVC livre, forma
 
 - K32 (Vagg Linux × Windows): 0,020 % → pass. Determinismo: identical. Referência do Linux gravada no vid1 (`stress/golden_ref.json` de lá; trazer junto com os resultados da A5).
 - Parede radial: 12,5 % no Linux contra 5,4 % no Windows (meta 6 ± 2), com os volumes iguais. A parede é a métrica mais sensível à trajetória (M10, M14): com a referência por plataforma, a regressão fica coberta pela comparação exata; a tolerância de ± 2 pp não foi alterada.
+
+### 2026-10-29 · A7 e M15 (PC, Node 24.11.1, JS)
+
+Os 11 casos de 250 g em que o K3 quebrava na triagem (`stress/grids/a7_k3.json`):
+
+| Caso | K3 triagem (app antigo) | K3 antes da A7 | K3 depois | Massa sorteada antes → depois |
+|---|---|---|---|---|
+| S28 s23 | 0,102 | 0,065 | **0,021** | −2,67 → −0,36 % |
+| S10 s11 | 0,093 | 0,035 | **0,013** | −1,14 → −0,32 % |
+| S09 s23 | 0,112 | 0,050 | 0,045 (warn) | −0,62 → −0,14 % |
+| S17 s11 | 0,083 | 0,042 | 0,046 (warn) | +0,32 → +0,04 % |
+| S17 s23 | 0,106 | 0,045 | 0,045 (warn) | +0,10 → +0,08 % |
+| C0 s23 | 0,064 | 0,047 | **0,008** | −3,88 → −0,30 % |
+| S28 s37 | 0,111 | 0,084 | **0,004** | −3,63 → +0,52 % |
+| S09 s37 | 0,133 | 0,078 | 0,032 (warn) | −1,64 → −0,10 % |
+| S17 s37 | 0,095 | 0,049 | 0,047 (warn) | −0,04 → −0,01 % |
+| S18 s11 | 0,060 | 0,024 | **0,007** | −0,64 → +0,02 % |
+| S18 s37 | 0,061 | 0,019 | **0,007** | −0,47 → −0,02 % |
+
+Os 5 warns têm sobreposição de 0,4–1 % (K7) e K33 alto: são casos [W] com AVC 2 % em que o pistão força a altura (A10). Golden: NA 569, demais valores dentro da tolerância, verdict warn (o K30 deixou de quebrar nesta semente). Smoke: sem crash.
+
+**Atenção:** a grade A5 no vid1 começou antes da A7 (sorteio antigo). Nos casos de 1200 g da calibração o déficit de massa era de até 0,74 %.

@@ -33,6 +33,7 @@ O desafio é a plausibilidade: o CP virtual precisa fechar volume e massa, não 
 ### 3.1 Composição
 - A curva granulométrica é separada em 2 mm: acima, agregados simulados; abaixo, finos que entram no mastique com o fíler e o betume.
 - Massa, volume e altura do CP saem das densidades e do AVC alvo ([W] §2).
+- As partículas de cada fração são sorteadas até a massa da fração. Um candidato grande demais não encerra a fração: sorteia-se outro, e no fim entra o que deixa a massa mais perto do alvo. Assim a massa sorteada fecha dentro de ~0,5 %, mesmo com pedras de 25 mm num CP de 250 g.
 
 ### 3.2 Formas dos agregados
 - **[W] Tabela 2:** Min Feret e razão de aspecto (AR) por Weibull truncada, espessura relativa h, por classe; bibliotecas calcário (L1–L5) e granito (G1–G5).
@@ -131,3 +132,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 | 2026-10-29 | Régua de medição corrigida (bloco 1 do backlog): K28 e K30 novos, K15 com N mínimo, K23 contando bolhas, K13 e K14 com limites úteis, K9 limpo, subidas da coluna registradas, golden por plataforma e K32. Achados: a correção das faces zera a camada sem vazios (K28 = 0); o protocolo [W] deixa o topo com mais vazios que a base (K30 = 0,46, item A14) |
 | 2026-10-29 | A3: Marshall só em tamanho real (1200 g, Ø101,6 mm) e giratório com Ø150 mm por padrão; o molde pequeno ficou só no protocolo [W] |
 | 2026-10-29 | A4: mola de pedra proporcional ao tamanho do contato e trava relativa (JS e C). Nos piores casos da calibração o K33 caiu de ~2 % para 0,3 %, o leito solto ficou mais denso (AVC 60 → 45 %) e o AVC previsto caiu 2–3 pp; a calibração será refeita |
+| 2026-10-29 | A7: o excesso de mastique em misturas graúdas vinha do sorteio (massa até 3,9 % abaixo do alvo) e de uma régua errada no AVC livre (M15), não da pintura. O sorteio fecha a massa em ±0,5 %; o golden passa a ter NA = 569 |
