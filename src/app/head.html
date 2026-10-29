@@ -119,7 +119,7 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
 textarea{width:100%;height:120px;font:11px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px;resize:vertical}
 .chart svg{width:100%;height:auto;display:block}
 .tstats{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-top:8px}
-ul.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+ul.lim,ol.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
 .extra{border-style:dashed}
 .animbar{position:absolute;left:10px;right:10px;top:48px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;z-index:3}
 .animbar .slider{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:4px 10px;font-size:12px;flex:1 1 220px;min-width:0}
@@ -325,16 +325,59 @@ ul.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);display:flex
           <p class="note" style="margin:6px 0 0">Cole num editor de texto e salve com a extensão .stl.</p>
         </div>
       </section>
+      <section class="card" id="ajuda"><h2>Ajuda</h2>
+        <details open><summary>Como usar</summary>
+        <ol class="lim" style="margin-top:6px">
+          <li>Escolha a mistura na lista de curvas ou crie a sua em “+ Adicionar curva” (tabela, colar ou importar CSV/TXT).</li>
+          <li>Escolha o protocolo ([W], Marshall ou giratório) e o modo de AVC: travado (o CP termina no AVC alvo) ou livre (o AVC sai dos golpes ou giros).</li>
+          <li>Informe o teor e o grau do betume, a temperatura de compactação e o AVC alvo. A temperatura de referência da EN 12697-35 entra ao trocar o grau.</li>
+          <li>Clique em “Gerar corpo de prova” e acompanhe o progresso. Marshall e giratório em tamanho real levam de 10 min a mais de 1 h no navegador.</li>
+          <li>No fim, gire o modelo 3D, use os cortes e leia a composição, os vazios, os perfis radial e vertical e a curva de compactação.</li>
+          <li>Em Exportar, baixe os STL dos agregados, do mastique e dos vazios.</li>
+        </ol></details>
+        <details><summary>Dicas e limites</summary>
+        <ul class="lim" style="margin-top:6px">
+          <li>Avançado guarda os parâmetros de calibração do mastique (película λ, viscosidade, escalas de energia e de pressão). Mude só se for calibrar contra o laboratório.</li>
+          <li>Simulações longas e grades de casos rodam no servidor, com o núcleo em C (native/mdsim.c) e o harness stress/.</li>
+          <li>O AVC previsto no modo livre depende da calibração. Hoje ela foi feita só com os dados de Albayati (2024), betume 60/70.</li>
+          <li>As propriedades da ficha Extra (Awuah et al.) usam só o mastique e o número de agregados: não veem a forma das pedras.</li>
+        </ul></details>
+      </section>
       <section class="card"><h2>Sobre o método</h2>
         <ul class="lim">
-          <li>Wan, Garcia-Hernández, Dopazo-Hilario, Cui &amp; Liu (2024), <i>Algorithms to create realistic virtual asphalt mixtures</i>, Computers and Structures 298, 107391.</li>
-          <li>Só agregados com Min Feret ≥ 2 mm são simulados. Betume, fíler e finos formam o mastique.</li>
-          <li>Compactação sem gravidade e sem atrito; pistões até AVC = 50% pela Eq. (1), depois força crescente até o AVC alvo.</li>
+          <li>Base: Wan et al. (2024), [W]. Só agregados com Min Feret ≥ 2 mm são simulados; betume, fíler e finos formam o mastique.</li>
+          <li>Protocolo [W]: sem gravidade e sem atrito; pistões até AVC = 50% pela Eq. (1), depois força crescente até o AVC alvo.</li>
+          <li>Marshall e giratório: queda com gravidade, DEM de cascas convexas com película de mastique viscosa (A-VTS e Krieger–Dougherty) e coesiva, como em Komaragiri et al. (2021).</li>
           <li>O mastique é pintado a partir das bordas dos agregados e das paredes; as bolhas seguem as Eqs. (3)–(5).</li>
+          <li>Diferença de [W] §3.6: aqui as faces dos pistões pesam menos na pintura (Peso das faces, em Avançado), para deixar vazios junto às faces como na tomografia de CPs reais.</li>
           <li>A Weibull truncada não reproduz os maiores agregados de cada classe ([W] §5).</li>
           <li>A força radial de [W] foi calibrada só com a mistura 1 e 50 golpes por face. Aqui ela é ajustável.</li>
           <li>Faixas granulométricas: biblioteca gradlib (DNIT, AASHTO, TL Asphalt-StB). Valores K ainda precisam ser conferidos na norma.</li>
         </ul>
+      </section>
+      <section class="card" id="refs"><h2>Referências</h2>
+        <details><summary>Artigos</summary>
+        <ul class="lim" style="margin-top:6px">
+          <li>[W] Wan, L. et al. (2024). <i>Algorithms to create realistic virtual asphalt mixtures</i>. Computers and Structures 298, 107391. doi:10.1016/j.compstruc.2024.107391</li>
+          <li>[A] Awuah, F.K.A.; Garcia-Hernández, A.; Valentin, J. (2024). <i>A digital design method for asphalt mixtures that incorporates aggregate geometry</i>. Construction and Building Materials 416, 135281.</li>
+          <li>Komaragiri, S.; Gigliotti, A.; Bhasin, A. (2021). <i>Feasibility of using a physics engine to virtually compact asphalt mixtures in a gyratory compactor</i>. Construction and Building Materials 308, 124977. doi:10.1016/j.conbuildmat.2021.124977</li>
+          <li>Chen, J.; Huang, B.; Chen, F.; Shu, X. (2012). <i>Application of discrete element method to Superpave gyratory compaction</i>. Road Materials and Pavement Design 13(3), 480–500. doi:10.1080/14680629.2012.694160</li>
+          <li>Wang, X.; Wang, Z.; Luo, X. (2025). <i>Real-Time Optimization of Discrete Element Models for Studying Asphalt Mixture Compaction Characteristics at the Meso-Scale</i>. Sensors 25, 638. doi:10.3390/s25030638</li>
+          <li>Ai, X. et al. (2024). <i>Advances in Discrete Element Modeling of Asphalt Mixture: A Literature Review</i>. Archives of Computational Methods in Engineering. doi:10.1007/s11831-024-10104-8</li>
+          <li>Li, X.; Zhang, Z.; Zhao, L.; Zhang, H.; Shi, F. (2024). <i>Research on the Calibration Method of the Bonding Parameters of the EDEM Simulation Model for Asphalt Mixtures</i>. Coatings 14, 1553. doi:10.3390/coatings14121553</li>
+          <li>Albayati, A.H. (2024). <i>Factors affecting asphalt concrete permanent deformation: Experimental dataset for uniaxial repeated load test</i>. Data in Brief 53, 110224. doi:10.1016/j.dib.2024.110224</li>
+        </ul></details>
+        <details><summary>Bases de dados</summary>
+        <ul class="lim" style="margin-top:6px">
+          <li>Ruf, M.; Teutsch, T.; Alber, S.; Steeb, H.; Ressel, W. (2021). <i>micro-XRCT SMA 11 S drill core, sample 2-1</i>. DaRUS, Universität Stuttgart, doi:10.18419/DARUS-1641 (CC BY 4.0). Formas reais de diabásio (F001).</li>
+          <li>Thilakarathna, S. (2020). <i>3D Scanned Aggregates</i>. Mendeley Data, doi:10.17632/x5dbx8yxdw.1 (CC BY 4.0). Formas reais escaneadas (F004).</li>
+          <li>Albayati (2024), dados originais: <i>Uniaxial Repeated Load Test Data of Asphalt concrete</i> (Mendeley Data). Calibração do Marshall (V1).</li>
+          <li>FHWA, Long-Term Pavement Performance (LTPP), InfoPave, tabela AC_LAB_MIX_EXP. Validação de golpes, giros e AVC de projeto.</li>
+        </ul></details>
+        <details><summary>Normas</summary>
+        <ul class="lim" style="margin-top:6px">
+          <li>DNIT 031/2024-ES e 031/2006-ES; DNER-ME 043; ASTM D6926 (Marshall); AASHTO T 312 (giratório); AASHTO M 323 e M 325; TL Asphalt-StB 07/13 (FGSV); EN 12697-35 (temperatura de referência); EN 12591 (graus de betume).</li>
+        </ul></details>
       </section>
       <section class="card extra"><h2>Extra · Awuah et al. (2024)</h2>
         <table class="ptab" id="props"></table>
@@ -347,6 +390,7 @@ ul.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);display:flex
           </div>
         </details>
       </section>
+      <footer class="note" id="copyright" style="padding:4px 2px 12px">© 2026 Sergio Callai · Marshall Simulator. Todos os direitos reservados. Os dados de terceiros seguem as licenças indicadas nas referências.</footer>
     </div>
   </div>
 </div>
