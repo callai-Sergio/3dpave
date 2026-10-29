@@ -1,0 +1,15 @@
+{
+  "name": "A5: refinamento da calibração no tamanho real, depois da A4 (mola de pedra por tamanho). Albayati (2024), betume 60/70, Marshall 75 golpes por face, AVC livre, 1200 g em Ø101,6 mm, formas reais (RT), 3 sementes. Laboratório: Pb 4,0 → 6,1%; 4,5 → 4,8%; 5,0 → 3,3%; 5,5 → 2,7%",
+  "base": {
+    "size": "m", "proto": "marshall", "avcMode": "livre", "lib": "RT",
+    "grad": [[19, 100], [12.5, 95], [9.5, 83], [4.75, 54], [2.36, 36], [0.3, 13], [0.075, 7]],
+    "ra": 2.65, "rb": 1.027, "grade": "50/70", "temp": 140, "avc": 4.8,
+    "bub": { "mode": "auto" }
+  },
+  "factors": {
+    "pb": [4.0, 4.5, 5.0, 5.5],
+    "mastic": [{ "lam": 0.45 }, { "lam": 0.5 }, { "lam": 0.55 }, { "lam": 0.6 }],
+    "marshall": [{ "golpes": 75, "escE": 0.001 }, { "golpes": 75, "escE": 0.002 }],
+    "seed": [2024, 2025, 2026]
+  }
+}
