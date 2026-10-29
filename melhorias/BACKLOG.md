@@ -45,6 +45,7 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | M10 | PM M10, P7 | Golden: parede radial ± 2 pp apertada; varia por semente e plataforma | Referência exata por plataforma em `stress/golden_ref.json` (`--record`), mantendo as tolerâncias e o K26; a parede ± 2 pp **não** foi afrouxada | `golden.mjs` | golden | bit a bit na mesma plataforma | média | **feito** (referência do PC gravada; falta gravar a do vid1 no próximo deploy) |
 | M11 | PM K32 | Sem KPI de reprodutibilidade entre plataformas | K32: diferença de Vagg PC × vid1 | `golden.mjs` | K32 | ≤ 0,05 % / ≤ 0,5 % | baixa | **feito** (aparece quando houver referência de outra plataforma) |
 | M12 | PU §8.3 | KPIs novos sem teste de mutação | Mutação: faces como agregado → K27/K28 quebram; colisão por esferas → K33 quebra | `stress/` | — | quebram com o defeito | média | falta |
+| M14 | novo (A4) | Pelo núcleo C, o golden falha na parede radial (9,27 contra 6 ± 2 pp; JS dá 5,41) antes e depois da A4: volumes iguais, trajetória diferente | Investigar a divergência C × JS (ordem de soma no OpenMP, rotações) ou dar ao C a sua própria referência; não afrouxar a tolerância | `native/mdsim.c`, `golden.mjs` | golden via C | parede ± 2 pp | média | falta |
 | M13 | PM 10, IN §4.6 | Limites ainda são os iniciais | Recalibrar depois da Fase 2 e analisar pelos KPIs contínuos | `kpi.mjs`, `effects.mjs` | — | — | média | falta (depois do bloco 2) |
 
 ## Bloco 2: simulador (app `src/` → `marshall_digital_app.html`)
@@ -54,13 +55,13 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | A1 | PM P1a, PU F4 | Camada junto à face sem vazios (pintura trata pistões como agregado) | Peso das faces `faceW` na distância | `src/worker/40_pipeline.js:61` | K27, K28 | K27 ≥ 1; K28 ≤ 0,5 mm | alta | **feito no smoke** (K27 = 2,15; K28 = 0 mm); a diferença de [W] §3.6 agora está no "Sobre o método" (PT/EN). Falta confirmar na triagem |
 | A2 | PM P1b, ST 1 | Esqueleto denso nas pontas e frouxo no meio (AVC alto, sem força radial) | No Marshall/giratório, a gravidade e os golpes por face já existem; no [W], testar avisar quando k = 0 ou alternar o pistão | `25_protocolos.js` | K29, K16b | K29 ≥ 0,85 | alta | parcial (Marshall/giratório: medir; [W]: falta) |
 | A3 | BR §6.3, decisão | Marshall só em tamanho real | Tirar 250 g/Ø65 do Marshall; giratório padrão 4700 g/Ø150 | `src/ui/00_base.js` (`SIZE_BY_PROTO`) | prévia + smoke | — | alta | **feito**: Marshall só 1200 g/Ø101,6; giratório Ø150 (padrão) ou Ø102; [W] 250 g ou 1000 g. O harness continua aceitando qualquer tamanho (golden [W] em 250 g) |
-| A4 | BR §6.2, §5 | K33 = 6–8 % com λ 0,5 (o golpe afunda pedras pela película) | Investigar: passo de tempo, rigidez da película, piso `gapMin` | `20_dem.js`, `mdsim.c` | K33, K8 | K33 ≤ 2 %; K8 ≤ 0,10 | alta | falta |
+| A4 | BR §6.2, §5 | K33 = 6–8 % com λ 0,5 (o golpe afunda pedras pela película) | Causa: a mola de pedra tinha kn fixo e saturava em 0,25 mm (`min(-g, 0,25)`); pedras grandes, sob o golpe, afundavam além disso com força constante (todas as rodadas com K33 alto tinham penetração > 0,25 mm). Correção: kn × max(1, sa·sb/(sa+sb)) (Hertz linearizado) e trava = 0,125 × Min Feret da menor, em JS e C | `20_dem.js`, `mdsim.c` | K33, K8 | K33 ≤ 2 %; K8 ≤ 0,10 | alta | **feito**: piores casos (λ 0,5, Pb 4 %) K33 0,017–0,021 → 0,003; o AVC cai 2–3 pp e o leito solto passa de AVC 60 % para 45 % → **refazer a calibração (A5)**. Golden [W] idêntico |
 | A5 | BR §6.1 | Calibração com 1 semente | Grade `calib_albayati_m2.json`: λ 0,45–0,6 × escE 0,002/0,003 × 3 sementes × 4 Pb (96 rodadas, ~5–6 h, ≤ 32 núcleos) | `stress/grids/` | V1 | MAE ≤ 0,5 pp, inclinação ±30 % | alta | **bloqueado**: precisa do seu OK |
 | A6 | BR §6.4 | Padrões do app (λ 0,3, escE 0,005) erram 3,7 pp | Aplicar λ/escE calibrados | `src/ui` | V1, golden | MAE ≤ 0,5 pp | alta | falta (depois de A4 e A5) |
 | A7 | PM P2, ST 2 | Mastique +5–11 % com p2 = 20 (sobreposição vira mastique) | Revisar o fechamento em `convert()` com esqueleto aberto | `40_pipeline.js` | K3 | \|K3\| ≤ 3 % em todas as células | alta | falta |
 | A8 | PM P3, ST 3 | Bolhas não cabem com AVC 12 % e B = 100 %; bolhas tocam agregado | Estimar antes, limitar B e avisar (PT/EN); proibir semeadura encostada | pipeline + UI | K5, K6, K19 | K19 = 0; \|K5\| ≤ 5 % | média | falta |
 | A9 | PM P4, ST 5 | `placeFail` > 0 em 41 % dos casos | Resolvido na unificação (F1): a colocação nunca desiste | `25_protocolos.js` | placeFail | 0 | média | **feito** (placeFail = 0 por construção) |
-| A10 | PM P5 | K8 = 0,61 isolado | Passo de tempo pelo menor tamanho (pode já estar resolvido com F1) | `20_dem.js` | K8 | ≤ 0,10 | média | a medir |
+| A10 | PM P5 | K8 = 0,61 isolado | No smoke, `synth-gap-p2-20` ([W], esqueleto aberto) ainda tem K8 = 0,72 e K33 = 0,09 depois da A4 (antes 1,18 e 0,16): o [W] força a altura do AVC alvo mesmo quando o esqueleto não cabe. Avaliar avisar/limitar em vez de forçar | `25_protocolos.js` | K8, K33 | ≤ 0,10 | média | falta (causa identificada) |
 | A11 | PM P6 | K14 instável com k = 1 | Investigar k = 1 × k = 2; aviso de calibração de [W] junto do campo (PT/EN) | UI | K14 | 1,3–4 | média | falta |
 | A12 | ST 4 | Pedras grandes no molde pequeno: quadrantes desiguais | Resolve-se em parte com A3 (tamanho real) | — | K15 | ≤ 0,25 | baixa | depende de A3 |
 | A14 | novo (K30) | Topo com mais vazios que a base no protocolo [W] (golden: K30 = 0,46) | Investigar assimetria dos pistões (qual se move, ordem das fases) | `25_protocolos.js` | K30 | ≤ 0,15 | média | falta |
@@ -137,3 +138,18 @@ Golden e determinismo: passam antes e depois, com volumes idênticos (Vagg 52,32
 | invalid-top-sieve | inválido | inválido | — |
 
 Valores novos: K28 = 0 mm em 4 casos e 0,5 mm em 1 (pass): a correção das faces (A1) funciona. K13 máx 1,93 (< 2). Nenhum crash. Resultados em `stress/results/base_smoke.jsonl` e `after_smoke.jsonl`.
+
+### 2026-10-29 · A4 (PC, Node 24.11.1, núcleo C com 4 threads)
+
+Casos de `stress/grids/a4_k33.json` (Albayati, Marshall 1200 g, AVC livre, formas RT, λ 0,5, Pb 4 %, semente 2024), antes e depois, na mesma máquina:
+
+| escE | | AVC previsto | K33 | Penetração máx. | Pares > 2 % | Leito solto (AVC) |
+|---|---|---|---|---|---|---|
+| 0,005 | antes | 4,90 % | 0,0165 | 0,29 mm | 0 | 149,8 mm (60 %) |
+| 0,005 | depois | 2,83 % | **0,0036** | 0,05 mm | 0 | 108,2 mm (45 %) |
+| 0,002 | antes | 8,28 % | 0,0211 | 0,37 mm | 1 | 149,8 mm (60 %) |
+| 0,002 | depois | 4,89 % | **0,0034** | 0,04 mm | 0 | 108,2 mm (45 %) |
+
+- No vid1, o mesmo caso deu AVC 6,23 % e K33 0,081 antes da correção: Windows e Linux divergem bastante numa semente só (P7). Por isso a calibração precisa de 3 sementes.
+- Golden em JS: idêntico à referência (o [W] não chega a ter contato pedra-pedra). Smoke: só `synth-gap-p2-20` muda (K33 0,156 → 0,091).
+- Golden pelo núcleo C: volumes iguais aos do JS, mas a parede radial dá 9,27 (falha ± 2 pp) antes e depois → item M14.

@@ -1,0 +1,12 @@
+{
+  "name": "A4: penetração entre pedras (K33) nos piores casos da calibração (Albayati, Marshall 1200 g, AVC livre, λ 0,5, Pb 4 %)",
+  "base": {
+    "seed": 2024, "size": "m", "proto": "marshall", "avcMode": "livre", "lib": "RT",
+    "grad": [[19, 100], [12.5, 95], [9.5, 83], [4.75, 54], [2.36, 36], [0.3, 13], [0.075, 7]],
+    "ra": 2.65, "rb": 1.027, "grade": "50/70", "temp": 140, "avc": 4.8,
+    "bub": { "mode": "auto" }, "pb": 4.0, "mastic": { "lam": 0.5 }
+  },
+  "factors": {
+    "marshall": [{ "golpes": 75, "escE": 0.005 }, { "golpes": 75, "escE": 0.002 }]
+  }
+}

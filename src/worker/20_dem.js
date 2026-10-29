@@ -3,7 +3,8 @@
 // contra os semiplanos da outra, nos dois sentidos. Assim um grão não entra nos "buracos" de um aglomerado de esferas.
 // Distância g entre a superfície de pedra de A e a de B (g < 0: as pedras se interpenetram):
 //   g < film        mola mole kf da película de mastique (betume + fíler + finos < 2 mm), mais amortecimento
-//   g < 0           mola de pedra kn
+//   g < 0           mola de pedra kn·fk, com fk = max(1, sa·sb/(sa+sb)) (Hertz linearizado; sa, sb = Min Feret, parede: sb → ∞),
+//                   até a trava de 0,125 × Min Feret da menor pedra (A4: com kn e trava fixos, pedras grandes afundavam umas nas outras)
 //   g < film + lub  lubrificação viscosa, F = η·A·v / max(g, hmin) (Komaragiri et al. 2021), e coesão contra a separação
 // Unidades: mm, kg, s; força em mN; η em mN·s/mm² (1 Pa·s = 1e-3).
 const DEM_KN=1000,DEM_ZETA=0.3,DEM_HMIN=0.02,DEM_VMAX=5000;
@@ -155,7 +156,8 @@ let cand2=new Int32Array(1<<16),candPl2=new Int16Array(4<<16);
     const vn=vx*nx+vy*ny+vz*nz;
     let k=0,fn=0;
     if(g<film){k=S.kf;fn=S.kf*(film-g);}
-    if(g<0){k+=DEM_KN;fn+=DEM_KN*Math.min(-g,0.25);if(-g>maxov)maxov=-g;}
+    if(g<0){const sa=sc[a],fk=Math.max(1,b>=0?sa*sc[b]/(sa+sc[b]):sa),cap=0.125*(b>=0?Math.min(sa,sc[b]):sa);
+      k+=DEM_KN*fk;fn+=DEM_KN*fk*Math.min(-g,cap);if(-g>maxov)maxov=-g;}
     if(k<=0)return 0;
     const cn=2*DEM_ZETA*Math.sqrt(meff*k);
     fn-=cn*vn;if(fn<0)fn=0;

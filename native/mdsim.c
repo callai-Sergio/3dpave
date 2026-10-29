@@ -220,7 +220,9 @@ static double springRec(const Sim *S,int a,int b,double x,double y,double z,doub
   double v[3],ra[3],rb[3],meff;relVel(S,a,b,x,y,z,wvx,wvy,wvz,v,ra,rb,&meff);
   double vn=v[0]*nx+v[1]*ny+v[2]*nz,k=0,fn=0,pen=0;
   if(g<S->film){k=S->kf;fn=S->kf*(S->film-g);}
-  if(g<0){k+=KN;fn+=KN*mind(-g,0.25);pen=-g;}
+  /* A4: mola de pedra proporcional ao tamanho do contato (Hertz linearizado) e trava relativa à menor pedra; igual ao JS */
+  if(g<0){double sa=S->sc[a],fk=maxd(1,b>=0?sa*S->sc[b]/(sa+S->sc[b]):sa),cap=0.125*(b>=0?mind(sa,S->sc[b]):sa);
+    k+=KN*fk;fn+=KN*fk*mind(-g,cap);pen=-g;}
   f[0]=f[1]=f[2]=0;ta[0]=ta[1]=ta[2]=0;tb[0]=tb[1]=tb[2]=0;
   if(k<=0)return 0;
   double cn=2*ZETA*sqrt(meff*k);fn-=cn*vn;if(fn<0)fn=0;

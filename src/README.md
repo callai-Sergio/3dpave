@@ -25,6 +25,7 @@ O harness de estresse (`stress/engine.mjs`) carrega o worker direto de `src/work
 
 ## Modelo de contato (worker/20_dem.js)
 
+- **Mola de pedra por tamanho (A4).** kn × max(1, sa·sb/(sa+sb)) e trava em 0,125 × Min Feret da menor pedra, igual em `native/mdsim.c`.
 - **Forma de colisão = forma desenhada.** Os pontos de prova de uma partícula (vértices da casca e meios das arestas > 0,6 do Min Feret) são testados contra os semiplanos da casca da outra, nos dois sentidos. As esferas de [W] ficaram só para o raio envolvente.
 - **Lista de candidatos.** A varredura completa só roda quando algum ponto de prova andou mais que metade da margem (0,15 mm). Nos outros passos, só os candidatos próximos são avaliados.
 - **Película de mastique.** A espessura é 2·λ·M / área da casca de todos os agregados (λ = 0,6, como em Komaragiri et al. 2021). Dentro dela atuam:

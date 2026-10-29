@@ -13,7 +13,8 @@ import { runCase } from './engine.mjs';
 import { computeKPIs } from './kpi.mjs';
 
 const REF_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'golden_ref.json');
-const PLATFORM = `node ${process.version} ${process.platform}-${process.arch}`;
+// the C core (MD_NATIVE) gives slightly different trajectories than JS: it has its own reference
+const PLATFORM = `node ${process.version} ${process.platform}-${process.arch}${process.env.MD_NATIVE ? ' + C core' : ''}`;
 const EXACT = ['Vagg', 'Vmast', 'Vesq', 'Vbol', 'over'];
 
 const EXPECT = [ // [label, getter, expected, tolerance]

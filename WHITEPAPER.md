@@ -40,6 +40,7 @@ O desafio é a plausibilidade: o CP virtual precisa fechar volume e massa, não 
 
 ### 3.3 Contato e película de mastique (DEM)
 - A forma de colisão é a própria casca convexa: pontos de prova (vértices e meios de arestas) testados contra os semiplanos da outra casca, nos dois sentidos.
+- A mola de pedra cresce com o tamanho do contato, como num contato de Hertz linearizado: kn × max(1, sa·sb/(sa+sb)), com sa e sb os Min Feret (parede: sb → ∞). A força deixa de crescer só a 0,125 × Min Feret da menor pedra, uma trava contra normais trocadas. Antes, com kn e trava fixos (0,25 mm), as pedras grandes afundavam umas nas outras sob o golpe do soquete.
 - Película de mastique de espessura 2·λ·M / área total das cascas, com mola mole (kf = 0,05·kn), lubrificação viscosa F = η·A·v/h e coesão. A viscosidade η vem do betume na temperatura (A-VTS), corrigida pelo fíler e pelos finos (Krieger–Dougherty), como em Komaragiri et al. (2021).
 - As pedras do DEM são ~1000× mais moles que as reais; por isso a energia do soquete e a pressão do giratório entram escaladas. Essas escalas são os parâmetros calibrados.
 
@@ -82,7 +83,7 @@ Marshall em tamanho real (1200 g, Ø101,6 mm), Albayati 60/70 a 140 °C, formas 
 | 0,3 (padrão atual) | 0,005 | 0,9 / 0,2 / 0,8 / 0,1 | 3,7 pp |
 | **0,5** | **0,002** | **8,2 / 4,1 / 4,0 / 2,7** | **0,9 pp** |
 
-O melhor candidato é λ 0,5 com escala 0,002, mas ainda com uma semente só e penetração entre pedras (K33) de 6–8 %, acima do limite de 2 %. Ver os itens A4–A6 do backlog.
+O melhor candidato era λ 0,5 com escala 0,002, mas com uma semente só e penetração entre pedras (K33) de 6–8 %, acima do limite de 2 %. A correção do contato (A4) levou o K33 a ~0,3 % e baixou o AVC previsto em 2–3 pp, então esta tabela precisa ser refeita com 3 sementes (A5).
 
 Núcleo em C × JS: o golden bate (Vagg 52,30 × 52,32); 1,55× mais rápido com 1 núcleo, 3× com 8 e 5× com 24.
 
@@ -129,3 +130,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 | 2026-10-29 | Repositório git criado; backlog consolidado (`melhorias/BACKLOG.md`); Node 24.11.1 fixado no servidor (I1); plataforma gravada em cada resultado (I2); app com Ajuda, Referências e copyright (PT/EN); este whitepaper |
 | 2026-10-29 | Régua de medição corrigida (bloco 1 do backlog): K28 e K30 novos, K15 com N mínimo, K23 contando bolhas, K13 e K14 com limites úteis, K9 limpo, subidas da coluna registradas, golden por plataforma e K32. Achados: a correção das faces zera a camada sem vazios (K28 = 0); o protocolo [W] deixa o topo com mais vazios que a base (K30 = 0,46, item A14) |
 | 2026-10-29 | A3: Marshall só em tamanho real (1200 g, Ø101,6 mm) e giratório com Ø150 mm por padrão; o molde pequeno ficou só no protocolo [W] |
+| 2026-10-29 | A4: mola de pedra proporcional ao tamanho do contato e trava relativa (JS e C). Nos piores casos da calibração o K33 caiu de ~2 % para 0,3 %, o leito solto ficou mais denso (AVC 60 → 45 %) e o AVC previsto caiu 2–3 pp; a calibração será refeita |
