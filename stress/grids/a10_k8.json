@@ -1,0 +1,101 @@
+{
+ "name": "A10: [W] com esqueleto que não cabe no AVC alvo (K8/K33 altos depois da A7)",
+ "base": {},
+ "cases": [
+  {
+   "id": "synth-gap-p2-20",
+   "synth": {
+    "dmax": 12.5,
+    "p2": 20,
+    "shape": "gap"
+   },
+   "seed": 2024
+  },
+  {
+   "id": "S10|seed=11",
+   "avc": 12,
+   "pb": 3.5,
+   "synth": {
+    "dmax": 25,
+    "p2": 20,
+    "shape": "dense"
+   },
+   "size": "p",
+   "lib": "WG",
+   "seg": {
+    "on": true,
+    "k": 2
+   },
+   "bub": {
+    "mode": "off"
+   },
+   "seed": 11
+  },
+  {
+   "id": "S09|seed=23",
+   "avc": 2,
+   "pb": 3.5,
+   "synth": {
+    "dmax": 25,
+    "p2": 20,
+    "shape": "dense"
+   },
+   "size": "p",
+   "lib": "WL",
+   "seg": {
+    "on": false,
+    "k": 0
+   },
+   "bub": {
+    "mode": "manual",
+    "B": 100,
+    "BScmm": 3,
+    "BSh": 0.8
+   },
+   "seed": 23
+  },
+  {
+   "id": "S17|seed=11",
+   "avc": 2,
+   "pb": 3.5,
+   "synth": {
+    "dmax": 12.5,
+    "p2": 20,
+    "shape": "gap"
+   },
+   "size": "p",
+   "lib": "WL",
+   "seg": {
+    "on": false,
+    "k": 0
+   },
+   "bub": {
+    "mode": "off"
+   },
+   "seed": 11
+  },
+  {
+   "id": "S18|seed=37",
+   "avc": 12,
+   "pb": 3.5,
+   "synth": {
+    "dmax": 12.5,
+    "p2": 20,
+    "shape": "gap"
+   },
+   "size": "p",
+   "lib": "WG",
+   "seg": {
+    "on": true,
+    "k": 2
+   },
+   "bub": {
+    "mode": "manual",
+    "B": 100,
+    "BScmm": 3,
+    "BSh": 0.8
+   },
+   "seed": 37
+  }
+ ]
+}

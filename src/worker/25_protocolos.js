@@ -2,7 +2,7 @@
 // Todos partem da mesma coluna solta de partículas e devolvem o simulador com a base em z = 0 e a altura final.
 // AVC travado: se a compactação não chegou à altura H do AVC alvo, um ajuste com a mesma física (gravidade, atrito e
 // mastique) leva a placa de cima até H, e o esforço de ajuste fica registrado. AVC livre: a altura final é medida.
-const G_MM=9810;
+const G_MM=9810,W_PEN_STOP=0.1,W_HOLD=0.1;// mm: limite de aprovação do K8 (raio da menor partícula, 1 mm × 0,1); s
 
 // coluna solta: partículas em ordem aleatória, sem sobreposição dos raios envolventes. Quando não há lugar, a coluna sobe;
 // nenhuma partícula é colocada sobreposta (antes, a colocação desistia depois de 200 tentativas)
@@ -88,19 +88,23 @@ function protoW(S,cfg,comp,R,H,rec,r1){
     progress('mistura',(gap0-out.gap)/Math.max(gap0-gap50,1e-6),`Pistões · altura ${br(out.gap,1)} mm · AVC(Eq. 1) ${br(avcOf(out.gap),1)}%`);
   }
   if(PROBE)PROBE.phase1(tt,out.gap,gap50);
-  let tB=0,forced=false;const F0=5000,Frate=100000;
+  // A10: quando uma pedra entra mais de W_PEN_STOP em outra (K8), os pistões param e as pedras podem se rearranjar; se a
+  // penetração não cai em W_HOLD s, o esqueleto não cabe na altura do AVC alvo. O CP fica na altura em que travou, com o
+  // AVC medido, e o app avisa (em vez de forçar)
+  let tB=0,forced=false,stalled=false,hold=0;const F0=5000,Frate=100000;
   while(out.gap>H+1e-6){
-    const cap=F0+Frate*tB,vp=(out.fpist<cap||forced)?40:0;
+    const cap=F0+Frate*tB,vp=hold>0?0:(out.fpist<cap||forced)?40:0;
     out=S.run(chunk,{dt,gd:5,vp,gapT:H,fbn,t0:tt});tt+=chunk*dt;tB+=chunk*dt;
+    if(out.maxov>W_PEN_STOP){hold+=chunk*dt;if(hold>W_HOLD-1e-9){stalled=true;break;}}else hold=0;
     if(tB>1.5)forced=true;
     rec.snap(`Força nos pistões · AVC ${br(avcOf(out.gap),1)}%`);
     progress('compac',(gap50-out.gap)/Math.max(gap50-H,1e-6)*0.9,`Força nos pistões ${br(out.fpist/1000,1)} N (limite ${br(cap/1000,0)} N) · AVC ${br(avcOf(out.gap),1)}%`);
   }
   if(PROBE)PROBE.phase2(tB,forced,out.fpist,tt);
-  const nrel=Math.round(0.06/dt);
-  for(let k=0;k<nrel;k+=chunk){out=S.run(chunk,{dt,gd:8,vp:0,gapT:H,t0:tt});tt+=chunk*dt;progress('compac',0.9+0.1*k/nrel,'Acomodação');}
+  const nrel=Math.round(0.06/dt),gapR=stalled?S.zp-S.zb:H;
+  for(let k=0;k<nrel;k+=chunk){out=S.run(chunk,{dt,gd:8,vp:0,gapT:gapR,t0:tt});tt+=chunk*dt;progress('compac',0.9+0.1*k/nrel,'Acomodação');}
   rec.snap('Corpo de prova compactado',true);
-  return {out,forced,Hf:S.zp-S.zb,hist:[],locked:true,dH:forced?1:0};
+  return {out,forced,stalled,Hf:S.zp-S.zb,hist:[],locked:!stalled,dH:forced?1:0};
 }
 
 // a mistura com mastique é reunida numa massa solta (sem gravidade, como na bacia, até ~AVC 35%) e cai 20 mm no molde.

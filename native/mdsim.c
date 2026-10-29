@@ -26,6 +26,8 @@
 #define VMAX 5000.0
 #define CAND_MARGIN 0.15
 #define G_MM 9810.0
+#define W_PEN_STOP 0.1 /* mm: limite de aprovação do K8 (A10) */
+#define W_HOLD 0.1     /* s: tempo com o pistão parado antes de dar o esqueleto por travado */
 #define PI 3.14159265358979323846
 
 static double clampd(double x,double a,double b){return x<a?a:x>b?b:x;}
@@ -441,7 +443,7 @@ static double lockToH(Sim *S,double H,double dt,double *tt,double gz,double *dH)
 }
 
 /* [W]: mistura sem gravidade, pistões até AVC 50% e força crescente até o AVC alvo */
-typedef struct{double Hf,Hsolto,Hcomp,dH,maxov,p1t,p1gap,p1gap50,p2t,p2f,p2tEnd;int forced,locked;double info[10];}Res;
+typedef struct{double Hf,Hsolto,Hcomp,dH,maxov,p1t,p1gap,p1gap50,p2t,p2f,p2tEnd;int forced,locked,stalled;double info[10];}Res;
 static Res protoW(Sim *S,const Cfg *c,Rec *rec){
   Res R;memset(&R,0,sizeof R);R.Hsolto=-1;int n=S->n;double dt=c->dt;int chunk=(int)lround(0.005/dt);double area=PI*c->R*c->R/1000,Vsol=c->Vg+c->M;
   S->film=c->coat;S->kf=KN;S->eta=0;S->coh=0;S->mu=0;
@@ -456,17 +458,18 @@ static Res protoW(Sim *S,const Cfg *c,Rec *rec){
     snprintf(txt,sizeof txt,"Pistões · altura %s mm · AVC(Eq. 1) %s%%",br(b1,out.gap,1),br(b2,avcOf(c,out.gap),1));
     progress("mistura",(gap0-out.gap)/maxd(gap0-gap50,1e-6),txt,0);}
   R.p1t=tt;R.p1gap=out.gap;R.p1gap50=gap50;curPhase=2;
-  double tB=0;int forced=0;const double F0=5000,Frate=100000;
-  while(out.gap>c->H+1e-6){double cap=F0+Frate*tB;Opt o=opt0(dt,tt);o.gd=5;o.vp=(out.fpist<cap||forced)?40:0;o.gapT=c->H;o.fbn=fbn;
-    out=runT(S,chunk,&o);tt+=chunk*dt;tB+=chunk*dt;if(tB>1.5)forced=1;
+  /* A10: os pistões param quando uma pedra entra mais de W_PEN_STOP em outra e travam se ela não sai em W_HOLD s (igual a 25_protocolos.js) */
+  double tB=0,hold=0;int forced=0,stalled=0;const double F0=5000,Frate=100000;
+  while(out.gap>c->H+1e-6){double cap=F0+Frate*tB;Opt o=opt0(dt,tt);o.gd=5;o.vp=hold>0?0:(out.fpist<cap||forced)?40:0;o.gapT=c->H;o.fbn=fbn;
+    out=runT(S,chunk,&o);tt+=chunk*dt;tB+=chunk*dt;if(out.maxov>W_PEN_STOP){hold+=chunk*dt;if(hold>W_HOLD-1e-9){stalled=1;break;}}else hold=0;if(tB>1.5)forced=1;
     snprintf(txt,sizeof txt,"Força nos pistões · AVC %s%%",br(b1,avcOf(c,out.gap),1));recSnap(rec,S,txt,0);
     snprintf(txt,sizeof txt,"Força nos pistões %s N (limite %s N) · AVC %s%%",br(b1,out.fpist/1000,1),br(b2,cap/1000,0),br(b3,avcOf(c,out.gap),1));
     progress("compac",(gap50-out.gap)/maxd(gap50-c->H,1e-6)*0.9,txt,0);}
   R.p2t=tB;R.forced=forced;R.p2f=out.fpist;R.p2tEnd=tt;curPhase=3;
-  int nrel=(int)lround(0.06/dt);
-  for(int k=0;k<nrel;k+=chunk){Opt o=opt0(dt,tt);o.gd=8;o.gapT=c->H;out=runT(S,chunk,&o);tt+=chunk*dt;progress("compac",0.9+0.1*k/nrel,"Acomodação",0);}
+  int nrel=(int)lround(0.06/dt);double gapR=stalled?S->zp-S->zb:c->H;
+  for(int k=0;k<nrel;k+=chunk){Opt o=opt0(dt,tt);o.gd=8;o.gapT=gapR;out=runT(S,chunk,&o);tt+=chunk*dt;progress("compac",0.9+0.1*k/nrel,"Acomodação",0);}
   recSnap(rec,S,"Corpo de prova compactado",1);
-  R.Hf=S->zp-S->zb;R.Hcomp=R.Hf;R.locked=1;R.dH=forced?1:0;R.maxov=out.maxov;return R;
+  R.Hf=S->zp-S->zb;R.Hcomp=R.Hf;R.locked=!stalled;R.stalled=stalled;R.dH=forced?1:0;R.maxov=out.maxov;return R;
 }
 
 /* a mistura com mastique é reunida numa massa solta (sem gravidade, até ~AVC 35%) e cai 20 mm no molde */
@@ -609,11 +612,11 @@ int main(int argc,char **argv){
   /* saída: cabeçalho JSON + vetores binários */
   FILE *fo=fopen(argv[2],"wb");if(!fo){fprintf(stderr,"não gravei %s\n",argv[2]);return 1;}
   char *js=xmalloc(64+rec.nf*256+4096);int L=0;
-  L+=sprintf(js+L,"{\"n\":%d,\"nf\":%d,\"nhist\":%d,\"ntrace\":%d,\"Hf\":%.17g,\"Hsolto\":%.17g,\"Hcomp\":%.17g,\"dH\":%.17g,\"locked\":%d,\"forced\":%d,"
+  L+=sprintf(js+L,"{\"n\":%d,\"nf\":%d,\"nhist\":%d,\"ntrace\":%d,\"Hf\":%.17g,\"Hsolto\":%.17g,\"Hcomp\":%.17g,\"dH\":%.17g,\"locked\":%d,\"forced\":%d,\"stalled\":%d,"
     "\"maxov\":%.17g,\"zp\":%.17g,\"zs\":%.17g,\"tDem\":%.6g,\"vcap\":%ld,\"threads\":%d,"
     "\"p1\":{\"t\":%.17g,\"gap\":%.17g,\"gap50\":%.17g},\"p2\":{\"t\":%.17g,\"fpist\":%.17g,\"tEnd\":%.17g},"
     "\"pen\":{\"max\":%.17g,\"maxAbs\":%.17g,\"p99\":%.17g,\"nPairs\":%d,\"nBad\":%d},\"info\":[",
-    n,rec.nf,nhist,ntrace,R.Hf,R.Hsolto,R.Hcomp,R.dH,R.locked,R.forced,R.maxov,S->zp,zs,tDem,S->vcap,
+    n,rec.nf,nhist,ntrace,R.Hf,R.Hsolto,R.Hcomp,R.dH,R.locked,R.forced,R.stalled,R.maxov,S->zp,zs,tDem,S->vcap,
 #ifdef _OPENMP
     omp_get_max_threads(),
 #else

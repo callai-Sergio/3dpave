@@ -26,6 +26,7 @@ function runAll(cfg){
   const Vcp=areaC*H,AVCcp=100*(Vcp-Vsol)/Vcp;
   let warnC='';
   if(!C.locked&&AVCcp<0.3)warnC='Os golpes ou giros compactaram o esqueleto além do volume de sólidos: a película de mastique está fina demais para esta mistura (calibre em Avançado).';
+  if(C.stalled)warnC=`O esqueleto de agregados travou antes da altura do AVC alvo: os pistões pararam em AVC ${br(AVCcp,1)}% para não fazer as pedras entrarem umas nas outras. Esta granulometria não chega a ${br(cfg.avc,1)}% de vazios com este teor de ligante.`;
   const Vvoid0=Math.max(0.003*Vcp,Vcp-Vsol);
   if(!C.locked&&cfg.bub.mode==='auto')bub=Object.assign({mode:'auto'},eqW(NA1000,M1000,Math.max(AVCcp,0.5)));
   const tDem=(Date.now()-t0)/1000;
@@ -160,7 +161,7 @@ function runAll(cfg){
   // compactação: protocolo, curva altura × golpe/giro, modo de AVC, esforço de ajuste e penetração pela casca (K33)
   const Hs=C.Hsolto??null,Hc=C.Hcomp??C.Hf;
   st.comp={proto:cfg.proto||'w',locked:C.locked,AVCcp,Hf:C.Hf,Hsolto:Hs,Hcomp:Hc,AVCcomp:100*(areaC*Hc-Vsol)/(areaC*Hc),dH:C.dH,
-    esforco:Hs!=null&&Hs>H?C.dH/(Hs-H):(C.forced?1:0),hist:C.hist,info:C.info||null,raised:C.raised};
+    esforco:Hs!=null&&Hs>H?C.dH/(Hs-H):(C.forced?1:0),hist:C.hist,info:C.info||null,raised:C.raised,stalled:!!C.stalled};
   st.pen=C.pen;
   if(warnC)st.warn=(st.warn?st.warn+' ':'')+warnC;
 

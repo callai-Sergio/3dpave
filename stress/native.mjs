@@ -70,7 +70,7 @@ export function makeNativeCompactar({ bin, threads, probe, verbose }) {
     const I = H.info, proto = cfg.proto || 'w';
     const info = proto === 'marshall' ? { golpes: I[0], ns: I[1], v0: I[2], Mh: I[3], E: I[4], film: I[5], tFilm: I[6], AVCsolto: I[7], AVCcomp: I[8] }
       : proto === 'giratorio' ? { N: I[0], ns: I[1], Fp: I[2], ang: I[3], Tg: I[4], film: I[5], tFilm: I[6], AVCsolto: I[7], AVCcomp: I[8] } : null;
-    return { S, Ps, n, out: { maxov: H.maxov }, forced: !!H.forced, Hf: H.Hf, hist: H.hist, locked: !!H.locked, dH: H.dH,
+    return { S, Ps, n, out: { maxov: H.maxov }, forced: !!H.forced, stalled: !!H.stalled, Hf: H.Hf, hist: H.hist, locked: !!H.locked, dH: H.dH,
       Hsolto: H.Hsolto >= 0 && proto !== 'w' ? H.Hsolto : undefined, Hcomp: H.Hcomp, info, anim: H.anim, raised, pen: H.pen };
   };
 }

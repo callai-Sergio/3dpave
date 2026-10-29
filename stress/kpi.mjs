@@ -125,6 +125,7 @@ export function computeKPIs(run, spec = {}) {
   const ps = probeSummary(probe, probe.t0);
   // grid cylinder vs the analytic volume of the cylinder that was voxelized (height res.H). With free AVC that height is the
   // measured one, not the target's, so comp.V would mix the AVC result into K2/K3/K7 (M15)
+  const avcRef = st.comp && st.comp.stalled ? st.AVC : cfg.avc; // A10: the locked [W] specimen has its own AVC
   const scale = st.Vcil / (Math.PI * res.R * res.R * res.H / 1000);
   const rho = cfg.ra;
   // K4: worst fraction closure, in units of that fraction's largest particle
@@ -161,9 +162,9 @@ export function computeKPIs(run, spec = {}) {
     K22_heapPeakMB: ps.heapPeakMB,
     K23_meshTri: res.meshE.idx.length / 3 + (res.bubbles ? res.bubbles.length / 4 : 0) * 80, // M5: void mesh + bubble icosahedra (80 triangles each, as exported)
     K33_penMax: st.pen ? st.pen.max : null,
-    K28_voidlessLayer_mm: st.vface ? voidlessLayer(st.vface, cfg.avc) : null,
-    K30_topBotAsym: st.vface ? Math.abs(mean(st.vface.top) - mean(st.vface.bot)) / cfg.avc : null,
-    K16b_vertSpread: (Math.max(...vox.avcThirds) - Math.min(...vox.avcThirds)) / cfg.avc,
+    K28_voidlessLayer_mm: st.vface ? voidlessLayer(st.vface, avcRef) : null,
+    K30_topBotAsym: st.vface ? Math.abs(mean(st.vface.top) - mean(st.vface.bot)) / avcRef : null,
+    K16b_vertSpread: (Math.max(...vox.avcThirds) - Math.min(...vox.avcThirds)) / avcRef,
     K27_faceVoids: st.vprofile ? ((st.vprofile[0] + st.vprofile[19]) / 2) / Math.max(1e-9, mean(st.vprofile.slice(7, 13))) : null,
     K29_skelUniform: st.vagg ? mean(st.vagg.slice(7, 13)) / Math.max(1e-9, mean([...st.vagg.slice(1, 4), ...st.vagg.slice(16, 19)])) : null,
     KE_adjEffort: st.comp && st.comp.locked ? st.comp.esforco : null,
@@ -177,11 +178,15 @@ export function computeKPIs(run, spec = {}) {
   if (!(cfg.seg.on && cfg.seg.k > 0) || (run.msg && run.msg.proto && run.msg.proto !== 'w')) grades.K14_bathtub = 'na';
   // M4: with few void voxels per quadrant the CV is sampling noise; a calibrar (check the CV over 5 seeds)
   if (Math.min(...vox.quadThirdVoid) < K15_MIN_VOID_VOX) grades.K15_quadCV = 'na';
+  // A10: [W] stopped where the skeleton locked and the app warned; the AVC miss is the declared result, not an error
+  const skelLocked = !!(st.comp && st.comp.stalled);
+  if (skelLocked) grades.K1_avcErr_pp = 'na';
   const flags = {
     forced: k.K10_forced, phase1TimedOut: k.K11_phase1TimedOut, bubbleDeficit: !!st.warn,
     BfallbackEq3: !!res.bub.Bfallback, BScBShFallback: !!res.bub.fallback, placeFail: probe.placeFail,
     // placement no longer gives up (25_protocolos.js): it raises the drop column instead; M9 records how often
     raised: st.comp ? st.comp.raised ?? null : null,
+    skelLocked,
   };
   const breaks = Object.entries(grades).filter(([, g]) => g === 'break').map(([k]) => k);
   const warns = Object.entries(grades).filter(([, g]) => g === 'warn').map(([k]) => k);

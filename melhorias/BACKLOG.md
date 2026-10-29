@@ -62,7 +62,7 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | A7 | PM P2, ST 2 | Mastique +5–11 % com p2 = 20 | A hipótese da pintura não se confirmou: o mastique é o que sobra no cilindro. Causas reais: (1) o sorteio parava no 1º candidato grande demais e deixava a massa até 3,9 % abaixo do alvo; (2) sobreposição (10–100× menor desde F1/A4); (3) régua errada no AVC livre (M15). Correção: sortear outro candidato em vez de parar (até 200) e fechar com o mais próximo | `10_formas.js` | K3 | |K3| ≤ 3 % em todas as células | alta | **feito**: nos 11 casos de 250 g que quebravam, massa ±0,5 % (antes até −3,9 %), K4 ~10× menor; K3 6 pass + 5 warn (3,2–4,7 %, todos [W] com AVC 2 % forçado → A10). Golden: NA 578 → 569 (referência regravada) |
 | A8 | PM P3, ST 3 | Bolhas não cabem com AVC 12 % e B = 100 %; bolhas tocam agregado | Estimar antes, limitar B e avisar (PT/EN); proibir semeadura encostada | pipeline + UI | K5, K6, K19 | K19 = 0; \|K5\| ≤ 5 % | média | falta |
 | A9 | PM P4, ST 5 | `placeFail` > 0 em 41 % dos casos | Resolvido na unificação (F1): a colocação nunca desiste | `25_protocolos.js` | placeFail | 0 | média | **feito** (placeFail = 0 por construção) |
-| A10 | PM P5 | K8 = 0,61 isolado | No smoke, `synth-gap-p2-20` ([W], esqueleto aberto) ainda tem K8 = 0,72 e K33 = 0,09 depois da A4 (antes 1,18 e 0,16): o [W] força a altura do AVC alvo mesmo quando o esqueleto não cabe. Avaliar avisar/limitar em vez de forçar | `25_protocolos.js` | K8, K33 | ≤ 0,10 | média | falta (causa identificada) |
+| A10 | PM P5 | K8 = 0,61 isolado | No smoke, `synth-gap-p2-20` ([W], esqueleto aberto) ainda tinha K8 = 0,47 e K33 = 0,07 depois da A7: o [W] forçava a altura do AVC alvo mesmo quando o esqueleto não cabe. Agora o pistão para quando uma pedra entra > 0,1 mm em outra por 0,1 s, o CP fica com o AVC medido e o app avisa (PT/EN); JS e C | `25_protocolos.js`, `mdsim.c`, `40_pipeline.js`, `10_painel.js` | K8, K33 | ≤ 0,10 | média | **feito**: K8 0,10–0,13 (warn), K33 ≤ 0,024; golden idêntico. Novo núcleo C ainda não foi para o vid1 (a A5 está rodando) |
 | A11 | PM P6 | K14 instável com k = 1 | Investigar k = 1 × k = 2; aviso de calibração de [W] junto do campo (PT/EN) | UI | K14 | 1,3–4 | média | falta |
 | A12 | ST 4 | Pedras grandes no molde pequeno: quadrantes desiguais | Resolve-se em parte com A3 (tamanho real) | — | K15 | ≤ 0,25 | baixa | depende de A3 |
 | A14 | novo (K30) | Topo com mais vazios que a base no protocolo [W] (golden: K30 = 0,46) | Investigar assimetria dos pistões (qual se move, ordem das fases) | `25_protocolos.js` | K30 | ≤ 0,15 | média | falta |
@@ -181,3 +181,19 @@ Os 11 casos de 250 g em que o K3 quebrava na triagem (`stress/grids/a7_k3.json`)
 Os 5 warns têm sobreposição de 0,4–1 % (K7) e K33 alto: são casos [W] com AVC 2 % em que o pistão força a altura (A10). Golden: NA 569, demais valores dentro da tolerância, verdict warn (o K30 deixou de quebrar nesta semente). Smoke: sem crash.
 
 **Atenção:** a grade A5 no vid1 começou antes da A7 (sorteio antigo). Nos casos de 1200 g da calibração o déficit de massa era de até 0,74 %.
+
+### A10 (2026-10-29): [W] com esqueleto que não cabe no AVC alvo
+
+Grade `stress/grids/a10_k8.json` (os casos com K8 alto da A7 e do smoke), PC local, Node 24.11.1. Antes = `a7_after.jsonl` / `a7_smoke.jsonl`; depois = `a10_k8.jsonl`.
+
+| Caso | AVC alvo | K8 antes → depois | K33 antes → depois | AVC final |
+|---|---|---|---|---|
+| synth-gap-p2-20 | 4 | 0,473 → 0,105 | 0,070 → 0,013 | 12,5 % |
+| S09 s23 | 2 | 1,432 → 0,099 | 0,179 → 0,006 | 14,7 % |
+| S17 s11 | 2 | 1,154 → 0,125 | 0,161 → 0,019 | 16,6 % |
+| S18 s37 | 12 | 0,488 → 0,121 | 0,093 → 0,023 | 18,0 % |
+| S10 s11 | 12 | 0,224 → 0,125 | 0,048 → 0,024 | 13,2 % |
+
+Primeira versão (parar no primeiro passo acima de 0,1 mm): synth-gap ficava em AVC 13,0 %. Com a espera de 0,1 s para as pedras se rearranjarem, 12,5 %; nos demais o ganho foi pequeno, porque sem atrito e com o pistão parado a carga não sai do contato. O K8 final fica um pouco acima de 0,10 (warn) pela acomodação depois da parada.
+
+Golden e determinismo: idênticos (o limite nunca é atingido). Smoke (`a10_smoke.jsonl`): os outros 4 casos com KPIs idênticos. Continuam quebrando nos casos travados K5/K6/K19/K23: as bolhas da Eq. (3) não cabem com AVC de 12–18 % (A8). No harness, o K1 vira `na` quando o esqueleto trava (`flags.skelLocked`), e K16b/K28/K30 usam o AVC do CP.

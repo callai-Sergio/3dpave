@@ -54,6 +54,8 @@ O desafio é a plausibilidade: o CP virtual precisa fechar volume e massa, não 
 
 Moldes por protocolo: o Marshall só existe em tamanho real; o giratório usa Ø150 mm por padrão, com Ø102 mm como opção; o [W] usa 1000 g em Ø102 mm, como no paper, ou o CP rápido de 250 g em Ø65 mm.
 
+**Esqueleto que não cabe no [W] (A10):** o [W] leva os pistões até a altura do AVC alvo. Em granulometrias abertas ou com AVC alvo baixo, o esqueleto de pedras não cabe nessa altura, e antes o pistão empurrava as pedras umas para dentro das outras (até 1,4 mm de penetração, K8). Agora o pistão para quando uma pedra entra mais de 0,1 mm em outra e espera 0,1 s; se a penetração não cai, o CP fica na altura em que o esqueleto travou, com o AVC medido, e o app avisa (PT/EN). É uma diferença de [W]: o paper sempre chega ao AVC alvo. Nos casos que chegam ao alvo nada muda (golden idêntico bit a bit).
+
 Cada protocolo roda em dois modos: **AVC travado** (um ajuste final leva o CP à altura do AVC alvo, e o app mostra quanto da compactação veio desse ajuste) e **AVC livre** (a altura final define o AVC previsto).
 
 ### 3.5 Mastique e bolhas
@@ -93,6 +95,7 @@ Núcleo em C × JS: o golden bate (Vagg 52,30 × 52,32); 1,55× mais rápido com
 - As formas da Weibull truncada não reproduzem os maiores grãos de cada classe ([W] §5); as formas reais ainda são convexas (cascas).
 - A Eq. (3) de Awuah usa só M e NA: as propriedades previstas não veem a forma das pedras.
 - Peneiras intermediárias das faixas alemãs AC/PA aproximadas (conferir na TL Asphalt-StB 07/13).
+- Quando o esqueleto trava no [W] (A10), o AVC final fica acima do alvo e as bolhas da Eq. (3) às vezes não cabem (K5, K6): o encaixe das bolhas nesse caso é o item A8.
 - Pequenas diferenças entre plataformas (Node 22 × 24, Windows × Linux): compare sempre na mesma máquina e com Node 24.11.1.
 
 ## 7. Referências
@@ -133,3 +136,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 | 2026-10-29 | A3: Marshall só em tamanho real (1200 g, Ø101,6 mm) e giratório com Ø150 mm por padrão; o molde pequeno ficou só no protocolo [W] |
 | 2026-10-29 | A4: mola de pedra proporcional ao tamanho do contato e trava relativa (JS e C). Nos piores casos da calibração o K33 caiu de ~2 % para 0,3 %, o leito solto ficou mais denso (AVC 60 → 45 %) e o AVC previsto caiu 2–3 pp; a calibração será refeita |
 | 2026-10-29 | A7: o excesso de mastique em misturas graúdas vinha do sorteio (massa até 3,9 % abaixo do alvo) e de uma régua errada no AVC livre (M15), não da pintura. O sorteio fecha a massa em ±0,5 %; o golden passa a ter NA = 569 |
+| 2026-10-29 | A10: no [W], o pistão para quando o esqueleto trava, em vez de forçar as pedras umas dentro das outras (JS e C). Nos 5 casos que não cabiam no AVC alvo, o K8 caiu de 0,22–1,43 para 0,10–0,13 e o K33 de 5–21 % para 0,6–2,4 %; o AVC final fica entre 12,5 e 18 %, com aviso no app. Golden idêntico |

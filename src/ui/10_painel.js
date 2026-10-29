@@ -143,13 +143,14 @@ function renderCompaction(st){
   if(!C){el.innerHTML='<dt class="note" style="grid-column:1/-1">A compactação aparece quando a simulação terminar.</dt>';$('cchart').innerHTML='';$('vprof').innerHTML='';$('vprof-note').textContent='';return;}
   const pill=(v,ok,warn,txt)=>`<span class="pill ${ok?'ok':warn?'':'bad'}">${txt}</span>`,I=C.info||{},rows=[];
   const pname={marshall:'Marshall',giratorio:'Giratório (SGC)',w:'[W] pistões'}[C.proto];
-  rows.push(['Protocolo',pname],['Modo de AVC',C.locked?'travado':'livre']);
+  rows.push(['Protocolo',pname],['Modo de AVC',C.locked||C.stalled?'travado':'livre']);
   if(C.proto==='marshall')rows.push(['Golpes por face',I.ns<I.golpes?`${I.golpes} (${I.ns} simulados)`:fmt(I.golpes,0)]);
   if(C.proto==='giratorio')rows.push(['Giros',I.ns<I.N?`${I.N} (${I.ns} simulados)`:fmt(I.N,0)]);
   if(I.film!=null)rows.push(['Película de mastique (entre pedras)',fmt(I.film,2)+' mm']);
   if(C.Hsolto!=null)rows.push(['Altura solta, após a queda',`${fmt(C.Hsolto,1)} mm · AVC ${fmt(I.AVCsolto,1)}%`]);
   if(C.proto!=='w')rows.push([C.proto==='marshall'?'Altura após os golpes':'Altura após os giros',`${fmt(C.Hcomp,1)} mm · AVC ${fmt(C.AVCcomp,1)}%`]);
   if(C.locked){const e=C.esforco*100;rows.push(['AVC alvo',fmt(cfg.avc,1)+'%'],['Esforço de ajuste',pill(e,e<=10,e<=25,fmt(e,0)+'%')]);}
+  else if(C.stalled)rows.push(['AVC alvo',fmt(cfg.avc,1)+'%'],['AVC final (o esqueleto travou)',pill(0,false,false,fmt(C.AVCcp,2)+'%')]);
   else{const d=C.AVCcp-cfg.avc;rows.push(['AVC previsto',fmt(C.AVCcp,2)+'%'],['AVC de referência (campo AVC)',`${fmt(cfg.avc,1)}% · diferença ${d>=0?'+':''}${fmt(d,2)} pp`]);}
   if(st.pen){const p=st.pen.max*100;rows.push(['Penetração máx. entre pedras (K33)',pill(p,p<=2,p<=4,fmt(p,2)+'% do Min Feret')],['Pares acima de 2%',fmt(st.pen.nBad,0)]);}
   el.innerHTML=rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')+(C.locked&&C.esforco>0.25?'<dt class="warn" style="grid-column:1/-1">A maior parte da compactação veio do ajuste final: os golpes ou giros não chegaram perto do AVC alvo. Veja o modo livre ou a calibração em Avançado.</dt>':'');
