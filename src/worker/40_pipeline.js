@@ -170,7 +170,7 @@ function runAll(cfg){
   // compactação: protocolo, curva altura × golpe/giro, modo de AVC, esforço de ajuste e penetração pela casca (K33)
   const Hs=C.Hsolto??null,Hc=C.Hcomp??C.Hf;
   st.comp={proto:cfg.proto||'w',locked:C.locked,AVCcp,Hf:C.Hf,Hsolto:Hs,Hcomp:Hc,AVCcomp:100*(areaC*Hc-Vsol)/(areaC*Hc),dH:C.dH,
-    esforco:Hs!=null&&Hs>H?C.dH/(Hs-H):(C.forced?1:0),hist:C.hist,info:C.info||null,raised:C.raised,stalled:!!C.stalled};
+    esforco:Hs!=null&&Hs>H?C.dH/(Hs-H):(C.forced?1:0),hist:C.hist,info:C.info||null,raised:C.raised,stalled:!!C.stalled,motor:C.motor||{nome:'JS',threads:1}};
   st.pen=C.pen;
   if(warnC)st.warn=(st.warn?st.warn+' ':'')+warnC;
 

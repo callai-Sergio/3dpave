@@ -143,7 +143,7 @@ function renderCompaction(st){
   if(!C){el.innerHTML='<dt class="note" style="grid-column:1/-1">A compactação aparece quando a simulação terminar.</dt>';$('cchart').innerHTML='';$('vprof').innerHTML='';$('vprof-note').textContent='';return;}
   const pill=(v,ok,warn,txt)=>`<span class="pill ${ok?'ok':warn?'':'bad'}">${txt}</span>`,I=C.info||{},rows=[];
   const pname={marshall:'Marshall',giratorio:'Giratório (SGC)',w:'[W] pistões'}[C.proto];
-  rows.push(['Protocolo',pname],['Modo de AVC',C.locked||C.stalled?'travado':'livre']);
+  rows.push(['Protocolo',pname],['Motor da física',C.motor&&C.motor.nome==='C'?`C compilado · ${C.motor.threads} núcleos`:'JavaScript (navegador)'],['Modo de AVC',C.locked||C.stalled?'travado':'livre']);
   if(C.proto==='marshall')rows.push(['Golpes por face',I.ns<I.golpes?`${I.golpes} (${I.ns} simulados)`:fmt(I.golpes,0)]);
   if(C.proto==='giratorio')rows.push(['Giros',I.ns<I.N?`${I.N} (${I.ns} simulados)`:fmt(I.N,0)]);
   if(I.film!=null)rows.push(['Película de mastique (entre pedras)',fmt(I.film,2)+' mm']);
@@ -247,6 +247,7 @@ function generate(){
   try{worker=new Worker(getWorkerURL());}catch(e){running=false;showError('Não consegui iniciar o Web Worker: '+e.message);return;}
   worker.onmessage=ev=>{const m=ev.data;
     if(m.type==='progress')setStage(m.stage,m.pct,m.text);
+    else if(m.type==='nativo'){nativoPoll(m.on);if(m.erro)console.warn('mdsim falhou; a simulação segue em JavaScript:',m.erro);}
     else if(m.type==='sampled'){sampled=m;renderPanel();renderLegend();
       $('ptext').textContent=`${fmt(m.NA,0)} agregados sorteados (${fmt(m.NA*comp.k1000,0)} por 1000 g)`;}
     else if(m.type==='done'){running=false;result=Object.assign(m.res,{stone:cfg.lib});setStage('pronto',1,`Pronto em ${fmt(m.res.tTotal,0)} s`);
@@ -256,7 +257,24 @@ function generate(){
     else if(m.type==='error'){running=false;showError('Erro na simulação: '+m.message);}
   };
   worker.onerror=e=>{running=false;showError('Erro no worker: '+(e.message||'desconhecido'));};
-  worker.postMessage(workerMsg(cfg,comp));
+  const msg=workerMsg(cfg,comp);
+  nativoInfo().then(nat=>{if(nat)msg.native=nat;worker.postMessage(msg);});
+}
+// F10: no mini app Python (pacote/), o servidor local roda o núcleo em C (mdsim). Fora dele, native/info não existe e
+// a física roda em JavaScript
+let nativoCache;
+function nativoInfo(){
+  if(nativoCache!==undefined)return Promise.resolve(nativoCache);
+  if(!/^https?:$/.test(location.protocol))return Promise.resolve(nativoCache=null);
+  const base=new URL('.',location.href).href;
+  return fetch(base+'native/info').then(r=>r.ok?r.json():null).then(j=>nativoCache=j&&j.ok?{base,token:j.token,threads:j.threads}:null).catch(()=>nativoCache=null);
+}
+// enquanto o mdsim roda, o worker fica bloqueado; a página lê o progresso direto do servidor
+let nativoTimer=null;
+function nativoPoll(on){
+  clearInterval(nativoTimer);nativoTimer=null;if(!on||!nativoCache)return;
+  nativoTimer=setInterval(()=>fetch(`${nativoCache.base}native/progress?t=${encodeURIComponent(nativoCache.token)}`).then(r=>r.ok?r.json():null)
+    .then(p=>{if(p&&p.stage&&running)setStage(p.stage,p.pct,p.text);}).catch(()=>{}),400);
 }
 // mensagem ao worker (a mesma que o harness de estresse monta em stress/engine.mjs)
 function workerMsg(cfg,comp){

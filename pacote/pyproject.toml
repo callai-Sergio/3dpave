@@ -17,4 +17,4 @@ marshall-simulator = "marshall_simulator.app:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-marshall_simulator = ["web/*.html", "web/*.js", "web/*.txt"]
+marshall_simulator = ["web/*.html", "web/*.js", "web/*.txt", "bin/*"]

@@ -225,6 +225,14 @@ function protoGiratorio(S,cfg,comp,R,H,rec,r1){
 function compactar(cfg,P,lib,NA,comp){
   // no servidor o harness pode trocar a física pelo núcleo em C (native/mdsim.c), com o mesmo retorno
   if(PROBE&&PROBE.compactar)return PROBE.compactar(cfg,P,lib,NA,comp);
+  // no mini app (F10) o mdsim compilado faz a física do Marshall e do giratório (calibrados com ele, A5); o [W] fica em
+  // JavaScript até o C passar no golden (M14). Se o mdsim falhar, a mesma simulação segue em JavaScript
+  if(cfg.native&&!PROBE&&(cfg.proto==='marshall'||cfg.proto==='giratorio')){
+    post({type:'nativo',on:true});
+    try{return compactarNativo(cfg,P,lib,NA,comp,nativeSendXHR(cfg.native));}
+    catch(e){post({type:'nativo',on:false,erro:String(e&&e.message||e)});}
+    finally{post({type:'nativo',on:false});}
+  }
   const R=comp.R,H=comp.H,n=NA;
   const perm=[...Array(n).keys()],r1=makeRng(cfg.seed+1);
   for(let i=n-1;i>0;i--){const j=r1.int(i+1);[perm[i],perm[j]]=[perm[j],perm[i]];}

@@ -1,7 +1,9 @@
 """Janela do Marshall Simulator.
 
-Abre a interface (web/marshall_digital_app.html) numa janela própria com o pywebview. O motor
-(agregados, DEM, mastique e bolhas) roda no navegador embutido (WebView2 no Windows).
+Abre a interface (web/marshall_digital_app.html) numa janela própria com o pywebview (WebView2 no Windows).
+Um servidor local serve a página e o núcleo em C (bin/mdsim): no Marshall e no giratório, a física da compactação
+roda compilada, com todos os núcleos; formas, mastique e bolhas continuam na página. Sem o mdsim para este
+sistema, a física roda em JavaScript na página.
 Sem o pywebview, ou com --browser, abre a mesma interface no navegador padrão.
 """
 import base64
@@ -9,16 +11,22 @@ import functools
 import http.server
 import json
 import os
-import socketserver
+import secrets
+import subprocess
 import sys
+import tempfile
 import threading
 import webbrowser
+from urllib.parse import parse_qs, urlparse
 
-WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web')
+AQUI = os.path.dirname(os.path.abspath(__file__))
+WEB = os.path.join(AQUI, 'web')
+MDSIM = os.path.join(AQUI, 'bin', 'mdsim.exe' if os.name == 'nt' else 'mdsim')
 HTML = 'marshall_digital_app.html'
 TITULO = 'Marshall Simulator'
 DADOS = os.environ.get('MARSHALL_SIM_DIR') or os.path.join(os.path.expanduser('~'), '.marshall_simulator')
 CURVAS = os.path.join(DADOS, 'minhas_curvas.json')
+NUCLEOS = os.cpu_count() or 1
 
 
 class Api:
@@ -53,36 +61,112 @@ class Api:
         return caminho
 
 
-def abrir_no_navegador():
-    """Alternativa sem dependências: servidor local e navegador padrão."""
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=WEB)
-    handler.log_message = lambda *a: None
-    with socketserver.TCPServer(('127.0.0.1', 0), handler) as srv:
-        url = f'http://127.0.0.1:{srv.server_address[1]}/{HTML}'
-        print(f'{TITULO}: abrindo {url} no navegador. Feche com Ctrl+C.')
-        threading.Timer(0.5, webbrowser.open, (url,)).start()
-        try:
-            srv.serve_forever()
-        except KeyboardInterrupt:
+class Nativo:
+    """Roda o mdsim (uma simulação por vez) e guarda a última linha de progresso que ele escreve."""
+
+    def __init__(self):
+        self.token = secrets.token_urlsafe(16)
+        self.ok = os.path.exists(MDSIM)
+        self.trava = threading.Lock()
+        self.progresso = {}
+
+    def rodar(self, entrada):
+        with self.trava, tempfile.TemporaryDirectory(prefix='mdsim-') as d:
+            fin, fout = os.path.join(d, 'in.bin'), os.path.join(d, 'out.bin')
+            with open(fin, 'wb') as f:
+                f.write(entrada)
+            self.progresso = {}
+            flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+            p = subprocess.Popen([MDSIM, fin, fout, str(NUCLEOS)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                 creationflags=flags)
+            erro = []
+            # o mdsim escreve "P<tab>etapa<tab>fração<tab>texto" a cada passo; o resto é mensagem de erro
+            for linha in iter(p.stderr.readline, b''):
+                partes = linha.decode('utf-8', 'replace').rstrip('\r\n').split('\t')
+                if len(partes) == 4 and partes[0] == 'P':
+                    self.progresso = {'stage': partes[1], 'pct': float(partes[2]), 'text': partes[3]}
+                else:
+                    erro.append('\t'.join(partes))
+            if p.wait() != 0:
+                raise RuntimeError(f'mdsim terminou com código {p.returncode}: {" ".join(erro)[-500:]}')
+            with open(fout, 'rb') as f:
+                return f.read()
+
+
+def servidor(nativo, porta=0):
+    """Servidor local: a pasta web e, em native/, o núcleo em C. O token impede que outra página use o mdsim."""
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *a, **k):
+            super().__init__(*a, directory=WEB, **k)
+
+        def log_message(self, *a):
             pass
+
+        def _json(self, obj, code=200):
+            corpo = json.dumps(obj).encode('utf-8')
+            self.send_response(code)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(corpo)))
+            self.end_headers()
+            self.wfile.write(corpo)
+
+        def _token_ok(self):
+            return parse_qs(urlparse(self.path).query).get('t', [''])[0] == nativo.token
+
+        def do_GET(self):
+            rota = urlparse(self.path).path
+            if rota == '/native/info':
+                return self._json({'ok': nativo.ok, 'token': nativo.token, 'threads': NUCLEOS})
+            if rota == '/native/progress':
+                return self._json(nativo.progresso if self._token_ok() else {}, 200 if self._token_ok() else 403)
+            return super().do_GET()
+
+        def do_POST(self):
+            if urlparse(self.path).path != '/native/mdsim' or not self._token_ok() or not nativo.ok:
+                return self._json({'erro': 'não autorizado'}, 403)
+            entrada = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+            try:
+                saida = nativo.rodar(entrada)
+            except Exception as e:  # o worker cai para o JavaScript
+                return self._json({'erro': str(e)}, 500)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/octet-stream')
+            self.send_header('Content-Length', str(len(saida)))
+            self.end_headers()
+            self.wfile.write(saida)
+
+    srv = http.server.ThreadingHTTPServer(('127.0.0.1', porta), Handler)
+    srv.daemon_threads = True
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, f'http://127.0.0.1:{srv.server_address[1]}/{HTML}'
 
 
 def main():
     if not os.path.exists(os.path.join(WEB, HTML)):
         sys.exit(f'Não encontrei {HTML} em {WEB}. Reinstale o pacote.')
-    if '--browser' in sys.argv[1:]:
-        abrir_no_navegador()
-        return
+    nativo = Nativo()
+    srv, url = servidor(nativo)
+    motor = f'núcleo em C com {NUCLEOS} núcleos' if nativo.ok else 'JavaScript (sem o mdsim para este sistema)'
+    print(f'{TITULO}: física do Marshall e do giratório em {motor}.')
     try:
         import webview
     except ImportError:
+        webview = None
         print('pywebview não está instalado (pip install pywebview); usando o navegador.')
-        abrir_no_navegador()
+    if webview is None or '--browser' in sys.argv[1:]:
+        print(f'{TITULO}: abrindo {url} no navegador. Feche com Ctrl+C.')
+        threading.Timer(0.5, webbrowser.open, (url,)).start()
+        try:
+            threading.Event().wait()
+        except KeyboardInterrupt:
+            pass
+        srv.shutdown()
         return
-    os.chdir(WEB)  # o servidor interno do pywebview serve arquivos relativos a esta pasta
     api = Api()
-    api._janela = webview.create_window(TITULO, HTML, js_api=api, width=1440, height=920, min_size=(900, 640))
-    webview.start(http_server=True)
+    api._janela = webview.create_window(TITULO, url, js_api=api, width=1440, height=920, min_size=(900, 640))
+    webview.start()
+    srv.shutdown()
 
 
 if __name__ == '__main__':
