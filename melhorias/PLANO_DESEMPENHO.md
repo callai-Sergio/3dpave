@@ -69,6 +69,8 @@ Cada mudança é um commit com o ID abaixo e o tempo antes/depois no `BACKLOG.md
 
 **Meta da Fase 1:** de ~5,7 para ~2,5 ms/passo com 16 threads. Marshall com todos os golpes: **26 → ~11 min no PC**.
 
+**Feito (2026-10-30):** S2a–S2e e S2g como acima; a S2f virou `buildPairs` em paralelo com a mesma ordem (a região única por passo valeria < 2 %); mais dois itens de categoria I vindos da régua: S2m (soma por partícula pelos pares, sem CSR de candidatos) e S2n (candidatos em faixas fixas por par; a varredura parcial regrava só os pares revarridos). No caso do perfil, 4 threads: 400,8 → 202,6 s (3,70 → 1,87 ms/passo), saída bit a bit igual com 1 e 4 threads e com as duas flags. Medições em `BACKLOG.md` ("S2 Fase 1").
+
 ## 4. Fase 2: mesmo modelo, menos trabalho (categoria II)
 
 | ID | Mudança | Onde | Ganho esperado |

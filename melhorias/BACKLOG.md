@@ -91,7 +91,8 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | ID | Origem | Mudança | Prova | Prio | Status |
 |---|---|---|---|---|---|
 | S2 | BR §6.6 | Paralelizar ou reduzir `buildPairs`, CSR e cópias da varredura em `mdsim.c` | C × JS bate; escala > 5× com 24 núcleos | **alta** (com F10) | falta. Medido 2026-10-30: Marshall 1200 g leva 1554 s com 16 threads no PC e 1613 s com 4 no vid1, ou seja, quase não escala |
-| S2a–S2g | plano de desempenho, Fase 1 | Núcleo C sem mudar o resultado: varredura parcial sem cópia e CSR em paralelo, candidatos sem força marcados, conferência de movimento por partícula, SoA/SIMD em `probeIn`, uma região OpenMP por passo, `penetration` paralela; timers atrás de `MD_PROF` | referência C bit a bit com 1, 4 e 16 threads | **alta** | falta. Ver `melhorias/PLANO_DESEMPENHO.md` (perfil: varredura de candidatos = 48 % do tempo, refeita em 79 % dos passos) |
+| S2a–S2g | plano de desempenho, Fase 1 | Núcleo C sem mudar o resultado: varredura parcial sem cópia e CSR em paralelo, candidatos sem força marcados, conferência de movimento por partícula, SoA/SIMD em `probeIn`, uma região OpenMP por passo, `penetration` paralela; timers atrás de `MD_PROF` | referência C bit a bit com 1, 4 e 16 threads | **alta** | **feito** (2026-10-30), com uma troca: a "região OpenMP por passo" (S2f) não entrou — medida com a régua, as aberturas de região e as somas seriais ficam abaixo de 2 % do passo; no lugar, o `buildPairs` passou a rodar em paralelo com a mesma ordem de pares. Saída bit a bit igual à do código anterior em 4 casos (Marshall 250 g livre e travado, [W] 250 g, giratório 1000 g) × 2 flags (`-march=native`, `-march=x86-64-v2` do pacote) × 1 e 4 threads, e no caso do perfil (1200 g). Marshall 1200 g (5 golpes/face, 4 threads): 400,8 → 202,6 s (1,98×). Ver "S2 Fase 1" nas medições. 16 threads não foi conferido aqui (VM de 4 núcleos) |
+| S2m, S2n | perfil da S2a | Extras de categoria I: o laço por partícula percorre os candidatos pelos pares (mesma ordem) e o CSR partícula → candidato deixa de existir (S2m); candidatos em faixas fixas por par, e a varredura parcial regrava só os pares revarridos (S2n) | referência C bit a bit; o rearranjo das faixas exercido com folga 0 e 2 | alta | **feito** (2026-10-30): varredura parcial do caso do perfil 154,6 → 28,6 s |
 | S2h–S2l | plano de desempenho, Fase 2 | Molas somadas por par (sem CSR de candidatos), `buildPairs` com grade fina e paralelo, folgas maiores, coluna inicial mais densa, queda mais curta | calibração reduzida (12 rodadas) dentro do ruído | **alta** | falta |
 | S5 | BR §6.7 | WebAssembly no navegador; botão "Abrir resultado do servidor" | Ø150 em tempo aceitável; K32 | baixa | falta |
 | S6 | BR §6.8 | Escala de massa; fim do golpe pelo repouso | K12, tempo | baixa | falta |
@@ -235,6 +236,26 @@ Grade `stress/grids/a11_segk.json`, PC local, Node 24.11.1, [W], AVC travado →
 | 1000 g | 2 | 3,70 · 2,92 | 3,31 | 0,39 | 23,4 / 7,16 | 0,46 |
 
 No CP de 250 g uma única faixa da borda vai de 2,5 a 29,7 % de vazios entre sementes: são cordas do círculo com poucos voxels. Mais força tira vazios do miolo (3,5 → 2,0 %) e não muda a borda. Em 1000 g o K14 é estável. Decisão: manter k = 1 e avisar no app. Não mexi no KPI; uma alternativa futura é medir a banheira em anéis (raio) em vez de faixas do diâmetro.
+
+### S2 Fase 1 (2026-10-30): núcleo C 2× mais rápido com o mesmo resultado
+
+Régua: `MD_PROF=1` imprime no stderr o tempo por etapa e as contagens (S2a; no harness, `MD_PROF=1 MD_VERBOSE=1`). Caso do perfil (Marshall 1200 g, 5 golpes simulados por face, semente 2024, 108 250 passos, 2244 partículas, ~12 mil pares e ~61 mil candidatos por passo), VM de nuvem com 4 núcleos, `gcc -O3 -march=native -fopenmp`, uma rodada de cada vez. A base (S2a) foi medida de novo nas mesmas condições: 400,8 s (o perfil de 487 s do plano foi tirado com a máquina dividida; esta VM oscila, e as etapas curtas — rotações, integração — são as que mais sentem). A saída (posições, orientações, quadros, histórico, traço e penetração) é idêntica bit a bit à do código anterior em todos os casos conferidos, com 1 e 4 threads e com as duas flags (native e x86-64-v2).
+
+| Etapa | Antes (S2a) | Depois (S2n) | |
+|---|---|---|---|
+| Lista de pares (`buildPairs`, 3227 vezes) | 19,9 s | 5,9 s | S2f: paralelo com a mesma ordem |
+| Rotações + conferência de movimento | 12,5 + 8,5 s | 12,6 s | S2d: limite por partícula antes de olhar os pontos |
+| Varredura completa (3228 vezes) | 46,6 s | 29,1 s | S2b, S2e, S2m |
+| Varredura parcial (85 602 vezes) | 154,6 s (33,8 s seriais) | 28,6 s | S2b, S2m, S2n: sem cópia dos 61 mil candidatos, sem CSR, pares revarridos distribuídos |
+| Forças por par | 95,0 s | 73,7 s | S2c: sem zerar 80 B por candidato |
+| Forças por partícula | 57,5 s | 47,6 s | S2c, S2d (paredes só para grãos perto delas) |
+| Integração e somas | 5,8 s | 5,0 s | |
+| **Total do DEM, 4 threads** | **400,8 s (3,70 ms/passo)** | **202,6 s (1,87 ms/passo)**; repetição 204,1 s | **1,98×** |
+| Total do DEM, 1 thread | ~920 s (4 threads = 2,3× uma, no plano) | 687,3 s (6,35 ms/passo) | 4 threads = **3,4×** uma thread |
+
+Por item, nos casos pequenos (4 threads salvo nota; tempos de parede, sujeitos à oscilação da VM): S2b m250 1 thread 99,6 → 94,3 s (a parte serial da varredura, 3,6 s, some); S2d w250 24 → 16 s e m250 1 thread 94 → 84 s; S2e m250 1 thread 83,5 → 80,6 s; S2f g1000 142 → 128 s; S2g penetração < 1 s; S2m g1000 128 → 121 s; S2n g1000 varredura parcial 17,6 → 15,3 s (no 1200 g, 92 → 29 s).
+
+Cuidado com o número de threads: com mais threads que núcleos as barreiras do OpenMP (espera ativa) ficam muito lentas — nesta VM de 4 núcleos, uma rodada de 4 threads com um processo a mais ao lado levou 15× o tempo. O app chama o `mdsim` com 20 núcleos; num PC de 16 threads o certo é ≤ 16 (ou `OMP_WAIT_POLICY=passive`). Fica como item de acompanhamento na F10.
 
 ### F10 e S2 (2026-10-30): núcleo em C no app e onde vai o tempo
 
