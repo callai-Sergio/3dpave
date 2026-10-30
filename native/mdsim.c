@@ -77,7 +77,8 @@ typedef struct{
   double *pos,*q,*vel,*w,*Rm,*F,*T,*FL,*TL,*Cs,*posB,*kdir,*keI,*fbI,*ftI,*ovI;
   unsigned char *stale;
   int *pairs,npairs,capPairs;int *pStart,*pList; /* CSR partícula → pares */
-  int *cand,ncand,capCand;short *candPl;int *candPS,capPS; /* candidatos [par, lado, ponto] agrupados por par */
+  int *cand,ncand,capCand;short *candPl;int *candPS,capPS; /* candidatos [par, lado, ponto] em faixas por par: início candPS, usados candN, folga candCap (S2n) */
+  int *candN,*candCap,*candN2;long nRelayout;
   int *cand2,capCand2;short *candPl2;int *candPS2;unsigned char *pairSt,*bufT;int *bufO,*work; /* S2b: segundo jogo (troca de ponteiros); par revarrido: marca, bloco e posição; lista de trabalho */
   double *candF;int capCandF;unsigned char *candOn;     /* por candidato: fA[3], tA[3], tB[3], pen; candOn = registro com força (S2c) */
   void *bufs;int nbufs;                                 /* blocos por núcleo da varredura, persistentes (S2b) */
@@ -155,7 +156,7 @@ static void buildPairs(Sim *S,double skin){
   int *fill=xmalloc(sizeof(int)*n);for(int i=0;i<n;i++)fill[i]=S->pStart[i];
   for(int p=0;p<S->npairs;p++){S->pList[fill[S->pairs[2*p]]++]=2*p;S->pList[fill[S->pairs[2*p+1]]++]=2*p+1;}
   free(fill);
-  if(S->npairs+1>S->capPS){S->capPS=2*S->npairs+2;S->candPS=xrealloc(S->candPS,sizeof(int)*S->capPS);S->candPS2=xrealloc(S->candPS2,sizeof(int)*S->capPS);S->pairSt=xrealloc(S->pairSt,S->capPS);S->bufT=xrealloc(S->bufT,S->capPS);S->bufO=xrealloc(S->bufO,sizeof(int)*S->capPS);S->work=xrealloc(S->work,sizeof(int)*S->capPS);}
+  if(S->npairs+1>S->capPS){S->capPS=2*S->npairs+2;S->candPS=xrealloc(S->candPS,sizeof(int)*S->capPS);S->candPS2=xrealloc(S->candPS2,sizeof(int)*S->capPS);S->candN=xrealloc(S->candN,sizeof(int)*S->capPS);S->candCap=xrealloc(S->candCap,sizeof(int)*S->capPS);S->candN2=xrealloc(S->candN2,sizeof(int)*S->capPS);S->pairSt=xrealloc(S->pairSt,S->capPS);S->bufT=xrealloc(S->bufT,S->capPS);S->bufO=xrealloc(S->bufO,sizeof(int)*S->capPS);S->work=xrealloc(S->work,sizeof(int)*S->capPS);}
   if(S->npairs>S->capPairF){S->capPairF=2*S->npairs+16;S->pairF=xrealloc(S->pairF,sizeof(double)*10*S->capPairF);
     S->pairG=xrealloc(S->pairG,sizeof(double)*S->capPairF);S->pairD=xrealloc(S->pairD,sizeof(double)*6*S->capPairF);S->pairOn=xrealloc(S->pairOn,S->capPairF);}
   memcpy(S->posB,S->pos,sizeof(double)*3*n);S->candStale=1;S->built=1;S->builtRange=S->pairRange;
@@ -216,6 +217,9 @@ static void scanPair(const Sim *S,int p,double rr,Buf *B){
       if(!probeIn(S,Bp,X[k],Y[k],Z[k],rr,&h,top4))continue;
       bufPush(B,p,side,k,top4);}}
 }
+#ifndef CAND_SLACK
+#define CAND_SLACK 16 /* folga da faixa de cada par; com -DCAND_SLACK=0 o rearranjo acontece a cada crescimento (teste) */
+#endif
 static void scanCandidates(Sim *S,double range,int full){
   double rr=range+CAND_MARGIN;int np=S->npairs,n=S->n;
   int nt=1;
@@ -226,7 +230,8 @@ static void scanCandidates(Sim *S,double range,int full){
   /* blocos por núcleo persistentes (S2b): nada é liberado entre varreduras */
   if(nt>S->nbufs){S->bufs=xrealloc(S->bufs,sizeof(Buf)*nt);memset((Buf*)S->bufs+S->nbufs,0,sizeof(Buf)*(nt-S->nbufs));
     for(int t=S->nbufs;t<nt;t++){Buf *B=(Buf*)S->bufs+t;B->sA=xmalloc(sizeof(double)*(S->maxNpr+8));B->sB=xmalloc(sizeof(double)*(S->maxNpr+8));}S->nbufs=nt;}
-  Buf *bufs=(Buf*)S->bufs;int *nPS=S->candPS2,*work=S->work,*bufO=S->bufO;unsigned char *bufT=S->bufT,*pairSt=S->pairSt;int tsum[256];int tot=0,nwork=0;
+  Buf *bufs=(Buf*)S->bufs;int *slot=S->candPS,*cnt=S->candN,*cap=S->candCap,*ncnt=S->candN2,*nslot=S->candPS2,*work=S->work,*bufO=S->bufO;
+  unsigned char *bufT=S->bufT,*pairSt=S->pairSt;int tsum[256];int tot=0,nwork=0,over=0,nc=0;
   #pragma omp parallel num_threads(nt)
   {
     int tid=0,ntA=1;
@@ -234,56 +239,66 @@ static void scanCandidates(Sim *S,double range,int full){
     tid=omp_get_thread_num();ntA=omp_get_num_threads();
 #endif
     int p0=(int)((long)np*tid/ntA),p1=(int)((long)np*(tid+1)/ntA);Buf *B=&bufs[tid];B->n=0;
-    /* A. pares sem mudança só contam; os que precisam de varredura entram na lista de trabalho (a ordem da lista não importa:
-       cada par revarrido anota em que bloco e posição ficou, e a cópia abaixo segue a ordem dos pares) */
+    /* A. pares que precisam de varredura (todos, na completa; os com partícula que andou, na parcial) são varridos em
+       blocos por núcleo, distribuídos dinamicamente; cada par anota em que bloco e posição ficou e quantos candidatos tem */
     if(full){
       #pragma omp for schedule(dynamic,64)
-      for(int p=0;p<np;p++){int n0=B->n;scanPair(S,p,rr,B);nPS[p]=B->n-n0;bufT[p]=(unsigned char)tid;bufO[p]=n0;pairSt[p]=1;}
+      for(int p=0;p<np;p++){int n0=B->n;scanPair(S,p,rr,B);ncnt[p]=B->n-n0;bufT[p]=(unsigned char)tid;bufO[p]=n0;pairSt[p]=1;}
     }else{
       for(int p=p0;p<p1;p++){
-        if(!S->stale[S->pairs[2*p]]&&!S->stale[S->pairs[2*p+1]]){pairSt[p]=0;nPS[p]=S->candPS[p+1]-S->candPS[p];}
+        if(!S->stale[S->pairs[2*p]]&&!S->stale[S->pairs[2*p+1]])pairSt[p]=0;
         else{pairSt[p]=1;int w;
           #pragma omp atomic capture
           w=nwork++;
           work[w]=p;}}
       #pragma omp barrier
       int chunk=nwork/(ntA*8);if(chunk<1)chunk=1;
-      #pragma omp for schedule(dynamic,chunk)
-      for(int w=0;w<nwork;w++){int p=work[w],n0=B->n;scanPair(S,p,rr,B);nPS[p]=B->n-n0;bufT[p]=(unsigned char)tid;bufO[p]=n0;}
+      #pragma omp for schedule(dynamic,chunk) reduction(|:over)
+      for(int w=0;w<nwork;w++){int p=work[w],n0=B->n,m;scanPair(S,p,rr,B);m=B->n-n0;ncnt[p]=m;bufT[p]=(unsigned char)tid;bufO[p]=n0;if(m>cap[p])over=1;}
     }
-    /* prefixo dos deslocamentos: cada núcleo soma a sua faixa de pares; depois a base de cada faixa */
-    int cnt=0;for(int p=p0;p<p1;p++)cnt+=nPS[p];
-    tsum[tid]=cnt;
-    #pragma omp barrier
-    int base=0;for(int t=0;t<tid;t++)base+=tsum[t];
-    int off=base;for(int p=p0;p<p1;p++){int m=nPS[p];nPS[p]=off;off+=m;}
-    int endOff=off;
-    if(tid==ntA-1)nPS[np]=off;
-    #pragma omp barrier
-    #pragma omp single
-    {tot=nPS[np];
-      if(tot>S->capCand2){free(S->cand2);free(S->candPl2);S->capCand2=tot+tot/2+256;S->cand2=xmalloc(sizeof(int)*3*S->capCand2);S->candPl2=xmalloc(sizeof(short)*4*S->capCand2);}
-      if(tot>S->capCandF){free(S->candF);free(S->candOn);S->capCandF=tot+tot/2+256;S->candF=xmalloc(sizeof(double)*10*S->capCandF);S->candOn=xmalloc(S->capCandF);}}
-    /* B. cópia em blocos contíguos: sequências de pares sem mudança vêm do jogo anterior; pares revarridos, do bloco onde foram varridos */
-    int *c2=S->cand2;short *pl2=S->candPl2;
-    for(int p=p0;p<p1;){int q=p+1,d0=nPS[p],m;
-      if(pairSt[p]){int t=bufT[p],o0=bufO[p],o=o0+((q<p1?nPS[q]:endOff)-d0);
-        while(q<p1&&pairSt[q]&&bufT[q]==t&&bufO[q]==o){int e=(q+1<p1?nPS[q+1]:endOff);o+=e-nPS[q];q++;}
-        m=o-o0;if(m){memcpy(c2+3*d0,bufs[t].c+3*o0,sizeof(int)*3*m);memcpy(pl2+4*d0,bufs[t].pl+4*o0,sizeof(short)*4*m);}}
-      else{while(q<p1&&!pairSt[q])q++;m=(q<p1?nPS[q]:endOff)-d0;
-        if(m){int s0=S->candPS[p];memcpy(c2+3*d0,S->cand+3*s0,sizeof(int)*3*m);memcpy(pl2+4*d0,S->candPl+4*s0,sizeof(short)*4*m);}}
-      p=q;}
-    #pragma omp barrier
-    #pragma omp single
-    {int *ti=S->cand;S->cand=S->cand2;S->cand2=ti;short *ts=S->candPl;S->candPl=S->candPl2;S->candPl2=ts;int tc=S->capCand;S->capCand=S->capCand2;S->capCand2=tc;
-      ti=S->candPS;S->candPS=S->candPS2;S->candPS2=ti;S->ncand=tot;}
+    if(full||over){
+      /* B. novo arranjo das faixas (S2n): par revarrido ganha faixa com folga; os outros mantêm a sua. Deslocamentos por
+         prefixo (cada núcleo soma a sua faixa de pares) e cópia: sequências de pares sem mudança vêm do jogo anterior
+         num memcpy só (faixas consecutivas nos dois arranjos); pares revarridos vêm do bloco onde foram varridos */
+      int sum=0;for(int p=p0;p<p1;p++){if(pairSt[p]){int c=ncnt[p]+CAND_SLACK;if(full||c>cap[p])cap[p]=c;}sum+=cap[p];}
+      tsum[tid]=sum;
+      #pragma omp barrier
+      int base=0;for(int t=0;t<tid;t++)base+=tsum[t];
+      int off=base;for(int p=p0;p<p1;p++){nslot[p]=off;off+=cap[p];}
+      int endOff=off;
+      if(tid==ntA-1)nslot[np]=off;
+      #pragma omp barrier
+      #pragma omp single
+      {tot=nslot[np];if(!full)S->nRelayout++;
+        if(tot>S->capCand2){free(S->cand2);free(S->candPl2);S->capCand2=tot+tot/2+256;S->cand2=xmalloc(sizeof(int)*3*S->capCand2);S->candPl2=xmalloc(sizeof(short)*4*S->capCand2);}
+        if(tot>S->capCandF){free(S->candF);free(S->candOn);S->capCandF=tot+tot/2+256;S->candF=xmalloc(sizeof(double)*10*S->capCandF);S->candOn=xmalloc(S->capCandF);}}
+      int *c2=S->cand2;short *pl2=S->candPl2;
+      for(int p=p0;p<p1;){int q=p+1;
+        if(pairSt[p]){int m=ncnt[p],t=bufT[p],o0=bufO[p],d0=nslot[p];
+          if(m){memcpy(c2+3*d0,bufs[t].c+3*o0,sizeof(int)*3*m);memcpy(pl2+4*d0,bufs[t].pl+4*o0,sizeof(short)*4*m);}}
+        else{while(q<p1&&!pairSt[q])q++;int d0=nslot[p],m=(q<p1?nslot[q]:endOff)-d0;
+          if(m){int s0=slot[p];memcpy(c2+3*d0,S->cand+3*s0,sizeof(int)*3*m);memcpy(pl2+4*d0,S->candPl+4*s0,sizeof(short)*4*m);}}
+        p=q;}
+      #pragma omp barrier
+      #pragma omp single
+      {int *ti=S->cand;S->cand=S->cand2;S->cand2=ti;short *ts=S->candPl;S->candPl=S->candPl2;S->candPl2=ts;int tc=S->capCand;S->capCand=S->capCand2;S->capCand2=tc;
+        ti=S->candPS;S->candPS=S->candPS2;S->candPS2=ti;}
+    }else{
+      /* B'. sem estouro de faixa: só os pares revarridos são regravados, cada um na sua faixa */
+      #pragma omp for schedule(static)
+      for(int w=0;w<nwork;w++){int p=work[w],m=ncnt[p],d0=slot[p];
+        if(m){memcpy(S->cand+3*d0,bufs[bufT[p]].c+3*bufO[p],sizeof(int)*3*m);memcpy(S->candPl+4*d0,bufs[bufT[p]].pl+4*bufO[p],sizeof(short)*4*m);}}
+    }
+    int s=0;for(int p=p0;p<p1;p++){if(pairSt[p])cnt[p]=ncnt[p];s+=cnt[p];}
+    #pragma omp atomic
+    nc+=s;
     /* C. posição de referência dos pontos de prova das partículas revarridas */
     #pragma omp for schedule(static)
     for(int i=0;i<n;i++)if(full||S->stale[i]){int k0=S->prStart[i];size_t m=sizeof(double)*(S->prStart[i+1]-k0);
       memcpy(S->prSX+k0,S->prX+k0,m);memcpy(S->prSY+k0,S->prY+k0,m);memcpy(S->prSZ+k0,S->prZ+k0,m);
       memcpy(S->RmS+9*i,S->Rm+9*i,sizeof(double)*9);memcpy(S->posS+3*i,S->pos+3*i,sizeof(double)*3);S->stale[i]=0;}
   }
-  S->candStale=0;
+  S->ncand=nc;S->candStale=0;
 }
 
 /* ---------- forças ---------- */
@@ -352,7 +367,7 @@ static Out run(Sim *S,int nsteps,const Opt *o){
     #pragma omp parallel for schedule(dynamic,64)
     for(int p=0;p<S->npairs;p++){
       int a=S->pairs[2*p],b=S->pairs[2*p+1];double gmin=1e9,*pd=S->pairD+6*p;Hit h;
-      for(int c=S->candPS[p];c<S->candPS[p+1];c++){
+      for(int c=S->candPS[p],ce=c+S->candN[p];c<ce;c++){
         int side=S->cand[3*c+1],k=S->cand[3*c+2],A=side?b:a,B=side?a:b;double *cf=S->candF+10*c;
         double x=S->prX[k],y=S->prY[k],z=S->prZ[k];
         /* S2c: sem força, o registro fica só marcado (candOn = 0); somar um registro zerado não mudaria nada */
@@ -376,7 +391,7 @@ static Out run(Sim *S,int nsteps,const Opt *o){
       /* S2m: os candidatos vêm pelos pares da partícula (pList em ordem de par, candidatos contíguos por par): a mesma ordem
          crescente de candidato de antes, sem o CSR partícula → candidato. F/T e FL/TL/cs são acumuladores separados. */
       for(int j=S->pStart[i];j<S->pStart[i+1];j++){int e=S->pList[j],p=e>>1,rp=e&1;
-        for(int c=S->candPS[p];c<S->candPS[p+1];c++){if(!S->candOn[c])continue;const double *cf=S->candF+10*c;int role=S->cand[3*c+1]^rp;
+        for(int c=S->candPS[p],ce=c+S->candN[p];c<ce;c++){if(!S->candOn[c])continue;const double *cf=S->candF+10*c;int role=S->cand[3*c+1]^rp;
           if(role==0){F[0]+=cf[0];F[1]+=cf[1];F[2]+=cf[2];T[0]+=cf[3];T[1]+=cf[4];T[2]+=cf[5];if(cf[9]>ov)ov=cf[9];}
           else{F[0]-=cf[0];F[1]-=cf[1];F[2]-=cf[2];T[0]+=cf[6];T[1]+=cf[7];T[2]+=cf[8];}}
         if(S->pairOn[p]){const double *pf=S->pairF+10*p;
@@ -723,8 +738,8 @@ int main(int argc,char **argv){
   PEND(tp_,PT_PEN);
   double tDem=now_s()-t0;
   if(prof){long ns=PN[PN_PASSOS]?PN[PN_PASSOS]:1;
-    fprintf(stderr,"PROF passos=%ld buildPairs=%ld varrCompleta=%ld varrParcial=%ld paresMed=%.0f candMed=%.0f threads=%d\n",
-      PN[PN_PASSOS],PN[PN_BUILD],PN[PN_VARRF],PN[PN_VARRP],(double)PN[PN_PARES]/ns,(double)PN[PN_CAND]/ns,
+    fprintf(stderr,"PROF passos=%ld buildPairs=%ld varrCompleta=%ld varrParcial=%ld rearranjos=%ld paresMed=%.0f candMed=%.0f threads=%d\n",
+      PN[PN_PASSOS],PN[PN_BUILD],PN[PN_VARRF],PN[PN_VARRP],S->nRelayout,(double)PN[PN_PARES]/ns,(double)PN[PN_CAND]/ns,
 #ifdef _OPENMP
       omp_get_max_threads()
 #else
