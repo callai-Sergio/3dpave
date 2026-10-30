@@ -71,6 +71,7 @@ typedef struct{int npr,npl;double *pr,*pl,vol,I[3],area,rmax;}Tpl;
 typedef struct{
   int n,npr,ntpl;Tpl *tpls;double R;
   int *tpl,*prStart;double *sc,*prLoc,*prW,*prS,*mass,*Ib,*brad,*area;
+  double *prmax,*RmS,*posS;                             /* S2d: raio dos pontos de prova; rotação e centro na última varredura */
   double *pos,*q,*vel,*w,*Rm,*F,*T,*FL,*TL,*Cs,*posB,*kdir,*keI,*fbI,*ftI,*ovI;
   unsigned char *stale;
   int *pairs,npairs,capPairs;int *pStart,*pList; /* CSR partícula → pares */
@@ -89,16 +90,27 @@ typedef struct{double dt,gd,gz,vp,gapT,fbn,t0;int kick;double kf_,kper,kdur;int 
 static Opt opt0(double dt,double t0){Opt o;memset(&o,0,sizeof o);o.dt=dt;o.t0=t0;return o;}
 typedef struct{double maxov,fpist,ftop,fbot,ke,gap;}Out;
 
-static void rotations(Sim *S){
-  #pragma omp parallel for schedule(static)
+/* rotações (pontos de prova no mundo) e, com check, a conferência de movimento desde a última varredura (S2d):
+   um ponto só pode ter andado mais que |Δcentro| + ‖R − Rs‖_F · prmax (desigualdade triangular); abaixo de 90 % do limite,
+   a partícula é dada como parada sem olhar os pontos; senão, o teste ponto a ponto é o mesmo de antes */
+static void rotationsChk(Sim *S,int check,int *anyp){
+  double lim=0.25*CAND_MARGIN*CAND_MARGIN,blim=0.9*0.5*CAND_MARGIN;int any=0;
+  #pragma omp parallel for schedule(static) reduction(|:any)
   for(int i=0;i<S->n;i++){const double *q=S->q+4*i;double qw=q[0],qx=q[1],qy=q[2],qz=q[3],*R=S->Rm+9*i;
     R[0]=1-2*(qy*qy+qz*qz);R[1]=2*(qx*qy-qw*qz);R[2]=2*(qx*qz+qw*qy);
     R[3]=2*(qx*qy+qw*qz);R[4]=1-2*(qx*qx+qz*qz);R[5]=2*(qy*qz-qw*qx);
     R[6]=2*(qx*qz-qw*qy);R[7]=2*(qy*qz+qw*qx);R[8]=1-2*(qx*qx+qy*qy);
     double px=S->pos[3*i],py=S->pos[3*i+1],pz=S->pos[3*i+2];
     for(int k=S->prStart[i];k<S->prStart[i+1];k++){double a=S->prLoc[3*k],b=S->prLoc[3*k+1],c=S->prLoc[3*k+2];
-      S->prW[3*k]=R[0]*a+R[1]*b+R[2]*c+px;S->prW[3*k+1]=R[3]*a+R[4]*b+R[5]*c+py;S->prW[3*k+2]=R[6]*a+R[7]*b+R[8]*c+pz;}}
+      S->prW[3*k]=R[0]*a+R[1]*b+R[2]*c+px;S->prW[3*k+1]=R[3]*a+R[4]*b+R[5]*c+py;S->prW[3*k+2]=R[6]*a+R[7]*b+R[8]*c+pz;}
+    if(check){const double *Rs=S->RmS+9*i,*ps=S->posS+3*i;double dx=px-ps[0],dy=py-ps[1],dz=pz-ps[2],fr=0;
+      for(int m=0;m<9;m++){double d=R[m]-Rs[m];fr+=d*d;}
+      if(sqrt(dx*dx+dy*dy+dz*dz)+sqrt(fr)*S->prmax[i]<blim)continue;
+      for(int k=3*S->prStart[i],e=3*S->prStart[i+1];k<e;k+=3){double ex=S->prW[k]-S->prS[k],ey=S->prW[k+1]-S->prS[k+1],ez=S->prW[k+2]-S->prS[k+2];
+        if(ex*ex+ey*ey+ez*ez>lim){S->stale[i]=1;any=1;break;}}}}
+  if(anyp)*anyp=any;
 }
+static void rotations(Sim *S){rotationsChk(S,0,NULL);}
 
 /* lista de pares (grade de células) e o CSR partícula → pares; serial, para a ordem ser sempre a mesma */
 static void buildPairs(Sim *S,double skin){
@@ -243,7 +255,8 @@ static void scanCandidates(Sim *S,double range,int full){
       if(2*tot+1>S->capCList){S->capCList=3*tot+1024;S->cList=xrealloc(S->cList,sizeof(int)*S->capCList);}}
     /* C. posição de referência dos pontos de prova das partículas revarridas */
     #pragma omp for schedule(static)
-    for(int i=0;i<n;i++)if(full||S->stale[i]){memcpy(S->prS+3*S->prStart[i],S->prW+3*S->prStart[i],sizeof(double)*3*(S->prStart[i+1]-S->prStart[i]));S->stale[i]=0;}
+    for(int i=0;i<n;i++)if(full||S->stale[i]){memcpy(S->prS+3*S->prStart[i],S->prW+3*S->prStart[i],sizeof(double)*3*(S->prStart[i+1]-S->prStart[i]));
+      memcpy(S->RmS+9*i,S->Rm+9*i,sizeof(double)*9);memcpy(S->posS+3*i,S->pos+3*i,sizeof(double)*3);S->stale[i]=0;}
     /* D. CSR partícula → candidatos em paralelo: cada núcleo conta a sua faixa de candidatos; blocos na ordem dos núcleos = ordem dos candidatos */
     int c0=(int)((long)tot*tid/ntA),c1=(int)((long)tot*(tid+1)/ntA);int *cnti=S->csrCnt+(size_t)tid*n;memset(cnti,0,sizeof(int)*n);
     const int *cand=S->cand,*pairs=S->pairs;
@@ -314,16 +327,10 @@ static Out run(Sim *S,int nsteps,const Opt *o){
     if(sqrt(dmax)>skin*0.45){buildPairs(S,skin);PN[PN_BUILD]++;}
     PEND(t0_,PT_PARES);
     PBEG(t1_);
-    rotations(S);
+    int any=0;rotationsChk(S,!S->candStale,&any);
     PEND(t1_,PT_ROT);
     if(S->candStale){PBEG(t3_);scanCandidates(S,range,1);PEND(t3_,PT_VARRF);PN[PN_VARRF]++;}
-    else{double lim=0.25*CAND_MARGIN*CAND_MARGIN;int any=0;
-      PBEG(t2_);
-      #pragma omp parallel for schedule(static) reduction(|:any)
-      for(int i=0;i<n;i++){for(int k=3*S->prStart[i],e=3*S->prStart[i+1];k<e;k+=3){double dx=S->prW[k]-S->prS[k],dy=S->prW[k+1]-S->prS[k+1],dz=S->prW[k+2]-S->prS[k+2];
-        if(dx*dx+dy*dy+dz*dz>lim){S->stale[i]=1;any=1;break;}}}
-      PEND(t2_,PT_CONF);
-      if(any){PBEG(t4_);scanCandidates(S,range,0);PEND(t4_,PT_VARRP);PN[PN_VARRP]++;}}
+    else if(any){PBEG(t4_);scanCandidates(S,range,0);PEND(t4_,PT_VARRP);PN[PN_VARRP]++;}
     if(prof){PN[PN_PASSOS]++;PN[PN_PARES]+=S->npairs;PN[PN_CAND]+=S->ncand;}
     /* 1. por par: molas dos candidatos (registro por candidato) e lubrificação no menor g (registro por par) */
     PBEG(t5_);
@@ -360,19 +367,25 @@ static Out run(Sim *S,int nsteps,const Opt *o){
         cs+=pf[9];}
       /* paredes: cilindro com eixo inclinado (giratório) e as duas placas */
       double gw=1e9,gb=1e9,gt=1e9,W[8]={0},Bq[3]={0},Tq[3]={0},f[3],ta[3],tb[3];
-      for(int k=S->prStart[i];k<S->prStart[i+1];k++){
+      /* S2d: só grãos perto de uma parede olham os pontos. A distância ao eixo é 1-Lipschitz, então nenhum ponto chega a
+         menos de (distância do centro − prmax) de qualquer parede; com folga de 1e-3 mm, o teste g < range não passaria em ponto algum */
+      int nearW,nearB,nearT;
+      {double cx=S->pos[3*i],cy=S->pos[3*i+1],cz=S->pos[3*i+2],pm=S->prmax[i]+1e-3;
+        double ez=cz-zc,s=cx*ax+cy*ay+ez*az,rx=cx-s*ax,ry=cy-s*ay,rz=ez-s*az,rc=sqrt(rx*rx+ry*ry+rz*rz);
+        nearW=S->R-rc-pm<range;nearB=cz-pm-S->zb<range;nearT=S->zp-cz-pm<range;}
+      if(nearW||nearB||nearT)for(int k=S->prStart[i];k<S->prStart[i+1];k++){
         double x=S->prW[3*k],y=S->prW[3*k+1],z=S->prW[3*k+2];
-        double ex=x,ey=y,ez=z-zc,s=ex*ax+ey*ay+ez*az,rx=ex-s*ax,ry=ey-s*ay,rz=ez-s*az,r=sqrt(rx*rx+ry*ry+rz*rz);
+        if(nearW){double ex=x,ey=y,ez=z-zc,s=ex*ax+ey*ay+ez*az,rx=ex-s*ax,ry=ey-s*ay,rz=ez-s*az,r=sqrt(rx*rx+ry*ry+rz*rz);
         if(r>1e-9){double g=S->R-r;if(g<range){double nx=-rx/r,ny=-ry/r,nz=-rz/r,vwx=s*dax,vwy=s*day;
           if(g<film){double pen=springRec(S,i,-1,x,y,z,g,nx,ny,nz,vwx,vwy,0,f,ta,tb);if(pen>ov)ov=pen;
             F[0]+=f[0];F[1]+=f[1];F[2]+=f[2];T[0]+=ta[0];T[1]+=ta[1];T[2]+=ta[2];}
-          if(g<gw){gw=g;W[0]=x;W[1]=y;W[2]=z;W[3]=nx;W[4]=ny;W[5]=nz;W[6]=vwx;W[7]=vwy;}}}
-        double g1=z-S->zb;if(g1<range){if(g1<film){double pen=springRec(S,i,-1,x,y,z,g1,0,0,1,0,0,vB,f,ta,tb);if(pen>ov)ov=pen;
+          if(g<gw){gw=g;W[0]=x;W[1]=y;W[2]=z;W[3]=nx;W[4]=ny;W[5]=nz;W[6]=vwx;W[7]=vwy;}}}}
+        if(nearB){double g1=z-S->zb;if(g1<range){if(g1<film){double pen=springRec(S,i,-1,x,y,z,g1,0,0,1,0,0,vB,f,ta,tb);if(pen>ov)ov=pen;
             F[0]+=f[0];F[1]+=f[1];F[2]+=f[2];T[0]+=ta[0];T[1]+=ta[1];T[2]+=ta[2];fb+=f[2];}
-          if(g1<gb){gb=g1;Bq[0]=x;Bq[1]=y;Bq[2]=z;}}
-        double g2=S->zp-z;if(g2<range){if(g2<film){double pen=springRec(S,i,-1,x,y,z,g2,0,0,-1,0,0,vT,f,ta,tb);if(pen>ov)ov=pen;
+          if(g1<gb){gb=g1;Bq[0]=x;Bq[1]=y;Bq[2]=z;}}}
+        if(nearT){double g2=S->zp-z;if(g2<range){if(g2<film){double pen=springRec(S,i,-1,x,y,z,g2,0,0,-1,0,0,vT,f,ta,tb);if(pen>ov)ov=pen;
             F[0]+=f[0];F[1]+=f[1];F[2]+=f[2];T[0]+=ta[0];T[1]+=ta[1];T[2]+=ta[2];ft-=f[2];}
-          if(g2<gt){gt=g2;Tq[0]=x;Tq[1]=y;Tq[2]=z;}}
+          if(g2<gt){gt=g2;Tq[0]=x;Tq[1]=y;Tq[2]=z;}}}
       }
       if(lubR>0){double A=0.5*S->area[i];
         if(gw<range){cs+=masticRec(S,i,-1,W[0],W[1],W[2],gw,W[3],W[4],W[5],W[6],W[7],0,A,f,ta,tb);FL[0]+=f[0];FL[1]+=f[1];FL[2]+=f[2];TL[0]+=ta[0];TL[1]+=ta[1];TL[2]+=ta[2];}
@@ -665,6 +678,8 @@ int main(int argc,char **argv){
     for(int k=S->prStart[i],j=0;k<S->prStart[i+1];k++,j++){S->prLoc[3*k]=t->pr[3*j]*s;S->prLoc[3*k+1]=t->pr[3*j+1]*s;S->prLoc[3*k+2]=t->pr[3*j+2]*s;}
     S->brad[i]=t->rmax*s;S->area[i]=t->area*s*s;S->mass[i]=t->vol*s*s*s*rho;for(int a=0;a<3;a++)S->Ib[3*i+a]=maxd(t->I[a],1e-6)*pow(s,5)*rho;}
   S->vel=xmalloc(sizeof(double)*3*n);S->w=xmalloc(sizeof(double)*3*n);S->Rm=xmalloc(sizeof(double)*9*n);
+  S->RmS=xmalloc(sizeof(double)*9*n);S->posS=xmalloc(sizeof(double)*3*n);S->prmax=xmalloc(sizeof(double)*n);
+  for(int i=0;i<n;i++){double m=0;for(int k=S->prStart[i];k<S->prStart[i+1];k++){double r=sqrt(S->prLoc[3*k]*S->prLoc[3*k]+S->prLoc[3*k+1]*S->prLoc[3*k+1]+S->prLoc[3*k+2]*S->prLoc[3*k+2]);if(r>m)m=r;}S->prmax[i]=m;}
   S->F=xmalloc(sizeof(double)*3*n);S->T=xmalloc(sizeof(double)*3*n);S->FL=xmalloc(sizeof(double)*3*n);S->TL=xmalloc(sizeof(double)*3*n);
   S->Cs=xmalloc(sizeof(double)*n);S->posB=xmalloc(sizeof(double)*3*n);S->kdir=xmalloc(sizeof(double)*3*n);
   S->keI=xmalloc(sizeof(double)*n);S->fbI=xmalloc(sizeof(double)*n);S->ftI=xmalloc(sizeof(double)*n);S->ovI=xmalloc(sizeof(double)*n);
