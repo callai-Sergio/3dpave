@@ -77,9 +77,9 @@ typedef struct{
   int *cand,ncand,capCand;short *candPl;int *candPS,capPS; /* candidatos [par, lado, ponto] agrupados por par */
   int *cand2,capCand2;short *candPl2;int *candPS2;unsigned char *pairSt,*bufT;int *bufO,*work; /* S2b: segundo jogo (troca de ponteiros); par revarrido: marca, bloco e posição; lista de trabalho */
   int *cStart,*cList,capCList;int *csrCnt,capCsr;       /* CSR partícula → candidatos; contagens por núcleo (S2b) */
-  double *candF;int capCandF;                           /* por candidato: fA[3], tA[3], tB[3], pen */
+  double *candF;int capCandF;unsigned char *candOn;     /* por candidato: fA[3], tA[3], tB[3], pen; candOn = registro com força (S2c) */
   void *bufs;int nbufs;                                 /* blocos por núcleo da varredura, persistentes (S2b) */
-  double *pairF,*pairG,*pairD;int capPairF;             /* por par: lubrificação fA[3], tA[3], tB[3], c; menor g; ponto+normal */
+  double *pairF,*pairG,*pairD;int capPairF;unsigned char *pairOn; /* por par: lubrificação fA[3], tA[3], tB[3], c; menor g; ponto+normal; pairOn = com lubrificação (S2c) */
   int candStale,built;double pairRange,builtRange;int lastKick;Rng rk;
   double zb,zp,hv,vs,film,kf,eta,lub,coh,mu,tilt,phi,gapMin;long vcap;
 }Sim;
@@ -130,7 +130,7 @@ static void buildPairs(Sim *S,double skin){
   free(fill);
   if(S->npairs+1>S->capPS){S->capPS=2*S->npairs+2;S->candPS=xrealloc(S->candPS,sizeof(int)*S->capPS);S->candPS2=xrealloc(S->candPS2,sizeof(int)*S->capPS);S->pairSt=xrealloc(S->pairSt,S->capPS);S->bufT=xrealloc(S->bufT,S->capPS);S->bufO=xrealloc(S->bufO,sizeof(int)*S->capPS);S->work=xrealloc(S->work,sizeof(int)*S->capPS);}
   if(S->npairs>S->capPairF){S->capPairF=2*S->npairs+16;S->pairF=xrealloc(S->pairF,sizeof(double)*10*S->capPairF);
-    S->pairG=xrealloc(S->pairG,sizeof(double)*S->capPairF);S->pairD=xrealloc(S->pairD,sizeof(double)*6*S->capPairF);}
+    S->pairG=xrealloc(S->pairG,sizeof(double)*S->capPairF);S->pairD=xrealloc(S->pairD,sizeof(double)*6*S->capPairF);S->pairOn=xrealloc(S->pairOn,S->capPairF);}
   memcpy(S->posB,S->pos,sizeof(double)*3*n);S->candStale=1;S->built=1;S->builtRange=S->pairRange;
 }
 
@@ -226,7 +226,7 @@ static void scanCandidates(Sim *S,double range,int full){
     #pragma omp single
     {tot=nPS[np];
       if(tot>S->capCand2){free(S->cand2);free(S->candPl2);S->capCand2=tot+tot/2+256;S->cand2=xmalloc(sizeof(int)*3*S->capCand2);S->candPl2=xmalloc(sizeof(short)*4*S->capCand2);}
-      if(tot>S->capCandF){free(S->candF);S->capCandF=tot+tot/2+256;S->candF=xmalloc(sizeof(double)*10*S->capCandF);}}
+      if(tot>S->capCandF){free(S->candF);free(S->candOn);S->capCandF=tot+tot/2+256;S->candF=xmalloc(sizeof(double)*10*S->capCandF);S->candOn=xmalloc(S->capCandF);}}
     /* B. cópia em blocos contíguos: sequências de pares sem mudança vêm do jogo anterior; pares revarridos, do bloco onde foram varridos */
     int *c2=S->cand2;short *pl2=S->candPl2;
     for(int p=p0;p<p1;){int q=p+1,d0=nPS[p],m;
@@ -333,13 +333,13 @@ static Out run(Sim *S,int nsteps,const Opt *o){
       for(int c=S->candPS[p];c<S->candPS[p+1];c++){
         int side=S->cand[3*c+1],k=S->cand[3*c+2],A=side?b:a,B=side?a:b;double *cf=S->candF+10*c;
         double x=S->prW[3*k],y=S->prW[3*k+1],z=S->prW[3*k+2];
-        memset(cf,0,sizeof(double)*10);
-        if(!probeQuick(S,B,x,y,z,range,S->candPl+4*c,&h))continue;
-        if(h.g<film)cf[9]=springRec(S,A,B,x,y,z,h.g,h.nx,h.ny,h.nz,0,0,0,cf,cf+3,cf+6);
+        /* S2c: sem força, o registro fica só marcado (candOn = 0); somar um registro zerado não mudaria nada */
+        if(!probeQuick(S,B,x,y,z,range,S->candPl+4*c,&h)){S->candOn[c]=0;continue;}
+        if(h.g<film){cf[9]=springRec(S,A,B,x,y,z,h.g,h.nx,h.ny,h.nz,0,0,0,cf,cf+3,cf+6);S->candOn[c]=1;}else S->candOn[c]=0;
         if(h.g<gmin){double sg=side?-1:1;gmin=h.g;pd[0]=x;pd[1]=y;pd[2]=z;pd[3]=sg*h.nx;pd[4]=sg*h.ny;pd[5]=sg*h.nz;}
       }
-      S->pairG[p]=gmin;double *pf=S->pairF+10*p;memset(pf,0,sizeof(double)*10);
-      if(lubR>0&&gmin<range)pf[9]=masticRec(S,a,b,pd[0],pd[1],pd[2],gmin,pd[3],pd[4],pd[5],0,0,0,0.5*mind(S->area[a],S->area[b]),pf,pf+3,pf+6);
+      S->pairG[p]=gmin;double *pf=S->pairF+10*p;
+      if(lubR>0&&gmin<range){pf[9]=masticRec(S,a,b,pd[0],pd[1],pd[2],gmin,pd[3],pd[4],pd[5],0,0,0,0.5*mind(S->area[a],S->area[b]),pf,pf+3,pf+6);S->pairOn[p]=1;}else S->pairOn[p]=0;
     }
     PEND(t5_,PT_FPAR);
     /* 2. por partícula: soma dos registros (ordem fixa), paredes, força radial; depois a integração */
@@ -351,10 +351,10 @@ static Out run(Sim *S,int nsteps,const Opt *o){
     for(int i=0;i<n;i++){
       double *F=S->F+3*i,*T=S->T+3*i,*FL=S->FL+3*i,*TL=S->TL+3*i,cs=0,ov=0,fb=0,ft=0;
       F[0]=F[1]=F[2]=T[0]=T[1]=T[2]=FL[0]=FL[1]=FL[2]=TL[0]=TL[1]=TL[2]=0;
-      for(int j=S->cStart[i];j<S->cStart[i+1];j++){int e=S->cList[j],c=e>>1,role=e&1;const double *cf=S->candF+10*c;
+      for(int j=S->cStart[i];j<S->cStart[i+1];j++){int e=S->cList[j],c=e>>1,role=e&1;if(!S->candOn[c])continue;const double *cf=S->candF+10*c;
         if(role==0){F[0]+=cf[0];F[1]+=cf[1];F[2]+=cf[2];T[0]+=cf[3];T[1]+=cf[4];T[2]+=cf[5];if(cf[9]>ov)ov=cf[9];}
         else{F[0]-=cf[0];F[1]-=cf[1];F[2]-=cf[2];T[0]+=cf[6];T[1]+=cf[7];T[2]+=cf[8];}}
-      for(int j=S->pStart[i];j<S->pStart[i+1];j++){int e=S->pList[j],p=e>>1,role=e&1;const double *pf=S->pairF+10*p;
+      for(int j=S->pStart[i];j<S->pStart[i+1];j++){int e=S->pList[j],p=e>>1,role=e&1;if(!S->pairOn[p])continue;const double *pf=S->pairF+10*p;
         if(role==0){FL[0]+=pf[0];FL[1]+=pf[1];FL[2]+=pf[2];TL[0]+=pf[3];TL[1]+=pf[4];TL[2]+=pf[5];}
         else{FL[0]-=pf[0];FL[1]-=pf[1];FL[2]-=pf[2];TL[0]+=pf[6];TL[1]+=pf[7];TL[2]+=pf[8];}
         cs+=pf[9];}
