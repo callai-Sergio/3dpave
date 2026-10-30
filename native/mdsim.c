@@ -457,12 +457,16 @@ typedef struct{double max,maxAbs,p99;int nPairs,nBad;}Pen;
 static int cmpd(const void *a,const void *b){double x=*(const double*)a,y=*(const double*)b;return x<y?-1:x>y;}
 static Pen penetration(Sim *S){
   rotations(S);double save=S->pairRange;S->pairRange=0;buildPairs(S,0);S->pairRange=save;
-  Pen P;memset(&P,0,sizeof P);double *rel=xmalloc(sizeof(double)*(S->npairs+1));int nr=0;Hit h;
-  for(int p=0;p<S->npairs;p++){int a=S->pairs[2*p],b=S->pairs[2*p+1];double pen=0;
+  Pen P;memset(&P,0,sizeof P);int np=S->npairs;double *pp=xmalloc(sizeof(double)*(np+1)),*rel=xmalloc(sizeof(double)*(np+1));int nr=0;
+  /* S2g: a penetração de cada par é independente (em paralelo); máximo, contagens e p99 (ordenado) vêm depois, na ordem dos pares */
+  #pragma omp parallel for schedule(dynamic,64)
+  for(int p=0;p<np;p++){int a=S->pairs[2*p],b=S->pairs[2*p+1];double pen=0;Hit h;
     for(int side=0;side<2;side++){int A=side?b:a,B=side?a:b;
       for(int k=S->prStart[A];k<S->prStart[A+1];k++)if(probeIn(S,B,S->prW[3*k],S->prW[3*k+1],S->prW[3*k+2],0,&h,NULL)&&-h.g>pen)pen=-h.g;}
-    if(pen>0){double r=pen/mind(S->sc[a],S->sc[b]);rel[nr++]=r;if(r>P.max)P.max=r;if(pen>P.maxAbs)P.maxAbs=pen;if(r>0.02)P.nBad++;}}
-  qsort(rel,nr,sizeof(double),cmpd);P.p99=nr?rel[(int)floor(0.99*(nr-1))]:0;P.nPairs=nr;free(rel);
+    pp[p]=pen;}
+  for(int p=0;p<np;p++){double pen=pp[p];
+    if(pen>0){int a=S->pairs[2*p],b=S->pairs[2*p+1];double r=pen/mind(S->sc[a],S->sc[b]);rel[nr++]=r;if(r>P.max)P.max=r;if(pen>P.maxAbs)P.maxAbs=pen;if(r>0.02)P.nBad++;}}
+  qsort(rel,nr,sizeof(double),cmpd);P.p99=nr?rel[(int)floor(0.99*(nr-1))]:0;P.nPairs=nr;free(rel);free(pp);
   S->candStale=1;S->built=0;return P;
 }
 
