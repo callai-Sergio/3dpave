@@ -1,0 +1,14 @@
+{
+ "name": "F10: giratório no núcleo C, Ø102 mm (1000 g), 30 giros simulados",
+ "base": {
+  "proto": "giratorio",
+  "size": "w",
+  "avcMode": "livre",
+  "seed": 2024
+ },
+ "cases": [
+  {
+   "id": "gir-w-s2024"
+  }
+ ]
+}

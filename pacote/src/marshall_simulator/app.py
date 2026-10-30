@@ -142,20 +142,26 @@ def servidor(nativo, porta=0):
     return srv, f'http://127.0.0.1:{srv.server_address[1]}/{HTML}'
 
 
+def aviso(texto):
+    """No .exe sem console (PyInstaller --windowed) não há saída padrão: um print() derrubaria o app."""
+    if sys.stdout is not None:
+        print(texto, flush=True)
+
+
 def main():
     if not os.path.exists(os.path.join(WEB, HTML)):
         sys.exit(f'Não encontrei {HTML} em {WEB}. Reinstale o pacote.')
     nativo = Nativo()
     srv, url = servidor(nativo)
     motor = f'núcleo em C com {NUCLEOS} núcleos' if nativo.ok else 'JavaScript (sem o mdsim para este sistema)'
-    print(f'{TITULO}: física do Marshall e do giratório em {motor}.')
+    aviso(f'{TITULO}: física do Marshall e do giratório em {motor}.')
     try:
         import webview
     except ImportError:
         webview = None
-        print('pywebview não está instalado (pip install pywebview); usando o navegador.')
+        aviso('pywebview não está instalado (pip install pywebview); usando o navegador.')
     if webview is None or '--browser' in sys.argv[1:]:
-        print(f'{TITULO}: abrindo {url} no navegador. Feche com Ctrl+C.')
+        aviso(f'{TITULO}: abrindo {url} no navegador. Feche com Ctrl+C.')
         threading.Timer(0.5, webbrowser.open, (url,)).start()
         try:
             threading.Event().wait()

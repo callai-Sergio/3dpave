@@ -1,0 +1,12 @@
+{
+  "name": "smoke: runner end-to-end, one case of each outcome type",
+  "base": { "seed": 2024 },
+  "cases": [
+    { "id": "golden" },
+    { "id": "golden-seed2", "seed": 2 },
+    { "id": "avc0.5", "avc": 0.5 },
+    { "id": "synth-gap-p2-20", "synth": { "dmax": 12.5, "p2": 20, "shape": "gap" } },
+    { "id": "invalid-top-sieve", "grad": [[19.1, 95], [9.5, 60], [2.36, 30], [0.075, 5]] },
+    { "id": "one-sieve-above-2", "grad": [[2.36, 100], [2, 99], [0.075, 5]] }
+  ]
+}

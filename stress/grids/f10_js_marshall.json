@@ -1,0 +1,54 @@
+{
+ "name": "F10: Marshall 1200 g em JavaScript (mesmo caso da A6, que levou 1554 s no C x16)",
+ "base": {
+  "size": "m",
+  "proto": "marshall",
+  "avcMode": "livre",
+  "lib": "RT",
+  "grad": [
+   [
+    19,
+    100
+   ],
+   [
+    12.5,
+    95
+   ],
+   [
+    9.5,
+    83
+   ],
+   [
+    4.75,
+    54
+   ],
+   [
+    2.36,
+    36
+   ],
+   [
+    0.3,
+    13
+   ],
+   [
+    0.075,
+    7
+   ]
+  ],
+  "ra": 2.65,
+  "rb": 1.027,
+  "grade": "50/70",
+  "temp": 140,
+  "avc": 4.8,
+  "bub": {
+   "mode": "auto"
+  }
+ },
+ "cases": [
+  {
+   "id": "pb5-s2024",
+   "pb": 5,
+   "seed": 2024
+  }
+ ]
+}

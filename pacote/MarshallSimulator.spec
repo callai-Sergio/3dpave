@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('src/marshall_simulator/web', 'marshall_simulator/web')]
+datas = [('src/marshall_simulator/web', 'marshall_simulator/web'), ('src/marshall_simulator/bin', 'marshall_simulator/bin')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('webview')

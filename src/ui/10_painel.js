@@ -253,7 +253,7 @@ function generate(){
     else if(m.type==='done'){running=false;result=Object.assign(m.res,{stone:cfg.lib});setStage('pronto',1,`Pronto em ${fmt(m.res.tTotal,0)} s`);
       try{buildScene(result);}catch(e){showError('Falha ao montar a cena 3D: '+e.message);return;}
       renderPanel();renderLegend();setExport(true);setTimeout(()=>{if(!running)$('overlay').hidden=true;},700);initSection();
-      if(result.mar&&result.mar.anim&&result.mar.anim.nf>1&&cfg.proto!=='w'){setTimeout(()=>{if(!running){setViewMode('a');setFrame(0);playAnim();}},800);}}
+      if(result.mar&&result.mar.anim&&result.mar.anim.nf>1&&cfg.proto==='marshall'){setTimeout(()=>{if(!running){setViewMode('a');setFrame(0);playAnim();}},800);}}
     else if(m.type==='error'){running=false;showError('Erro na simulação: '+m.message);}
   };
   worker.onerror=e=>{running=false;showError('Erro no worker: '+(e.message||'desconhecido'));};
