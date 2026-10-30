@@ -152,8 +152,8 @@ export function workerMsg(cfg, comp, spec, app) {
     rhoA: cfg.ra, seed: cfg.seed, lib: cfg.lib, bub: cfg.bub, seg: cfg.seg, avc: cfg.avc,
     voxel: spec.voxel ?? (app.SIZES[cfg.size] || app.SIZES.p)[2], dt: spec.dt ?? 2e-5, coat: spec.coat ?? 0.25,
     proto: spec.proto ?? 'w', avcMode: spec.avcMode ?? 'travado', faceW: spec.faceW,
-    mastic: Object.assign({ eta, lam: 0.3, kf: 0.05, coh: 0.005, mu: 0.2, etaK: 1 }, spec.mastic || {}),
-    marshall: Object.assign({ golpes: 75, sim: 0, escE: 0.005 }, spec.marshall || {}),
+    mastic: Object.assign({ eta, lam: 0.55, kf: 0.05, coh: 0.005, mu: 0.2, etaK: 1 }, spec.mastic || {}),
+    marshall: Object.assign({ golpes: 75, sim: 0, escE: 0.002 }, spec.marshall || {}),
     gir: Object.assign({ N: 100, sim: 30, P: 600, escP: 0.001, ang: 1.16, Tg: 0.04 }, spec.gir || {}),
   };
 }

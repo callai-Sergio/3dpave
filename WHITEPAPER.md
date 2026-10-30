@@ -85,7 +85,7 @@ Marshall em tamanho real (1200 g, Ø101,6 mm), Albayati 60/70 a 140 °C, formas 
 | λ | Escala de energia | AVC (Pb 4 / 4,5 / 5 / 5,5 %) | Erro médio |
 |---|---|---|---|
 | laboratório | | 6,1 / 4,8 / 3,3 / 2,7 | |
-| 0,3 (padrão atual) | 0,005 | 0,9 / 0,2 / 0,8 / 0,1 | 3,7 pp |
+| 0,3 (padrão antigo) | 0,005 | 0,9 / 0,2 / 0,8 / 0,1 | 3,7 pp |
 | **0,5** | **0,002** | **8,2 / 4,1 / 4,0 / 2,7** | **0,9 pp** |
 
 O melhor candidato era λ 0,5 com escala 0,002, mas com uma semente só e penetração entre pedras (K33) de 6–8 %, acima do limite de 2 %. A correção do contato (A4) levou o K33 a ~0,3 % e baixou o AVC previsto em 2–3 pp, e a calibração foi refeita.
@@ -103,6 +103,8 @@ O melhor candidato era λ 0,5 com escala 0,002, mas com uma semente só e penetr
 
 λ 0,55 com escala 0,002 cumpre as metas (erro ≤ 0,5 pp, inclinação dentro de ±30 %, K33 ≤ 2 %). O desvio entre sementes é de 0,5–0,8 pp por teor, maior que o erro médio: um CP isolado pode errar ~1 pp; a média de 3 CPs, como no laboratório, ~0,4 pp. A calibração vale para Albayati 60/70 a 140 °C; outros ligantes e granulometrias ainda não foram verificados.
 
+**Padrões do app (A6, 2026-10-30):** λ 0,55 e escala de energia 0,002 (antes 0,3 e 0,005). O λ também vale para o giratório, cuja escala de pressão (0,001) ainda não foi recalibrada com o λ novo. Conferência: um Marshall de 1200 g só com os padrões (Pb 5, semente 2024, PC Windows, núcleo C com 16 threads) recebeu os mesmos parâmetros da A5 (película 0,999 mm, v0 134 mm/s) e deu AVC 4,54 %, contra 3,03 % no servidor. A diferença começa já na altura solta (107,07 × 107,77 mm): a ordem das somas entre threads e plataformas muda a trajetória como uma troca de semente. Compare sempre médias de várias sementes.
+
 Núcleo em C × JS: o golden bate (Vagg 52,30 × 52,32); 1,55× mais rápido com 1 núcleo, 3× com 8 e 5× com 24.
 
 ## 6. Limitações conhecidas
@@ -111,6 +113,7 @@ Núcleo em C × JS: o golden bate (Vagg 52,30 × 52,32); 1,55× mais rápido com
 - A Eq. (3) de Awuah usa só M e NA: as propriedades previstas não veem a forma das pedras.
 - Peneiras intermediárias das faixas alemãs AC/PA aproximadas (conferir na TL Asphalt-StB 07/13).
 - Com AVC acima de ~12 % ou B = 100 %, as bolhas inteiras cabem só em parte do mastique (B real 15–45 % nos casos testados). O app avisa; ainda não há estimativa antes de rodar.
+- O giratório usa o λ calibrado no Marshall; a escala de pressão ainda não foi calibrada contra laboratório com ele.
 - Pequenas diferenças entre plataformas (Node 22 × 24, Windows × Linux): compare sempre na mesma máquina e com Node 24.11.1.
 
 ## 7. Referências
@@ -154,3 +157,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 | 2026-10-29 | A10: no [W], o pistão para quando o esqueleto trava, em vez de forçar as pedras umas dentro das outras (JS e C). Nos 5 casos que não cabiam no AVC alvo, o K8 caiu de 0,22–1,43 para 0,10–0,13 e o K33 de 5–21 % para 0,6–2,4 %; o AVC final fica entre 12,5 e 18 %, com aviso no app. Golden idêntico |
 | 2026-10-29 | A8: bolhas só são semeadas inteiras no mastique, sem encostar em pedra, parede ou vazio do esqueleto (K19 de ~0,2 % para 0); quando não cabem, o app diz qual B ficou. Golden: Vmast e Vbol mudaram na 3ª casa, referência regravada |
 | 2026-10-30 | A11: varredura da força radial k (0,5–2) × 3 sementes. A instabilidade do K14 vem do CP pequeno (poucas pedras nas faixas da borda), não de k = 1; em 1000 g o K14 é estável e fica na faixa com k = 1 e 2. Padrão mantido (k = 1); aviso PT/EN junto do campo |
+| 2026-10-30 | A6: padrões do app com a calibração da A5 (λ 0,55, escala de energia 0,002; antes 0,3 e 0,005), também no worker e no harness |

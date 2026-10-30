@@ -45,7 +45,7 @@ function makeRecorder(S,n){
 // duas pedras é a soma das duas películas, reduzida por λ (Komaragiri et al. 2021 usaram 0,6) porque parte do mastique
 // fica nos vazios do esqueleto
 function masticSetup(S,comp,cfg){
-  const mc=cfg.mastic||{},lam=mc.lam??0.3;let Atot=0;for(let i=0;i<S.n;i++)Atot+=S.area[i];
+  const mc=cfg.mastic||{},lam=mc.lam??0.55;let Atot=0;for(let i=0;i<S.n;i++)Atot+=S.area[i];
   const t=comp.M*1000/Atot;
   S.film=Math.max(cfg.coat,2*lam*t);S.kf=DEM_KN*(mc.kf??0.05);S.lub=0.5*S.film;
   S.eta=(mc.eta??20)*1e-3*(mc.etaK??1);S.coh=mc.coh??0.005;S.mu=mc.mu??0.2;

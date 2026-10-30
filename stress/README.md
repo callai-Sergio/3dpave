@@ -55,8 +55,8 @@ Regenerates the Phase 1 design (`grids/screening.json`).
 | `proto` | `w` [W] pistons, `marshall`, `giratorio` | `w` |
 | `avcMode` | `travado` (ends at the target AVC) or `livre` (AVC from the blows/gyrations) | `travado` |
 | `grade`, `temp` | binder grade and compaction temperature (°C) for the mastic viscosity | `50/70`, EN 12697-35 reference |
-| `mastic` | `{lam, etaK, kf, coh, mu}` mastic film and viscosity calibration | 0,6 · 1 · 0,05 · 0,005 · 0,2 |
-| `marshall` | `{golpes, sim, escE}` blows per face, simulated blows (0 = all), hammer energy scale | 75 · 0 · see app |
+| `mastic` | `{lam, etaK, kf, coh, mu}` mastic film and viscosity calibration (λ from the A5 calibration) | 0,55 · 1 · 0,05 · 0,005 · 0,2 |
+| `marshall` | `{golpes, sim, escE}` blows per face, simulated blows (0 = all), hammer energy scale | 75 · 0 · 0,002 |
 | `gir` | `{N, sim, P, escP, ang, Tg}` gyrations, simulated, pressure kPa, scale, internal angle °, simulated period s | 100 · 30 · 600 · see app · 1,16 · 0,04 |
 | `faceW` | weight of the faces in the mastic painting (P1a) | 2,5 |
 | `skipValidation` | run even if the app's form would refuse the input | false |
