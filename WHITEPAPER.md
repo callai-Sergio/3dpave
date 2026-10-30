@@ -43,16 +43,16 @@ O desafio é a plausibilidade: o CP virtual precisa fechar volume e massa, não 
 - A forma de colisão é a própria casca convexa: pontos de prova (vértices e meios de arestas) testados contra os semiplanos da outra casca, nos dois sentidos.
 - A mola de pedra cresce com o tamanho do contato, como num contato de Hertz linearizado: kn × max(1, sa·sb/(sa+sb)), com sa e sb os Min Feret (parede: sb → ∞). A força deixa de crescer só a 0,125 × Min Feret da menor pedra, uma trava contra normais trocadas. Antes, com kn e trava fixos (0,25 mm), as pedras grandes afundavam umas nas outras sob o golpe do soquete.
 - Película de mastique de espessura 2·λ·M / área total das cascas, com mola mole (kf = 0,05·kn), lubrificação viscosa F = η·A·v/h e coesão. A viscosidade η vem do betume na temperatura (A-VTS), corrigida pelo fíler e pelos finos (Krieger–Dougherty), como em Komaragiri et al. (2021).
-- As pedras do DEM são ~1000× mais moles que as reais; por isso a energia do soquete e a pressão do giratório entram escaladas. Essas escalas são os parâmetros calibrados.
+- As pedras do DEM são ~1000× mais moles que as reais; por isso a energia do soquete e a pressão do giratório entram escaladas. Essas escalas são os parâmetros calibrados. No molde Marshall real o golpe é sempre o da norma, qualquer que seja a massa do CP; só nos CPs menores (harness) o soquete escala pela massa.
 
 ### 3.4 Protocolos
 | Protocolo | Como compacta | Norma |
 |---|---|---|
 | [W] | Sem gravidade e sem atrito; pistões até AVC 50 % (Eq. 1), depois força crescente até o AVC alvo | Wan et al. (2024) |
-| Marshall | Queda com gravidade; 75 golpes do soquete por face, com o molde virado; 1200 g em Ø101,6 mm | DNER-ME 043, ASTM D6926 |
+| Marshall | Queda com gravidade; 75 golpes do soquete por face, com o molde virado; Ø101,6 mm × 63,5 mm, massa pela densidade no AVC alvo (~1200 g); golpe da norma (4,536 kg, 457,2 mm) para qualquer massa | DNER-ME 043, ASTM D6926 |
 | Giratório | Queda; pressão constante e molde inclinado em precessão; Ø150 mm × 115 mm, massa pela densidade no AVC alvo | AASHTO T 312 |
 
-Moldes por protocolo: o corpo de prova segue a compactação escolhida. O Marshall usa o CP Marshall (1200 g em Ø101,6 mm) e o giratório usa o CP do giratório (Ø150 mm com 115 mm de altura, AASHTO T 312; a massa sai da densidade da mistura no AVC alvo, ~4600–5200 g); o [W] usa 1000 g em Ø102 mm, como no paper, ou o CP rápido de 250 g em Ø65 mm.
+Moldes por protocolo: o corpo de prova segue a compactação escolhida. O Marshall usa o CP Marshall (Ø101,6 mm com 63,5 mm de altura, ASTM D6926; a massa sai da densidade da mistura no AVC alvo, ~1200 g) e o giratório usa o CP do giratório (Ø150 mm com 115 mm de altura, AASHTO T 312; a massa sai da densidade da mistura no AVC alvo, ~4600–5200 g); o [W] usa 1000 g em Ø102 mm, como no paper, ou o CP rápido de 250 g em Ø65 mm.
 
 **Esqueleto que não cabe no [W] (A10):** o [W] leva os pistões até a altura do AVC alvo. Em granulometrias abertas ou com AVC alvo baixo, o esqueleto de pedras não cabe nessa altura, e antes o pistão empurrava as pedras umas para dentro das outras (até 1,4 mm de penetração, K8). Agora o pistão para quando uma pedra entra mais de 0,1 mm em outra e espera 0,1 s; se a penetração não cai, o CP fica na altura em que o esqueleto travou, com o AVC medido, e o app avisa (PT/EN). É uma diferença de [W]: o paper sempre chega ao AVC alvo. Nos casos que chegam ao alvo nada muda (golden idêntico bit a bit).
 
@@ -163,3 +163,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 | 2026-10-30 | F3: versão alfa 1.1.0a1 como mini app Python (janela própria, three.js embutido, `.exe` do Windows e wheel), no lugar do artefato |
 | 2026-10-30 | F10: física do Marshall e do giratório no núcleo em C dentro do app (2,9× mais rápido que o JavaScript no Marshall de 1200 g); Marshall com animação, giratório só com o resultado; o app abre parado |
 | 2026-10-30 | A3c: CP do giratório com 115 mm de altura (AASHTO T 312 / R 35); a massa sai da densidade da mistura no AVC alvo (antes, 4700 g fixos davam 103–117 mm conforme a densidade do agregado) |
+| 2026-10-30 | A3d: CP Marshall com 63,5 mm de altura (massa pela densidade no AVC alvo) e golpe da norma fixo no molde real (antes a energia escalava com massa/1200). As grades de calibração mantêm 1200 g para reproduzir a A5 |
