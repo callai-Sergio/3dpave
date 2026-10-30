@@ -1,0 +1,255 @@
+diff --git a/native/mdsim.c b/native/mdsim.c
+index 3158fc5..5040274 100644
+--- a/native/mdsim.c
++++ b/native/mdsim.c
+@@ -24,7 +24,12 @@
+ #define ZETA 0.3
+ #define HMIN 0.02
+ #define VMAX 5000.0
+-#define CAND_MARGIN 0.15
++#ifndef CAND_MARGIN
++#define CAND_MARGIN 0.15 /* mm: margem dos candidatos (um ponto que anda mais que a metade força a revarredura do par) */
++#endif
++#ifndef PAIR_SKIN
++#define PAIR_SKIN 0.6    /* mm: folga da lista de pares (refeita quando alguém anda mais que 45 % dela) */
++#endif
+ #define G_MM 9810.0
+ #define W_PEN_STOP 0.1 /* mm: limite de aprovação do K8 (A10) */
+ #define W_HOLD 0.1     /* s: tempo com o pistão parado antes de dar o esqueleto por travado */
+@@ -52,7 +57,7 @@ static const char *br(char *buf,double x,int d){sprintf(buf,"%.*f",d,x);for(char
+ 
+ /* ---------- régua (S2a): tempo por etapa, só com MD_PROF=1; impresso no stderr no fim em linhas "PROF ..." ---------- */
+ enum{PT_PARES,PT_ROT,PT_CONF,PT_VARRF,PT_VARRP,PT_VARRS,PT_FPAR,PT_FPART,PT_INTEG,PT_PEN,PT_N};
+-enum{PN_PASSOS,PN_BUILD,PN_VARRF,PN_VARRP,PN_PARES,PN_CAND,PN_N};
++enum{PN_PASSOS,PN_BUILD,PN_VARRF,PN_VARRP,PN_PARES,PN_CAND,PN_WORK,PN_STALE,PN_TOT,PN_N};
+ static int prof=0;static double PT[PT_N];static long PN[PN_N];
+ static double ptime(void){
+ #ifdef _OPENMP
+@@ -77,6 +82,7 @@ typedef struct{
+   double *pos,*q,*vel,*w,*Rm,*F,*T,*FL,*TL,*Cs,*posB,*kdir,*keI,*fbI,*ftI,*ovI;
+   unsigned char *stale;
+   int *pairs,npairs,capPairs;int *pStart,*pList; /* CSR partícula → pares */
++  int *pairsOld,capPairsOld,*pairOld,*hash,hashCap,remap; /* S2i: lista anterior, par novo → par antigo (−1 = novo), tabela de busca; remap = faixas de candidatos herdadas */
+   int *cand,ncand,capCand;short *candPl;int *candPS,capPS; /* candidatos [par, lado, ponto] em faixas por par: início candPS, usados candN, folga candCap (S2n) */
+   int *candN,*candCap,*candN2;long nRelayout;
+   int *cand2,capCand2;short *candPl2;int *candPS2;unsigned char *pairSt,*bufT;int *bufO,*work; /* S2b: segundo jogo (troca de ponteiros); par revarrido: marca, bloco e posição; lista de trabalho */
+@@ -116,39 +122,62 @@ static void rotationsChk(Sim *S,int check,int *anyp){
+ }
+ static void rotations(Sim *S){rotationsChk(S,0,NULL);}
+ 
+-/* lista de pares (grade de células) e o CSR partícula → pares; a ordem é sempre a mesma (blocos de partículas concatenados em ordem) */
++/* lista de pares e o CSR partícula → pares; a ordem é sempre a mesma (blocos de partículas concatenados em ordem).
++   S2i: duas grades por tamanho. As partículas com raio envolvente < BIG_R vão para a grade fina (célula 2·BIG_R + folga) e
++   as outras para a grade grossa (célula 2·bmax + folga). Cada partícula procura os pares de índice maior na sua grade
++   (estêncil de 27 células) e as grandes procuram ainda todas as pequenas na grade fina (estêncil pelo alcance). Antes,
++   uma grade só com células de 2·bmax cobria o CP inteiro (~n²/2 testes). Na reconstrução, as faixas de candidatos dos
++   pares que continuam na lista são herdadas (pairOld), e a varredura seguinte refaz só os pares novos ou que andaram. */
+ #define PB_CHUNK 32
+-static void buildPairs(Sim *S,double skin){
++#define BIG_R 6.0
++typedef struct{double x0,z0,cs;int nx,ny,nz;int *head,*next;}Grid;
++static void gridInit(Grid *g,double cs,double rmx,double zmin,double zmax,int n){
++  g->cs=cs;g->x0=-rmx-cs;g->z0=zmin-cs;g->nx=g->ny=(int)floor((2*rmx+2*cs)/cs)+1;g->nz=(int)floor((zmax-zmin+2*cs)/cs)+1;
++  long nc=(long)g->nx*g->ny*g->nz;g->head=xmalloc(sizeof(int)*nc);for(long c=0;c<nc;c++)g->head[c]=-1;g->next=xmalloc(sizeof(int)*n);}
++static void gridCell(const Grid *g,const double *p,int *cx,int *cy,int *cz){
++  *cx=(int)clampd(floor((p[0]-g->x0)/g->cs),0,g->nx-1);*cy=(int)clampd(floor((p[1]-g->x0)/g->cs),0,g->ny-1);*cz=(int)clampd(floor((p[2]-g->z0)/g->cs),0,g->nz-1);}
++static void gridAdd(Grid *g,int i,const double *p){int cx,cy,cz;gridCell(g,p,&cx,&cy,&cz);int c=(cz*g->ny+cy)*g->nx+cx;g->next[i]=g->head[c];g->head[c]=i;}
++/* pares de i com as partículas da grade g dentro do alcance rad (centro a centro brad[i]+brad[j]+marg); all = aceita qualquer j, senão só j > i */
++static void gridSearch(const Sim *S,const Grid *g,int i,double rad,double marg,int all,PBuf *B){
++  int cx,cy,cz,m=(int)ceil(rad/g->cs);if(m<1)m=1;gridCell(g,S->pos+3*i,&cx,&cy,&cz);
++  double px=S->pos[3*i],py=S->pos[3*i+1],pz=S->pos[3*i+2],bi=S->brad[i]+marg;
++  int z0=cz-m<0?0:cz-m,z1=cz+m>=g->nz?g->nz-1:cz+m,y0=cy-m<0?0:cy-m,y1=cy+m>=g->ny?g->ny-1:cy+m,x0=cx-m<0?0:cx-m,x1=cx+m>=g->nx?g->nx-1:cx+m;
++  for(int Z=z0;Z<=z1;Z++)for(int Y=y0;Y<=y1;Y++)for(int X=x0;X<=x1;X++)
++    for(int j=g->head[(Z*g->ny+Y)*g->nx+X];j>=0;j=g->next[j]){if(!all&&j<=i)continue;
++      double ddx=px-S->pos[3*j],ddy=py-S->pos[3*j+1],ddz=pz-S->pos[3*j+2],rc=bi+S->brad[j];
++      if(ddx*ddx+ddy*ddy+ddz*ddz<rc*rc){
++        if(B->n+2>B->cap){B->cap=2*B->cap+256;B->p=xrealloc(B->p,sizeof(int)*B->cap);}
++        if(i<j){B->p[B->n]=i;B->p[B->n+1]=j;}else{B->p[B->n]=j;B->p[B->n+1]=i;}B->n+=2;}}
++}
++/* tabela (a, b) → índice do par antigo, para herdar as faixas de candidatos (S2i) */
++static long hkey(int a,int b,int n){return (long)a*n+b;}
++static void buildPairs(Sim *S,double skin,int carry){
+   int n=S->n;double bmax=0;for(int i=0;i<n;i++)if(S->brad[i]>bmax)bmax=S->brad[i];
+-  double cs=2*bmax+skin+S->pairRange,zmin=1e9,zmax=-1e9,rmx=S->R;
++  double marg=skin+S->pairRange,rb=bmax<BIG_R?bmax:BIG_R,cB=2*bmax+marg,cS=2*rb+marg,zmin=1e9,zmax=-1e9,rmx=S->R;
+   for(int i=0;i<n;i++){double z=S->pos[3*i+2];if(z<zmin)zmin=z;if(z>zmax)zmax=z;rmx=maxd(rmx,maxd(fabs(S->pos[3*i]),fabs(S->pos[3*i+1])));}
+-  double x0=-rmx-cs,z0=zmin-cs;int nx=(int)floor((2*rmx+2*cs)/cs)+1,ny=nx,nz=(int)floor((zmax-zmin+2*cs)/cs)+1;
+-  long ncell=(long)nx*ny*nz;int *head=xmalloc(sizeof(int)*ncell),*next=xmalloc(sizeof(int)*n),*cell=xmalloc(sizeof(int)*n);
+-  for(long c=0;c<ncell;c++)head[c]=-1;
+-  for(int i=0;i<n;i++){int cx=(int)clampd(floor((S->pos[3*i]-x0)/cs),0,nx-1),cy=(int)clampd(floor((S->pos[3*i+1]-x0)/cs),0,ny-1),cz=(int)clampd(floor((S->pos[3*i+2]-z0)/cs),0,nz-1);
+-    int c=(cz*ny+cy)*nx+cx;cell[i]=c;next[i]=head[c];head[c]=i;}
++  Grid gB,gS;gridInit(&gB,cB,rmx,zmin,zmax,n);gridInit(&gS,cS,rmx,zmin,zmax,n);
++  for(int i=0;i<n;i++)gridAdd(S->brad[i]<BIG_R?&gS:&gB,i,S->pos+3*i);
++  /* a lista anterior fica guardada para a herança das faixas (só quando há uma varredura válida para herdar) */
++  carry=carry&&S->built&&!S->candStale;
++  if(carry){int *t=S->pairs;S->pairs=S->pairsOld;S->pairsOld=t;int c=S->capPairs;S->capPairs=S->capPairsOld;S->capPairsOld=c;}
++  int npOld=carry?S->npairs:0;
+   /* S2f: os pares de cada bloco de partículas saem num bloco próprio (em paralelo, balanceado) e são concatenados na ordem
+-     dos blocos: a lista fica igual à da versão serial (i crescente, estêncil e lista da célula na mesma ordem) */
++     dos blocos: a lista não depende do número de núcleos */
+   int nch=(n+PB_CHUNK-1)/PB_CHUNK;
+   if(nch>S->npbuf){S->pbuf=xrealloc(S->pbuf,sizeof(PBuf)*nch);memset(S->pbuf+S->npbuf,0,sizeof(PBuf)*(nch-S->npbuf));S->npbuf=nch;}
+   PBuf *pb=S->pbuf;
+   #pragma omp parallel for schedule(dynamic,1)
+   for(int ch=0;ch<nch;ch++){PBuf *B=&pb[ch];B->n=0;int i1=(ch+1)*PB_CHUNK;if(i1>n)i1=n;
+-    for(int i=ch*PB_CHUNK;i<i1;i++){int c=cell[i],cx=c%nx,cy=(c/nx)%ny,cz=c/(nx*ny);
+-      for(int dz=-1;dz<=1;dz++)for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
+-        int X=cx+dx,Y=cy+dy,Z=cz+dz;if(X<0||Y<0||Z<0||X>=nx||Y>=ny||Z>=nz)continue;
+-        for(int j=head[(Z*ny+Y)*nx+X];j>=0;j=next[j]){if(j<=i)continue;
+-          double ddx=S->pos[3*i]-S->pos[3*j],ddy=S->pos[3*i+1]-S->pos[3*j+1],ddz=S->pos[3*i+2]-S->pos[3*j+2],rc=S->brad[i]+S->brad[j]+S->pairRange+skin;
+-          if(ddx*ddx+ddy*ddy+ddz*ddz<rc*rc){
+-            if(B->n+2>B->cap){B->cap=2*B->cap+256;B->p=xrealloc(B->p,sizeof(int)*B->cap);}
+-            B->p[B->n]=i;B->p[B->n+1]=j;B->n+=2;}}}}}
++    for(int i=ch*PB_CHUNK;i<i1;i++){
++      if(S->brad[i]<BIG_R)gridSearch(S,&gS,i,cS,marg,0,B);
++      else{gridSearch(S,&gB,i,cB,marg,0,B);gridSearch(S,&gS,i,S->brad[i]+rb+marg,marg,1,B);}}}
+   int tot=0;for(int ch=0;ch<nch;ch++){int m=pb[ch].n;pb[ch].off=tot;tot+=m;}
+   if(tot>S->capPairs){S->capPairs=tot+tot/2+1024;S->pairs=xrealloc(S->pairs,sizeof(int)*S->capPairs);}
+   #pragma omp parallel for schedule(static)
+   for(int ch=0;ch<nch;ch++)if(pb[ch].n)memcpy(S->pairs+pb[ch].off,pb[ch].p,sizeof(int)*pb[ch].n);
+   S->npairs=tot/2;
+-  free(head);free(next);free(cell);
+-  /* pares em ordem i<j; cada partícula soma os seus pares nessa ordem */
++  free(gB.head);free(gB.next);free(gS.head);free(gS.next);
++  /* cada partícula soma os seus pares na ordem da lista */
+   memset(S->pStart,0,sizeof(int)*(n+1));
+   for(int p=0;p<S->npairs;p++){S->pStart[S->pairs[2*p]+1]++;S->pStart[S->pairs[2*p+1]+1]++;}
+   for(int i=0;i<n;i++)S->pStart[i+1]+=S->pStart[i];
+@@ -156,10 +185,26 @@ static void buildPairs(Sim *S,double skin){
+   int *fill=xmalloc(sizeof(int)*n);for(int i=0;i<n;i++)fill[i]=S->pStart[i];
+   for(int p=0;p<S->npairs;p++){S->pList[fill[S->pairs[2*p]]++]=2*p;S->pList[fill[S->pairs[2*p+1]]++]=2*p+1;}
+   free(fill);
+-  if(S->npairs+1>S->capPS){S->capPS=2*S->npairs+2;S->candPS=xrealloc(S->candPS,sizeof(int)*S->capPS);S->candPS2=xrealloc(S->candPS2,sizeof(int)*S->capPS);S->candN=xrealloc(S->candN,sizeof(int)*S->capPS);S->candCap=xrealloc(S->candCap,sizeof(int)*S->capPS);S->candN2=xrealloc(S->candN2,sizeof(int)*S->capPS);S->pairSt=xrealloc(S->pairSt,S->capPS);S->bufT=xrealloc(S->bufT,S->capPS);S->bufO=xrealloc(S->bufO,sizeof(int)*S->capPS);S->work=xrealloc(S->work,sizeof(int)*S->capPS);}
++  int npMax=S->npairs>npOld?S->npairs:npOld;
++  if(npMax+1>S->capPS){S->capPS=2*npMax+2;S->candPS=xrealloc(S->candPS,sizeof(int)*S->capPS);S->candPS2=xrealloc(S->candPS2,sizeof(int)*S->capPS);S->candN=xrealloc(S->candN,sizeof(int)*S->capPS);S->candCap=xrealloc(S->candCap,sizeof(int)*S->capPS);S->candN2=xrealloc(S->candN2,sizeof(int)*S->capPS);S->pairSt=xrealloc(S->pairSt,S->capPS);S->bufT=xrealloc(S->bufT,S->capPS);S->bufO=xrealloc(S->bufO,sizeof(int)*S->capPS);S->work=xrealloc(S->work,sizeof(int)*S->capPS);S->pairOld=xrealloc(S->pairOld,sizeof(int)*S->capPS);}
+   if(S->npairs>S->capPairF){S->capPairF=2*S->npairs+16;S->pairF=xrealloc(S->pairF,sizeof(double)*10*S->capPairF);
+     S->pairG=xrealloc(S->pairG,sizeof(double)*S->capPairF);S->pairD=xrealloc(S->pairD,sizeof(double)*6*S->capPairF);S->pairOn=xrealloc(S->pairOn,S->capPairF);}
+-  memcpy(S->posB,S->pos,sizeof(double)*3*n);S->candStale=1;S->built=1;S->builtRange=S->pairRange;
++  if(carry){
++    /* S2i: par novo → par antigo pela tabela; início, contagem e folga da faixa de candidatos passam para o índice novo
++       (par novo: faixa vazia, será varrido); a varredura seguinte rearranja as faixas a partir deste jogo */
++    int hc=1;while(hc<2*npOld+2)hc<<=1;
++    if(hc>S->hashCap){S->hash=xrealloc(S->hash,sizeof(int)*hc);S->hashCap=hc;}
++    int *H=S->hash;memset(H,0,sizeof(int)*hc);long mask=hc-1;
++    for(int p=0;p<npOld;p++){long k=hkey(S->pairsOld[2*p],S->pairsOld[2*p+1],n),h=(k*0x9E3779B97F4A7C15ULL>>20)&mask;while(H[h])h=(h+1)&mask;H[h]=p+1;}
++    int *ps2=S->candPS2,*cn2=S->candN2,*cap2=S->work;
++    #pragma omp parallel for schedule(static)
++    for(int p=0;p<S->npairs;p++){int a=S->pairs[2*p],b=S->pairs[2*p+1];long k=hkey(a,b,n),h=(k*0x9E3779B97F4A7C15ULL>>20)&mask;int o=-1;
++      for(;H[h];h=(h+1)&mask){int q=H[h]-1;if(S->pairsOld[2*q]==a&&S->pairsOld[2*q+1]==b){o=q;break;}}
++      S->pairOld[p]=o;if(o>=0){ps2[p]=S->candPS[o];cn2[p]=S->candN[o];cap2[p]=S->candCap[o];}else{ps2[p]=0;cn2[p]=0;cap2[p]=0;}}
++    int *t=S->candPS;S->candPS=S->candPS2;S->candPS2=t;t=S->candN;S->candN=S->candN2;S->candN2=t;
++    memcpy(S->candCap,cap2,sizeof(int)*S->npairs);S->remap=1;
++  }else S->candStale=1;
++  memcpy(S->posB,S->pos,sizeof(double)*3*n);S->built=1;S->builtRange=S->pairRange;
+ }
+ 
+ /* menor distância com sinal de um ponto à casca de b (positiva fora), normal no mundo; top4 guarda os 4 planos mais altos */
+@@ -245,8 +290,9 @@ static void scanCandidates(Sim *S,double range,int full){
+       #pragma omp for schedule(dynamic,64)
+       for(int p=0;p<np;p++){int n0=B->n;scanPair(S,p,rr,B);ncnt[p]=B->n-n0;bufT[p]=(unsigned char)tid;bufO[p]=n0;pairSt[p]=1;}
+     }else{
++      int remap=S->remap;const int *old=S->pairOld;
+       for(int p=p0;p<p1;p++){
+-        if(!S->stale[S->pairs[2*p]]&&!S->stale[S->pairs[2*p+1]])pairSt[p]=0;
++        if(!S->stale[S->pairs[2*p]]&&!S->stale[S->pairs[2*p+1]]&&!(remap&&old[p]<0))pairSt[p]=0;
+         else{pairSt[p]=1;int w;
+           #pragma omp atomic capture
+           w=nwork++;
+@@ -256,10 +302,11 @@ static void scanCandidates(Sim *S,double range,int full){
+       #pragma omp for schedule(dynamic,chunk) reduction(|:over)
+       for(int w=0;w<nwork;w++){int p=work[w],n0=B->n,m;scanPair(S,p,rr,B);m=B->n-n0;ncnt[p]=m;bufT[p]=(unsigned char)tid;bufO[p]=n0;if(m>cap[p])over=1;}
+     }
+-    if(full||over){
++    if(full||over||S->remap){
+       /* B. novo arranjo das faixas (S2n): par revarrido ganha faixa com folga; os outros mantêm a sua. Deslocamentos por
+          prefixo (cada núcleo soma a sua faixa de pares) e cópia: sequências de pares sem mudança vêm do jogo anterior
+-         num memcpy só (faixas consecutivas nos dois arranjos); pares revarridos vêm do bloco onde foram varridos */
++         num memcpy só (faixas consecutivas nos dois arranjos; depois de uma reconstrução da lista, S2i, a sequência
++         quebra onde a faixa herdada não é contígua à anterior); pares revarridos vêm do bloco onde foram varridos */
+       int sum=0;for(int p=p0;p<p1;p++){if(pairSt[p]){int c=ncnt[p]+CAND_SLACK;if(full||c>cap[p])cap[p]=c;}sum+=cap[p];}
+       tsum[tid]=sum;
+       #pragma omp barrier
+@@ -276,7 +323,7 @@ static void scanCandidates(Sim *S,double range,int full){
+       for(int p=p0;p<p1;){int q=p+1;
+         if(pairSt[p]){int m=ncnt[p],t=bufT[p],o0=bufO[p],d0=nslot[p];
+           if(m){memcpy(c2+3*d0,bufs[t].c+3*o0,sizeof(int)*3*m);memcpy(pl2+4*d0,bufs[t].pl+4*o0,sizeof(short)*4*m);}}
+-        else{while(q<p1&&!pairSt[q])q++;int d0=nslot[p],m=(q<p1?nslot[q]:endOff)-d0;
++        else{while(q<p1&&!pairSt[q]&&slot[q]==slot[q-1]+cap[q-1])q++;int d0=nslot[p],m=(q<p1?nslot[q]:endOff)-d0;
+           if(m){int s0=slot[p];memcpy(c2+3*d0,S->cand+3*s0,sizeof(int)*3*m);memcpy(pl2+4*d0,S->candPl+4*s0,sizeof(short)*4*m);}}
+         p=q;}
+       #pragma omp barrier
+@@ -298,7 +345,8 @@ static void scanCandidates(Sim *S,double range,int full){
+       memcpy(S->prSX+k0,S->prX+k0,m);memcpy(S->prSY+k0,S->prY+k0,m);memcpy(S->prSZ+k0,S->prZ+k0,m);
+       memcpy(S->RmS+9*i,S->Rm+9*i,sizeof(double)*9);memcpy(S->posS+3*i,S->pos+3*i,sizeof(double)*3);S->stale[i]=0;}
+   }
+-  S->ncand=nc;S->candStale=0;
++  if(prof&&!full){PN[PN_WORK]+=nwork;int st=0;for(int p=0;p<np;p++)st+=pairSt[p];(void)st;PN[PN_TOT]+=S->candPS[np];}
++  S->ncand=nc;S->candStale=0;S->remap=0;
+ }
+ 
+ /* ---------- forças ---------- */
+@@ -344,23 +392,24 @@ static double masticRec(const Sim *S,int a,int b,double x,double y,double z,doub
+ }
+ 
+ static Out run(Sim *S,int nsteps,const Opt *o){
+-  int n=S->n;double dt=o->dt,gd=o->gd,gz=o->gz,skin=0.6;
++  int n=S->n;double dt=o->dt,gd=o->gd,gz=o->gz,skin=PAIR_SKIN;
+   double film=S->film,lubR=S->eta>0?S->lub:0,range=film+lubR;if(range!=S->pairRange)S->candStale=1;S->pairRange=range;
+   double st=sin(S->tilt),ct=cos(S->tilt),omega=o->omega;
+   /* a lista de pares só é refeita quando o alcance muda ou alguém andou mais que a folga (abaixo) */
+-  if(!S->built||S->builtRange!=range)buildPairs(S,skin);
++  if(!S->built||S->builtRange!=range)buildPairs(S,skin,1);
+   Out out;memset(&out,0,sizeof out);
+   for(int step=0;step<nsteps;step++){
+     double t=o->t0+step*dt,dmax=0;
+     PBEG(t0_);
+     for(int i=0;i<3*n;i+=3){double dx=S->pos[i]-S->posB[i],dy=S->pos[i+1]-S->posB[i+1],dz=S->pos[i+2]-S->posB[i+2],dd=dx*dx+dy*dy+dz*dz;if(dd>dmax)dmax=dd;}
+-    if(sqrt(dmax)>skin*0.45){buildPairs(S,skin);PN[PN_BUILD]++;}
++    if(sqrt(dmax)>skin*0.45){buildPairs(S,skin,1);PN[PN_BUILD]++;}
+     PEND(t0_,PT_PARES);
+     PBEG(t1_);
+     int any=0;rotationsChk(S,!S->candStale,&any);
++    if(prof&&any){int st=0;for(int i=0;i<n;i++)st+=S->stale[i];PN[PN_STALE]+=st;}
+     PEND(t1_,PT_ROT);
+     if(S->candStale){PBEG(t3_);scanCandidates(S,range,1);PEND(t3_,PT_VARRF);PN[PN_VARRF]++;}
+-    else if(any){PBEG(t4_);scanCandidates(S,range,0);PEND(t4_,PT_VARRP);PN[PN_VARRP]++;}
++    else if(any||S->remap){PBEG(t4_);scanCandidates(S,range,0);PEND(t4_,PT_VARRP);PN[PN_VARRP]++;}
+     if(prof){PN[PN_PASSOS]++;PN[PN_PARES]+=S->npairs;PN[PN_CAND]+=S->ncand;}
+     /* 1. por par: molas dos candidatos (registro por candidato) e lubrificação no menor g (registro por par) */
+     PBEG(t5_);
+@@ -489,7 +538,7 @@ static void extent(Sim *S,double *lo,double *hi){rotations(S);double a=1e9,b=-1e
+ typedef struct{double max,maxAbs,p99;int nPairs,nBad;}Pen;
+ static int cmpd(const void *a,const void *b){double x=*(const double*)a,y=*(const double*)b;return x<y?-1:x>y;}
+ static Pen penetration(Sim *S){
+-  rotations(S);double save=S->pairRange;S->pairRange=0;buildPairs(S,0);S->pairRange=save;
++  rotations(S);double save=S->pairRange;S->pairRange=0;buildPairs(S,0,0);S->pairRange=save;
+   Pen P;memset(&P,0,sizeof P);int np=S->npairs;double *pp=xmalloc(sizeof(double)*(np+1)),*rel=xmalloc(sizeof(double)*(np+1));int nr=0;
+   /* S2g: a penetração de cada par é independente (em paralelo); máximo, contagens e p99 (ordenado) vêm depois, na ordem dos pares */
+   #pragma omp parallel for schedule(dynamic,64)
+@@ -500,7 +549,7 @@ static Pen penetration(Sim *S){
+   for(int p=0;p<np;p++){double pen=pp[p];
+     if(pen>0){int a=S->pairs[2*p],b=S->pairs[2*p+1];double r=pen/mind(S->sc[a],S->sc[b]);rel[nr++]=r;if(r>P.max)P.max=r;if(pen>P.maxAbs)P.maxAbs=pen;if(r>0.02)P.nBad++;}}
+   qsort(rel,nr,sizeof(double),cmpd);P.p99=nr?rel[(int)floor(0.99*(nr-1))]:0;P.nPairs=nr;free(rel);free(pp);
+-  S->candStale=1;S->built=0;return P;
++  S->candStale=1;S->built=0;S->remap=0;return P;
+ }
+ 
+ /* ---------- quadros da animação ---------- */
+@@ -738,14 +787,15 @@ int main(int argc,char **argv){
+   PEND(tp_,PT_PEN);
+   double tDem=now_s()-t0;
+   if(prof){long ns=PN[PN_PASSOS]?PN[PN_PASSOS]:1;
+-    fprintf(stderr,"PROF passos=%ld buildPairs=%ld varrCompleta=%ld varrParcial=%ld rearranjos=%ld paresMed=%.0f candMed=%.0f threads=%d\n",
+-      PN[PN_PASSOS],PN[PN_BUILD],PN[PN_VARRF],PN[PN_VARRP],S->nRelayout,(double)PN[PN_PARES]/ns,(double)PN[PN_CAND]/ns,
++    fprintf(stderr,"PROF passos=%ld buildPairs=%ld varrCompleta=%ld varrParcial=%ld rearranjos=%ld paresMed=%.0f candMed=%.0f alcance=%.3f folga=%.2f margem=%.2f threads=%d\n",
++      PN[PN_PASSOS],PN[PN_BUILD],PN[PN_VARRF],PN[PN_VARRP],S->nRelayout,(double)PN[PN_PARES]/ns,(double)PN[PN_CAND]/ns,S->pairRange,PAIR_SKIN,CAND_MARGIN,
+ #ifdef _OPENMP
+       omp_get_max_threads()
+ #else
+       1
+ #endif
+       );
++    fprintf(stderr,"PROF parcial: paresVarridosMed=%.1f partStaleMed=%.1f faixasTotMed=%.0f\n",(double)PN[PN_WORK]/(PN[PN_VARRP]?PN[PN_VARRP]:1),(double)PN[PN_STALE]/(PN[PN_VARRP]?PN[PN_VARRP]:1),(double)PN[PN_TOT]/(PN[PN_VARRP]?PN[PN_VARRP]:1));
+     fprintf(stderr,"PROF t(s) pares=%.1f rot=%.1f conf=%.1f varrCompleta=%.1f varrParcial=%.1f (serial=%.1f) fPar=%.1f fPart=%.1f integ=%.1f penet=%.1f dem=%.1f ms/passo=%.3f\n",
+       PT[PT_PARES],PT[PT_ROT],PT[PT_CONF],PT[PT_VARRF],PT[PT_VARRP],PT[PT_VARRS],PT[PT_FPAR],PT[PT_FPART],PT[PT_INTEG],PT[PT_PEN],tDem,1e3*tDem/ns);}
+   /* saída: cabeçalho JSON + vetores binários */
