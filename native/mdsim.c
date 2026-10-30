@@ -79,7 +79,6 @@ typedef struct{
   int *pairs,npairs,capPairs;int *pStart,*pList; /* CSR partícula → pares */
   int *cand,ncand,capCand;short *candPl;int *candPS,capPS; /* candidatos [par, lado, ponto] agrupados por par */
   int *cand2,capCand2;short *candPl2;int *candPS2;unsigned char *pairSt,*bufT;int *bufO,*work; /* S2b: segundo jogo (troca de ponteiros); par revarrido: marca, bloco e posição; lista de trabalho */
-  int *cStart,*cList,capCList;int *csrCnt,capCsr;       /* CSR partícula → candidatos; contagens por núcleo (S2b) */
   double *candF;int capCandF;unsigned char *candOn;     /* por candidato: fA[3], tA[3], tB[3], pen; candOn = registro com força (S2c) */
   void *bufs;int nbufs;                                 /* blocos por núcleo da varredura, persistentes (S2b) */
   PBuf *pbuf;int npbuf;                                 /* blocos de pares por faixa de partículas (S2f) */
@@ -227,7 +226,6 @@ static void scanCandidates(Sim *S,double range,int full){
   /* blocos por núcleo persistentes (S2b): nada é liberado entre varreduras */
   if(nt>S->nbufs){S->bufs=xrealloc(S->bufs,sizeof(Buf)*nt);memset((Buf*)S->bufs+S->nbufs,0,sizeof(Buf)*(nt-S->nbufs));
     for(int t=S->nbufs;t<nt;t++){Buf *B=(Buf*)S->bufs+t;B->sA=xmalloc(sizeof(double)*(S->maxNpr+8));B->sB=xmalloc(sizeof(double)*(S->maxNpr+8));}S->nbufs=nt;}
-  if(nt*n>S->capCsr){S->capCsr=nt*n;S->csrCnt=xrealloc(S->csrCnt,sizeof(int)*S->capCsr);}
   Buf *bufs=(Buf*)S->bufs;int *nPS=S->candPS2,*work=S->work,*bufO=S->bufO;unsigned char *bufT=S->bufT,*pairSt=S->pairSt;int tsum[256];int tot=0,nwork=0;
   #pragma omp parallel num_threads(nt)
   {
@@ -278,23 +276,12 @@ static void scanCandidates(Sim *S,double range,int full){
     #pragma omp barrier
     #pragma omp single
     {int *ti=S->cand;S->cand=S->cand2;S->cand2=ti;short *ts=S->candPl;S->candPl=S->candPl2;S->candPl2=ts;int tc=S->capCand;S->capCand=S->capCand2;S->capCand2=tc;
-      ti=S->candPS;S->candPS=S->candPS2;S->candPS2=ti;S->ncand=tot;
-      if(2*tot+1>S->capCList){S->capCList=3*tot+1024;S->cList=xrealloc(S->cList,sizeof(int)*S->capCList);}}
+      ti=S->candPS;S->candPS=S->candPS2;S->candPS2=ti;S->ncand=tot;}
     /* C. posição de referência dos pontos de prova das partículas revarridas */
     #pragma omp for schedule(static)
     for(int i=0;i<n;i++)if(full||S->stale[i]){int k0=S->prStart[i];size_t m=sizeof(double)*(S->prStart[i+1]-k0);
       memcpy(S->prSX+k0,S->prX+k0,m);memcpy(S->prSY+k0,S->prY+k0,m);memcpy(S->prSZ+k0,S->prZ+k0,m);
       memcpy(S->RmS+9*i,S->Rm+9*i,sizeof(double)*9);memcpy(S->posS+3*i,S->pos+3*i,sizeof(double)*3);S->stale[i]=0;}
-    /* D. CSR partícula → candidatos em paralelo: cada núcleo conta a sua faixa de candidatos; blocos na ordem dos núcleos = ordem dos candidatos */
-    int c0=(int)((long)tot*tid/ntA),c1=(int)((long)tot*(tid+1)/ntA);int *cnti=S->csrCnt+(size_t)tid*n;memset(cnti,0,sizeof(int)*n);
-    const int *cand=S->cand,*pairs=S->pairs;
-    for(int c=c0;c<c1;c++){int p=cand[3*c];cnti[pairs[2*p]]++;cnti[pairs[2*p+1]]++;}
-    #pragma omp barrier
-    #pragma omp single
-    {int acc=0;S->cStart[0]=0;for(int i=0;i<n;i++){for(int t=0;t<ntA;t++){int *x=S->csrCnt+(size_t)t*n+i;int m=*x;*x=acc;acc+=m;}S->cStart[i+1]=acc;}}
-    int *cl=S->cList;
-    for(int c=c0;c<c1;c++){int p=cand[3*c],side=cand[3*c+1],a=pairs[2*p],b=pairs[2*p+1],A=side?b:a,Bp=side?a:b;
-      cl[cnti[A]++]=2*c;cl[cnti[Bp]++]=2*c+1;}
   }
   S->candStale=0;
 }
@@ -386,13 +373,16 @@ static Out run(Sim *S,int nsteps,const Opt *o){
     for(int i=0;i<n;i++){
       double *F=S->F+3*i,*T=S->T+3*i,*FL=S->FL+3*i,*TL=S->TL+3*i,cs=0,ov=0,fb=0,ft=0;
       F[0]=F[1]=F[2]=T[0]=T[1]=T[2]=FL[0]=FL[1]=FL[2]=TL[0]=TL[1]=TL[2]=0;
-      for(int j=S->cStart[i];j<S->cStart[i+1];j++){int e=S->cList[j],c=e>>1,role=e&1;if(!S->candOn[c])continue;const double *cf=S->candF+10*c;
-        if(role==0){F[0]+=cf[0];F[1]+=cf[1];F[2]+=cf[2];T[0]+=cf[3];T[1]+=cf[4];T[2]+=cf[5];if(cf[9]>ov)ov=cf[9];}
-        else{F[0]-=cf[0];F[1]-=cf[1];F[2]-=cf[2];T[0]+=cf[6];T[1]+=cf[7];T[2]+=cf[8];}}
-      for(int j=S->pStart[i];j<S->pStart[i+1];j++){int e=S->pList[j],p=e>>1,role=e&1;if(!S->pairOn[p])continue;const double *pf=S->pairF+10*p;
-        if(role==0){FL[0]+=pf[0];FL[1]+=pf[1];FL[2]+=pf[2];TL[0]+=pf[3];TL[1]+=pf[4];TL[2]+=pf[5];}
-        else{FL[0]-=pf[0];FL[1]-=pf[1];FL[2]-=pf[2];TL[0]+=pf[6];TL[1]+=pf[7];TL[2]+=pf[8];}
-        cs+=pf[9];}
+      /* S2m: os candidatos vêm pelos pares da partícula (pList em ordem de par, candidatos contíguos por par): a mesma ordem
+         crescente de candidato de antes, sem o CSR partícula → candidato. F/T e FL/TL/cs são acumuladores separados. */
+      for(int j=S->pStart[i];j<S->pStart[i+1];j++){int e=S->pList[j],p=e>>1,rp=e&1;
+        for(int c=S->candPS[p];c<S->candPS[p+1];c++){if(!S->candOn[c])continue;const double *cf=S->candF+10*c;int role=S->cand[3*c+1]^rp;
+          if(role==0){F[0]+=cf[0];F[1]+=cf[1];F[2]+=cf[2];T[0]+=cf[3];T[1]+=cf[4];T[2]+=cf[5];if(cf[9]>ov)ov=cf[9];}
+          else{F[0]-=cf[0];F[1]-=cf[1];F[2]-=cf[2];T[0]+=cf[6];T[1]+=cf[7];T[2]+=cf[8];}}
+        if(S->pairOn[p]){const double *pf=S->pairF+10*p;
+          if(rp==0){FL[0]+=pf[0];FL[1]+=pf[1];FL[2]+=pf[2];TL[0]+=pf[3];TL[1]+=pf[4];TL[2]+=pf[5];}
+          else{FL[0]-=pf[0];FL[1]-=pf[1];FL[2]-=pf[2];TL[0]+=pf[6];TL[1]+=pf[7];TL[2]+=pf[8];}
+          cs+=pf[9];}}
       /* paredes: cilindro com eixo inclinado (giratório) e as duas placas */
       double gw=1e9,gb=1e9,gt=1e9,W[8]={0},Bq[3]={0},Tq[3]={0},f[3],ta[3],tb[3];
       /* S2d: só grãos perto de uma parede olham os pontos. A distância ao eixo é 1-Lipschitz, então nenhum ponto chega a
@@ -722,7 +712,7 @@ int main(int argc,char **argv){
   S->F=xmalloc(sizeof(double)*3*n);S->T=xmalloc(sizeof(double)*3*n);S->FL=xmalloc(sizeof(double)*3*n);S->TL=xmalloc(sizeof(double)*3*n);
   S->Cs=xmalloc(sizeof(double)*n);S->posB=xmalloc(sizeof(double)*3*n);S->kdir=xmalloc(sizeof(double)*3*n);
   S->keI=xmalloc(sizeof(double)*n);S->fbI=xmalloc(sizeof(double)*n);S->ftI=xmalloc(sizeof(double)*n);S->ovI=xmalloc(sizeof(double)*n);
-  S->stale=xmalloc(n);S->pStart=xmalloc(sizeof(int)*(n+1));S->cStart=xmalloc(sizeof(int)*(n+1));
+  S->stale=xmalloc(n);S->pStart=xmalloc(sizeof(int)*(n+1));
   S->lastKick=-1;S->rk.a=(uint32_t)(seed+3);S->zp=1e4;S->candStale=1;
   Rec rec;memset(&rec,0,sizeof rec);rec.stride=1;rec.capF=(int)clampd(floor(48e6/(28.0*n)),80,600);
   double t0=now_s();
