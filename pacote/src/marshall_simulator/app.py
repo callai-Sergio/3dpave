@@ -62,23 +62,31 @@ class Api:
 
 
 class Nativo:
-    """Roda o mdsim (uma simulação por vez) e guarda a última linha de progresso que ele escreve."""
+    """Roda o mdsim e guarda a última linha de progresso que ele escreve. Uma simulação nova (o usuário clicou de
+    novo em "Gerar corpo de prova") encerra a anterior, que a página já descartou."""
 
     def __init__(self):
         self.token = secrets.token_urlsafe(16)
         self.ok = os.path.exists(MDSIM)
         self.trava = threading.Lock()
         self.progresso = {}
+        self.proc = None
+
+    def cancelar(self):
+        p = self.proc
+        if p is not None and p.poll() is None:
+            p.kill()
 
     def rodar(self, entrada):
+        self.cancelar()
         with self.trava, tempfile.TemporaryDirectory(prefix='mdsim-') as d:
             fin, fout = os.path.join(d, 'in.bin'), os.path.join(d, 'out.bin')
             with open(fin, 'wb') as f:
                 f.write(entrada)
             self.progresso = {}
             flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-            p = subprocess.Popen([MDSIM, fin, fout, str(NUCLEOS)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                                 creationflags=flags)
+            p = self.proc = subprocess.Popen([MDSIM, fin, fout, str(NUCLEOS)], stdout=subprocess.DEVNULL,
+                                             stderr=subprocess.PIPE, creationflags=flags)
             erro = []
             # o mdsim escreve "P<tab>etapa<tab>fração<tab>texto" a cada passo; o resto é mensagem de erro
             for linha in iter(p.stderr.readline, b''):

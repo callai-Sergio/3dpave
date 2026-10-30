@@ -67,7 +67,8 @@ $('b-copy').addEventListener('click',()=>{const ta=$('stl-txt');
 try{
   loadDefault();renderCalc();renderPanel();
   initThree();
-  generate();
+  // o app abre parado: a pessoa ajusta a mistura e gera quando quiser (pedido do usuário, 2026-10-30)
+  $('ptext').textContent='Ajuste a mistura e clique em “Gerar corpo de prova”.';
 }catch(e){showError('Falha ao iniciar: '+(e&&e.message||e));}
 window.__md={get result(){return result;},eqA,eqW,composicao,readForm,wGradation};
 })();
