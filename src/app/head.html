@@ -248,14 +248,14 @@ ul.lim,ol.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);displ
             <div class="field"><label for="f-avc">Vazios de ar alvo, AVC (%)</label><input type="text" class="numin" id="f-avc" inputmode="decimal"><span class="err" id="e-avc"></span></div>
             <div class="field"><label for="f-ra">Densidade do agregado (g/cm³)</label><input type="text" class="numin" id="f-ra" inputmode="decimal"><span class="err" id="e-ra"></span></div>
             <div class="field"><label for="f-rb">Densidade do betume (g/cm³)</label><input type="text" class="numin" id="f-rb" inputmode="decimal"><span class="err" id="e-rb"></span></div>
+            <div class="field wide"><label for="f-proto">Compactação</label>
+              <select id="f-proto"><option value="marshall">Marshall (soquete, golpes por face)</option><option value="giratorio">Giratório (SGC, pressão e giros)</option><option value="w">[W] pistões, sem gravidade (Wan et al. 2024)</option></select>
+              <span class="note" id="n-proto"></span></div>
             <div class="field wide"><label for="f-size">Corpo de prova virtual</label>
               <select id="f-size"><option value="p">Rápido: 250 g em molde Ø65 mm</option><option value="w">Como em [W]: 1000 g em molde Ø102 mm</option><option value="m">Marshall normal: 1200 g em Ø101,6 mm</option><option value="g">Giratório normal: 4700 g em Ø150 mm</option></select>
               <span class="note" id="n-size"></span>
               <span class="warn" id="w-size" hidden></span>
             </div>
-            <div class="field wide"><label for="f-proto">Compactação</label>
-              <select id="f-proto"><option value="marshall">Marshall (soquete, golpes por face)</option><option value="giratorio">Giratório (SGC, pressão e giros)</option><option value="w">[W] pistões, sem gravidade (Wan et al. 2024)</option></select>
-              <span class="note" id="n-proto"></span></div>
             <div class="field wide" data-proto="marshall giratorio"><label for="f-avcmode">Modo de AVC</label>
               <select id="f-avcmode"><option value="travado">AVC travado: o CP termina no AVC alvo</option><option value="livre">AVC livre: o AVC sai dos golpes ou giros</option></select>
               <span class="note" id="n-avcmode"></span></div>

@@ -52,7 +52,7 @@ O desafio é a plausibilidade: o CP virtual precisa fechar volume e massa, não 
 | Marshall | Queda com gravidade; 75 golpes do soquete por face, com o molde virado; 1200 g em Ø101,6 mm | DNER-ME 043, ASTM D6926 |
 | Giratório | Queda; pressão constante e molde inclinado em precessão; 4700 g em Ø150 mm | AASHTO T 312 |
 
-Moldes por protocolo: o Marshall só existe em tamanho real; o giratório usa Ø150 mm por padrão, com Ø102 mm como opção; o [W] usa 1000 g em Ø102 mm, como no paper, ou o CP rápido de 250 g em Ø65 mm.
+Moldes por protocolo: o corpo de prova segue a compactação escolhida. O Marshall usa o CP Marshall (1200 g em Ø101,6 mm) e o giratório usa o CP do giratório (4700 g em Ø150 mm); o [W] usa 1000 g em Ø102 mm, como no paper, ou o CP rápido de 250 g em Ø65 mm.
 
 **Esqueleto que não cabe no [W] (A10):** o [W] leva os pistões até a altura do AVC alvo. Em granulometrias abertas ou com AVC alvo baixo, o esqueleto de pedras não cabe nessa altura, e antes o pistão empurrava as pedras umas para dentro das outras (até 1,4 mm de penetração, K8). Agora o pistão para quando uma pedra entra mais de 0,1 mm em outra e espera 0,1 s; se a penetração não cai, o CP fica na altura em que o esqueleto travou, com o AVC medido, e o app avisa (PT/EN). É uma diferença de [W]: o paper sempre chega ao AVC alvo. Nos casos que chegam ao alvo nada muda (golden idêntico bit a bit).
 

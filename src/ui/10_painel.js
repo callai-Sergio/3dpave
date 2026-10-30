@@ -198,7 +198,7 @@ function onInputs(){
   const {cfg,errs}=readForm();showErrs(errs);updateBandCells();renderGradChart();
   $('h-nome').textContent=cfg.nome;$('form').dataset.p=cfg.proto;
   $('n-proto').textContent=cfg.proto==='marshall'?'A mistura cai no molde com gravidade e recebe os golpes do soquete nas duas faces (DNER-ME 043 / ASTM D6926).':
-    cfg.proto==='giratorio'?'A mistura cai no molde e é compactada com pressão constante e o molde inclinado girando (AASHTO T 312). O molde padrão é o de Ø150 mm; o de Ø102 mm é a outra opção.':
+    cfg.proto==='giratorio'?'A mistura cai no molde e é compactada com pressão constante e o molde inclinado girando (AASHTO T 312). O corpo de prova é o do giratório: 4700 g em Ø150 mm.':
     'Método de Wan et al. (2024): sem gravidade e sem atrito, pistões até AVC 50% e força crescente até o AVC alvo.';
   $('n-avcmode').textContent=cfg.avcMode==='livre'?'A altura final medida define o AVC do CP. Compare o AVC previsto com o do laboratório.':
     'Se a compactação não chegar à altura do AVC alvo, um ajuste leva até lá, com a mesma física. O painel mostra quanto da compactação foi pelo ajuste.';
@@ -210,7 +210,7 @@ function onInputs(){
   $('n-size').textContent=`Altura calculada pela densidade: ${fmt(comp.H,1)} mm.${slow}`;
   // TNM: uma peneira acima da primeira com menos de 90% passante; molde deve ter pelo menos 4 × TNM
   const gi=cfg.grad.findIndex(r=>r.p<90),tnm=gi>0?cfg.grad[gi-1].s:cfg.grad[0].s;
-  const big=4*tnm>comp.D+1e-9;$('w-size').hidden=!big;if(big)$('w-size').textContent=`O TNM de ${fmt(tnm,1)} mm pede um molde de pelo menos Ø${fmt(4*tnm,0)} mm. Prefira o molde de Ø102 mm ou uma faixa mais fina.`;
+  const big=4*tnm>comp.D+1e-9;$('w-size').hidden=!big;if(big)$('w-size').textContent=`O TNM de ${fmt(tnm,1)} mm pede um molde de pelo menos Ø${fmt(4*tnm,0)} mm. Use uma faixa mais fina.`;
   if(running)return;
   const sig=c=>JSON.stringify([c.comp,c.lib,c.seed,c.proto,c.avcMode,c.golpes,c.gsim,c.ngir,c.gsimg,c.press,c.ang,c.grade,c.temp,c.lam,c.etaK,c.escE,c.escP,c.faceW]);
   const prev=lastCfg,changed=!prev||sig(prev)!==sig(Object.assign({},cfg,{comp}));
