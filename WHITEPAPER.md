@@ -88,7 +88,20 @@ Marshall em tamanho real (1200 g, Ø101,6 mm), Albayati 60/70 a 140 °C, formas 
 | 0,3 (padrão atual) | 0,005 | 0,9 / 0,2 / 0,8 / 0,1 | 3,7 pp |
 | **0,5** | **0,002** | **8,2 / 4,1 / 4,0 / 2,7** | **0,9 pp** |
 
-O melhor candidato era λ 0,5 com escala 0,002, mas com uma semente só e penetração entre pedras (K33) de 6–8 %, acima do limite de 2 %. A correção do contato (A4) levou o K33 a ~0,3 % e baixou o AVC previsto em 2–3 pp, então esta tabela precisa ser refeita com 3 sementes (A5).
+O melhor candidato era λ 0,5 com escala 0,002, mas com uma semente só e penetração entre pedras (K33) de 6–8 %, acima do limite de 2 %. A correção do contato (A4) levou o K33 a ~0,3 % e baixou o AVC previsto em 2–3 pp, e a calibração foi refeita.
+
+**Calibração A5 (2026-10-30)**, depois de A4 e A7: λ 0,45–0,6 × escala 0,001/0,002 × 3 sementes × 4 teores = 96 rodadas no servidor (núcleo C, 8 × 4 núcleos), `stress/results/vid1/calib_albayati_m2.jsonl`. Médias das 3 sementes:
+
+| λ | Escala de energia | AVC (Pb 4 / 4,5 / 5 / 5,5 %) | Erro médio | Inclinação vs. lab | K33 máx. |
+|---|---|---|---|---|---|
+| laboratório | | 6,1 / 4,8 / 3,3 / 2,7 | | | |
+| **0,55** | **0,002** | **6,65 / 4,93 / 3,45 / 2,29** | **0,31 pp** | **128 %** | **0,5 %** |
+| 0,5 | 0,001 | 6,45 / 3,75 / 2,23 / 1,51 | 0,92 pp | 145 % | 0,4 % |
+| 0,5 | 0,002 | 5,00 / 2,44 / 1,32 / 1,28 | 1,72 pp | 109 % | 0,4 % |
+| 0,55 | 0,001 | 7,82 / 7,21 / 5,76 / 4,17 | 2,01 pp | 107 % | 0,5 % |
+| 0,6 | 0,002 | 8,79 / 7,02 / 5,91 / 4,43 | 2,31 pp | 128 % | 0,7 % |
+
+λ 0,55 com escala 0,002 cumpre as metas (erro ≤ 0,5 pp, inclinação dentro de ±30 %, K33 ≤ 2 %). O desvio entre sementes é de 0,5–0,8 pp por teor, maior que o erro médio: um CP isolado pode errar ~1 pp; a média de 3 CPs, como no laboratório, ~0,4 pp. A calibração vale para Albayati 60/70 a 140 °C; outros ligantes e granulometrias ainda não foram verificados.
 
 Núcleo em C × JS: o golden bate (Vagg 52,30 × 52,32); 1,55× mais rápido com 1 núcleo, 3× com 8 e 5× com 24.
 
