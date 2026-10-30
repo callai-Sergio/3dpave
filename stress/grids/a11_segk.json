@@ -1,0 +1,22 @@
+{
+ "name": "A11: banheira radial (K14) × intensidade da força radial k, [W]",
+ "base": {},
+ "cases": [
+  {"id":"p-k0.5-s2024","seg":{"on":true,"k":0.5},"seed":2024},
+  {"id":"p-k0.5-s2","seg":{"on":true,"k":0.5},"seed":2},
+  {"id":"p-k0.5-s3","seg":{"on":true,"k":0.5},"seed":3},
+  {"id":"p-k1-s2024","seg":{"on":true,"k":1},"seed":2024},
+  {"id":"p-k1-s2","seg":{"on":true,"k":1},"seed":2},
+  {"id":"p-k1-s3","seg":{"on":true,"k":1},"seed":3},
+  {"id":"p-k1.5-s2024","seg":{"on":true,"k":1.5},"seed":2024},
+  {"id":"p-k1.5-s2","seg":{"on":true,"k":1.5},"seed":2},
+  {"id":"p-k1.5-s3","seg":{"on":true,"k":1.5},"seed":3},
+  {"id":"p-k2-s2024","seg":{"on":true,"k":2},"seed":2024},
+  {"id":"p-k2-s2","seg":{"on":true,"k":2},"seed":2},
+  {"id":"p-k2-s3","seg":{"on":true,"k":2},"seed":3},
+  {"id":"w1-k1-s2024","wmix":1,"size":"w","seg":{"on":true,"k":1},"seed":2024},
+  {"id":"w1-k1-s2","wmix":1,"size":"w","seg":{"on":true,"k":1},"seed":2},
+  {"id":"w1-k2-s2024","wmix":1,"size":"w","seg":{"on":true,"k":2},"seed":2024},
+  {"id":"w1-k2-s2","wmix":1,"size":"w","seg":{"on":true,"k":2},"seed":2}
+ ]
+}

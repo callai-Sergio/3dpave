@@ -63,7 +63,7 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | A8 | PM P3, ST 3 | Bolhas não cabem com AVC 12 % e B = 100 %; bolhas tocam agregado | Bolha só entra inteira no mastique (nem ela nem a casca de 1 voxel tocam agregado, parede ou vazio do esqueleto); no déficit, aviso com o B que ficou (PT/EN) e `st.bubDeficit`; harness: K5/K6 `na` no déficit declarado (categoria C) | `40_pipeline.js`, `kpi.mjs` | K5, K6, K19 | K19 = 0; |K5| ≤ 5 % | média | **feito**: K19 = 0 em todos os casos; |K5| ≤ 0,6 % onde cabe. Onde não cabe (AVC 12–18 %), B real 15–45 %, declarado. A estimativa antes de rodar não foi feita (a capacidade depende da geometria). Golden regravado (Vmast/Vbol na 3ª casa); a referência do vid1 precisa ser regravada no próximo deploy |
 | A9 | PM P4, ST 5 | `placeFail` > 0 em 41 % dos casos | Resolvido na unificação (F1): a colocação nunca desiste | `25_protocolos.js` | placeFail | 0 | média | **feito** (placeFail = 0 por construção) |
 | A10 | PM P5 | K8 = 0,61 isolado | No smoke, `synth-gap-p2-20` ([W], esqueleto aberto) ainda tinha K8 = 0,47 e K33 = 0,07 depois da A7: o [W] forçava a altura do AVC alvo mesmo quando o esqueleto não cabe. Agora o pistão para quando uma pedra entra > 0,1 mm em outra por 0,1 s, o CP fica com o AVC medido e o app avisa (PT/EN); JS e C | `25_protocolos.js`, `mdsim.c`, `40_pipeline.js`, `10_painel.js` | K8, K33 | ≤ 0,10 | média | **feito**: K8 0,10–0,13 (warn), K33 ≤ 0,024; golden idêntico. Novo núcleo C ainda não foi para o vid1 (a A5 está rodando) |
-| A11 | PM P6 | K14 instável com k = 1 | Investigar k = 1 × k = 2; aviso de calibração de [W] junto do campo (PT/EN) | UI | K14 | 1,3–4 | média | falta |
+| A11 | PM P6 | K14 instável com k = 1 | Varredura k 0,5/1/1,5/2 × 3 sementes (250 g) e k 1/2 × 2 sementes (mistura 1 de [W], 1000 g); aviso de calibração de [W] junto do campo (PT/EN) | UI (`head.html`) | K14 | 1,3–4 | média | **feito**: o K14 cresce com k, mas a instabilidade vem do CP de 250 g (poucas pedras nas faixas da borda); em 1000 g, k = 1 dá 2,62/2,79 (dp 0,08). Os 26 da triagem eram de antes de A4/A7/A10. Padrão mantido em k = 1 |
 | A12 | ST 4 | Pedras grandes no molde pequeno: quadrantes desiguais | Resolve-se em parte com A3 (tamanho real) | — | K15 | ≤ 0,25 | baixa | depende de A3 |
 | A14 | novo (K30) | Topo com mais vazios que a base no protocolo [W] (golden: K30 = 0,46) | Investigar assimetria dos pistões (qual se move, ordem das fases) | `25_protocolos.js` | K30 | ≤ 0,15 | média | falta |
 | A13 | BR §6.5 | Giratório sem calibração no tamanho real | Calibrar em Ø150, 4700 g | grade nova | V4, V5 | V4 RMSE ≤ 10 % | média | falta (precisa de curva h × giro do lab) |
@@ -213,3 +213,18 @@ Grade `stress/grids/a8_bolhas.json`, PC local, Node 24.11.1. Antes = `a10_smoke.
 | S18 s37 (AVC 18,0) | 100 | 0,0157 → 0 | −0,58 → −0,63 (na) | 41,7 → 37,2 |
 
 Onde as bolhas não cabem, a regra estrita cabe um pouco menos (antes, parte das bolhas encostava na pedra ou se fundia com vazios do esqueleto). O que sobra nesses casos é K23 (malha grande, F8) e K30 (A14). Golden: verdict warn (K15, K23, K30 = 0,16); Vmast 48,752 → 48,753, Vbol 2,024 → 2,023; determinismo idêntico; referência win32 regravada.
+
+### A11 (2026-10-30): banheira radial (K14) × força radial k
+
+Grade `stress/grids/a11_segk.json`, PC local, Node 24.11.1, [W], AVC travado → `stress/results/a11_segk.jsonl`.
+
+| Tamanho | k | K14 por semente | Média | dp | Vazios na borda / miolo (%) | K17 |
+|---|---|---|---|---|---|---|
+| 250 g, C-12,5 | 0,5 | 2,33 · 2,06 · 1,71 | 2,03 | 0,25 | 7,0 / 3,50 | 0,79 |
+| 250 g | 1 | 2,19 · 4,04 · 2,82 | 3,02 | 0,77 | 8,8 / 2,95 | 0,56 |
+| 250 g | 1,5 | 3,45 · 7,44 · 1,84 | 4,24 | 2,35 | 7,4 / 1,99 | 0,50 |
+| 250 g | 2 | 4,91 · 3,46 · 3,23 | 3,87 | 0,75 | 7,6 / 1,96 | 0,53 |
+| 1000 g, mistura 1 de [W] | 1 | 2,62 · 2,79 | 2,70 | 0,08 | 21,3 / 7,87 | 0,49 |
+| 1000 g | 2 | 3,70 · 2,92 | 3,31 | 0,39 | 23,4 / 7,16 | 0,46 |
+
+No CP de 250 g uma única faixa da borda vai de 2,5 a 29,7 % de vazios entre sementes: são cordas do círculo com poucos voxels. Mais força tira vazios do miolo (3,5 → 2,0 %) e não muda a borda. Em 1000 g o K14 é estável. Decisão: manter k = 1 e avisar no app. Não mexi no KPI; uma alternativa futura é medir a banheira em anéis (raio) em vez de faixas do diâmetro.
