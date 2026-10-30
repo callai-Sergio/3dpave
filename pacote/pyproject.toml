@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "marshall-simulator"
-version = "1.0.0"
+version = "1.1.0a1"
 description = "Corpo de prova Marshall virtual pelo método de Wan et al. (2024) / Virtual Marshall specimen after Wan et al. (2024)"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -17,4 +17,4 @@ marshall-simulator = "marshall_simulator.app:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-marshall_simulator = ["web/*.html"]
+marshall_simulator = ["web/*.html", "web/*.js", "web/*.txt"]

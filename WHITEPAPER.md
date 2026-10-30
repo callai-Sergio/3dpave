@@ -145,6 +145,8 @@ node stress/run.mjs stress/grids/smoke.json --jobs 6
 ```
 Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unificado.md`), sempre com Node 24.11.1.
 
+**Distribuição (versão alfa 1.1.0a1):** `pacote/` é um mini app Python que abre o simulador numa janela própria (pywebview; WebView2 no Windows), com o three.js r128 (MIT) embutido para funcionar sem internet. `python pacote/build_pacote.py --exe` gera o wheel, o `MarshallSimulator.exe` (PyInstaller, Windows, sem Python) e o zip para os colegas. O motor continua em JavaScript dentro da janela; usar o núcleo em C no app fica para a beta (F10).
+
 ## Histórico
 
 | Data | Mudança |
@@ -158,3 +160,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 | 2026-10-29 | A8: bolhas só são semeadas inteiras no mastique, sem encostar em pedra, parede ou vazio do esqueleto (K19 de ~0,2 % para 0); quando não cabem, o app diz qual B ficou. Golden: Vmast e Vbol mudaram na 3ª casa, referência regravada |
 | 2026-10-30 | A11: varredura da força radial k (0,5–2) × 3 sementes. A instabilidade do K14 vem do CP pequeno (poucas pedras nas faixas da borda), não de k = 1; em 1000 g o K14 é estável e fica na faixa com k = 1 e 2. Padrão mantido (k = 1); aviso PT/EN junto do campo |
 | 2026-10-30 | A6: padrões do app com a calibração da A5 (λ 0,55, escala de energia 0,002; antes 0,3 e 0,005), também no worker e no harness |
+| 2026-10-30 | F3: versão alfa 1.1.0a1 como mini app Python (janela própria, three.js embutido, `.exe` do Windows e wheel), no lugar do artefato |

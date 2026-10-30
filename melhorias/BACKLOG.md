@@ -74,12 +74,13 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 |---|---|---|---|---|---|---|---|
 | F1 | PP 1, AG | Gerador convexo (convexidade ~0,99; real 0,66–0,81) | Sortear de `biblioteca_formas_reais.json` | `src/worker/12_formas_reais.js`, `md_core` | volume fecha; golden [W] idêntico | alta | **parcial**: no app já existem RS (F001) e RT (F001+F004) (ver C2); falta `md_core` (Python) e, se quiser, `f004_A` sozinho |
 | F2 | PP 2 | Peneiras intermediárias DE AC/PA aproximadas (status 'R') | Conferir com TL Asphalt-StB 07/13; atualizar `gradation_points.csv` | curvas | — | média | **bloqueado**: preciso das tabelas da norma |
-| F3 | PP 3 | Artefato e pacote com HTML antigo | Republicar o artefato e refazer wheel + zip com o app unificado | `pacote/` | instala e abre | média | falta (ver C4) |
+| F3 | PP 3, usuário | Artefato e pacote com HTML antigo | Sem artefato (decisão do usuário, 2026-10-30): mini app Python (pywebview) com o app atual, three.js r128 embutido (offline), `.exe` do Windows pelo PyInstaller e zip para os colegas; `pacote/build_pacote.py` refaz tudo | `pacote/` | instala e abre | média | **feito** (1.1.0a1): wheel instala limpo num venv; `.exe` (20 MB) abre a janela com o WebView2; a página do pacote carrega o three.js local e roda o CP rápido |
 | F4 | PP 4 | EN usa vírgula decimal | Ponto decimal na versão EN | `src/ui` | — | baixa | falta |
 | F5 | PP 4 | Eq. 3 de [W] não serve para PA (cai em 48 %) | Sugestão de B por tipo de curva | `src/ui` | — | baixa | falta |
 | F6 | PP 4 | Testes faltando | 1000 g, preset [W] completo, download do zip, pacote em macOS/Linux | — | — | baixa | falta |
 | F8 | novo (K23) | Com bolhas, o STL de vazios passa de 250 mil triângulos (golden ~290 mil) | Icosaedro mais simples para bolhas pequenas, ou exportar bolhas em arquivo separado | `src/ui/30_export.js` | K23 | ≤ 250 mil | baixa | falta |
 | F9 | usuário | O app precisa de ajuda, copyright e referências; o projeto, de um whitepaper | Cards Ajuda e Referências (PT/EN), rodapé © Sergio Callai, `WHITEPAPER.md` | `src/app/head.html`, `src/ui/00_base.js` | prévia PT/EN | alta | **feito** |
+| F10 | usuário | No app, o Marshall de 1200 g leva ~40 min em JS | Beta: usar o núcleo em C (`native/mdsim.c`, 1,5–5× mais rápido) dentro do mini app Python: o worker manda a compactação para o Python, que roda o `mdsim` e devolve as posições; compilar para Windows/Linux/macOS e validar o golden por esse caminho | `pacote/`, `src/worker/25_protocolos.js` | golden idêntico ao do núcleo C; tempo | média | falta (beta) |
 | F7 | AG | Eq. 3 (Awuah) ignora a forma: propriedades idênticas | Modelo de previsão que use força de compactação ou contatos do DEM | — | — | baixa | backlog |
 
 ## Bloco 4: desempenho
@@ -108,7 +109,7 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | C1 | K16b: PM pede 0,30 / 0,60; o chat unificado alargou para 0,75 / 1,0 porque, com mais vazios nas faces (K27 > 1, como no CP real), os terços diferem por desenho | Manter 0,75 / 1,0 como "a calibrar" até haver CT (B4); o K16b não reprova fase |
 | C2 | Formas reais: PP fala em `sma_diabasio`, `f004_A`, `todos` (do modelo v2); o app tem RS (F001) e RT (F001 + F004), gerados por `tools/gen_formas_reais.mjs` | Conferir se RS = `sma_diabasio` e RT = `todos`; acrescentar `f004_A` só se você quiser |
 | C3 | Tamanho: IN §4.6 e PM 12 pedem Fase 2 em 250 g; a decisão é Marshall só em tamanho real | Fase 2 do Marshall em 1200 g/Ø101,6; o 250 g fica só no protocolo [W] (golden do paper) |
-| C4 | O artefato v5 (`NZdqVD7NCQUwAA3bTUsTNW`) e o pacote 1.0.0 levam o HTML anterior à unificação | Republicar com o app unificado só depois de A3 e A6, para os colegas receberem a versão calibrada |
+| C4 | O artefato v5 (`NZdqVD7NCQUwAA3bTUsTNW`) e o pacote 1.0.0 levam o HTML anterior à unificação | Republicar com o app unificado só depois de A3 e A6, para os colegas receberem a versão calibrada | **Resolvido** com a F3: não há mais artefato; o pacote 1.1.0a1 leva o app calibrado.
 | C5 | Golden da parede: PM sugere ± 6 pp **ou** referência por plataforma | Referência por plataforma (mantém o poder do teste); K26 como guarda |
 | C6 | λ 0,5 é o melhor para o V1, mas quebra o K33 | Resolver A4 antes de A6; se não der, escolher o λ pelo melhor V1 com K33 ≤ 2 % |
 | C7 | A1 se afasta de [W] §3.6 (as paredes contam como agregado) | Deixar explícito no "Sobre o método" (PT/EN) |
