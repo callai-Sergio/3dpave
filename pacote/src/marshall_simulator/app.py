@@ -6,6 +6,7 @@ roda compilada, com todos os núcleos; formas, mastique e bolhas continuam na p�
 sistema, a física roda em JavaScript na página.
 Sem o pywebview, ou com --browser, abre a mesma interface no navegador padrão.
 """
+import atexit
 import base64
 import functools
 import http.server
@@ -160,6 +161,7 @@ def main():
     if not os.path.exists(os.path.join(WEB, HTML)):
         sys.exit(f'Não encontrei {HTML} em {WEB}. Reinstale o pacote.')
     nativo = Nativo()
+    atexit.register(nativo.cancelar)  # ao fechar a janela, o cálculo em andamento para junto
     srv, url = servidor(nativo)
     motor = f'núcleo em C com {NUCLEOS} núcleos' if nativo.ok else 'JavaScript (sem o mdsim para este sistema)'
     aviso(f'{TITULO}: física do Marshall e do giratório em {motor}.')
@@ -175,11 +177,13 @@ def main():
             threading.Event().wait()
         except KeyboardInterrupt:
             pass
+        nativo.cancelar()
         srv.shutdown()
         return
     api = Api()
     api._janela = webview.create_window(TITULO, url, js_api=api, width=1440, height=920, min_size=(900, 640))
     webview.start()
+    nativo.cancelar()
     srv.shutdown()
 
 
