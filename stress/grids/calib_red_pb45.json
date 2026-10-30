@@ -1,0 +1,63 @@
+{
+ "name": "Calibração reduzida (plano de desempenho, Fase 2): Albayati (2024), Pb 4,5 % (lab AVC 4,8 %), Marshall 75 golpes por face (todos simulados), AVC livre, 1200 g em Ø101,6 mm, formas RT, λ 0,55, escE 0,002, 3 sementes. Mesmos parâmetros da linha escolhida na A5.",
+ "base": {
+  "size": "m",
+  "mass": 1200,
+  "proto": "marshall",
+  "avcMode": "livre",
+  "lib": "RT",
+  "grad": [
+   [
+    19,
+    100
+   ],
+   [
+    12.5,
+    95
+   ],
+   [
+    9.5,
+    83
+   ],
+   [
+    4.75,
+    54
+   ],
+   [
+    2.36,
+    36
+   ],
+   [
+    0.3,
+    13
+   ],
+   [
+    0.075,
+    7
+   ]
+  ],
+  "ra": 2.65,
+  "rb": 1.027,
+  "grade": "50/70",
+  "temp": 140,
+  "avc": 4.8,
+  "bub": {
+   "mode": "auto"
+  },
+  "pb": 4.5,
+  "mastic": {
+   "lam": 0.55
+  },
+  "marshall": {
+   "golpes": 75,
+   "escE": 0.002
+  }
+ },
+ "factors": {
+  "seed": [
+   2024,
+   2025,
+   2026
+  ]
+ }
+}
