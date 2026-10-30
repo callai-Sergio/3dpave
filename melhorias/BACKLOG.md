@@ -88,8 +88,11 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | ID | Origem | Mudança | Prova | Prio | Status |
 |---|---|---|---|---|---|
 | S2 | BR §6.6 | Paralelizar ou reduzir `buildPairs`, CSR e cópias da varredura em `mdsim.c` | C × JS bate; escala > 5× com 24 núcleos | **alta** (com F10) | falta. Medido 2026-10-30: Marshall 1200 g leva 1554 s com 16 threads no PC e 1613 s com 4 no vid1, ou seja, quase não escala |
+| S2a–S2g | plano de desempenho, Fase 1 | Núcleo C sem mudar o resultado: varredura parcial sem cópia e CSR em paralelo, candidatos sem força marcados, conferência de movimento por partícula, SoA/SIMD em `probeIn`, uma região OpenMP por passo, `penetration` paralela; timers atrás de `MD_PROF` | referência C bit a bit com 1, 4 e 16 threads | **alta** | falta. Ver `melhorias/PLANO_DESEMPENHO.md` (perfil: varredura de candidatos = 48 % do tempo, refeita em 79 % dos passos) |
+| S2h–S2l | plano de desempenho, Fase 2 | Molas somadas por par (sem CSR de candidatos), `buildPairs` com grade fina e paralelo, folgas maiores, coluna inicial mais densa, queda mais curta | calibração reduzida (12 rodadas) dentro do ruído | **alta** | falta |
 | S5 | BR §6.7 | WebAssembly no navegador; botão "Abrir resultado do servidor" | Ø150 em tempo aceitável; K32 | baixa | falta |
 | S6 | BR §6.8 | Escala de massa; fim do golpe pelo repouso | K12, tempo | baixa | falta |
+| S6a–S6c | plano de desempenho, Fase 3 | dt 4e-5 com escala de inércia nas pedras < 3 mm; 25 golpes simulados por face; assentamento pós-golpe 0,001 s | grade de calibração completa | média | falta (depende das Fases 1–2) |
 
 ## Backlog (não implementar agora)
 
