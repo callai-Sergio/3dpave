@@ -68,6 +68,7 @@ static double ptime(void){
 typedef struct{int npr,npl;double *pr,*pl,vol,I[3],area,rmax;double *nx,*ny,*nz,*nd;}Tpl; /* nx..nd: planos em vetores separados, com folga até múltiplo de 8 (S2e) */
 
 /* ---------- estado ---------- */
+typedef struct{int *p,n,cap,off;}PBuf; /* bloco de pares de uma faixa de partículas (S2f) */
 typedef struct{
   int n,npr,ntpl;Tpl *tpls;double R;
   int *tpl,*prStart;double *sc,*prLoc,*prW,*prS,*mass,*Ib,*brad,*area;
@@ -81,6 +82,7 @@ typedef struct{
   int *cStart,*cList,capCList;int *csrCnt,capCsr;       /* CSR partícula → candidatos; contagens por núcleo (S2b) */
   double *candF;int capCandF;unsigned char *candOn;     /* por candidato: fA[3], tA[3], tB[3], pen; candOn = registro com força (S2c) */
   void *bufs;int nbufs;                                 /* blocos por núcleo da varredura, persistentes (S2b) */
+  PBuf *pbuf;int npbuf;                                 /* blocos de pares por faixa de partículas (S2f) */
   double *pairF,*pairG,*pairD;int capPairF;unsigned char *pairOn; /* por par: lubrificação fA[3], tA[3], tB[3], c; menor g; ponto+normal; pairOn = com lubrificação (S2c) */
   int candStale,built;double pairRange,builtRange;int lastKick;Rng rk;
   double zb,zp,hv,vs,film,kf,eta,lub,coh,mu,tilt,phi,gapMin;long vcap;
@@ -114,7 +116,8 @@ static void rotationsChk(Sim *S,int check,int *anyp){
 }
 static void rotations(Sim *S){rotationsChk(S,0,NULL);}
 
-/* lista de pares (grade de células) e o CSR partícula → pares; serial, para a ordem ser sempre a mesma */
+/* lista de pares (grade de células) e o CSR partícula → pares; a ordem é sempre a mesma (blocos de partículas concatenados em ordem) */
+#define PB_CHUNK 32
 static void buildPairs(Sim *S,double skin){
   int n=S->n;double bmax=0;for(int i=0;i<n;i++)if(S->brad[i]>bmax)bmax=S->brad[i];
   double cs=2*bmax+skin+S->pairRange,zmin=1e9,zmax=-1e9,rmx=S->R;
@@ -124,15 +127,26 @@ static void buildPairs(Sim *S,double skin){
   for(long c=0;c<ncell;c++)head[c]=-1;
   for(int i=0;i<n;i++){int cx=(int)clampd(floor((S->pos[3*i]-x0)/cs),0,nx-1),cy=(int)clampd(floor((S->pos[3*i+1]-x0)/cs),0,ny-1),cz=(int)clampd(floor((S->pos[3*i+2]-z0)/cs),0,nz-1);
     int c=(cz*ny+cy)*nx+cx;cell[i]=c;next[i]=head[c];head[c]=i;}
-  S->npairs=0;
-  for(int i=0;i<n;i++){int c=cell[i],cx=c%nx,cy=(c/nx)%ny,cz=c/(nx*ny);
-    for(int dz=-1;dz<=1;dz++)for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
-      int X=cx+dx,Y=cy+dy,Z=cz+dz;if(X<0||Y<0||Z<0||X>=nx||Y>=ny||Z>=nz)continue;
-      for(int j=head[(Z*ny+Y)*nx+X];j>=0;j=next[j]){if(j<=i)continue;
-        double ddx=S->pos[3*i]-S->pos[3*j],ddy=S->pos[3*i+1]-S->pos[3*j+1],ddz=S->pos[3*i+2]-S->pos[3*j+2],rc=S->brad[i]+S->brad[j]+S->pairRange+skin;
-        if(ddx*ddx+ddy*ddy+ddz*ddz<rc*rc){
-          if(2*S->npairs+2>S->capPairs){S->capPairs=2*S->capPairs+1024;S->pairs=xrealloc(S->pairs,sizeof(int)*S->capPairs);}
-          S->pairs[2*S->npairs]=i;S->pairs[2*S->npairs+1]=j;S->npairs++;}}}}
+  /* S2f: os pares de cada bloco de partículas saem num bloco próprio (em paralelo, balanceado) e são concatenados na ordem
+     dos blocos: a lista fica igual à da versão serial (i crescente, estêncil e lista da célula na mesma ordem) */
+  int nch=(n+PB_CHUNK-1)/PB_CHUNK;
+  if(nch>S->npbuf){S->pbuf=xrealloc(S->pbuf,sizeof(PBuf)*nch);memset(S->pbuf+S->npbuf,0,sizeof(PBuf)*(nch-S->npbuf));S->npbuf=nch;}
+  PBuf *pb=S->pbuf;
+  #pragma omp parallel for schedule(dynamic,1)
+  for(int ch=0;ch<nch;ch++){PBuf *B=&pb[ch];B->n=0;int i1=(ch+1)*PB_CHUNK;if(i1>n)i1=n;
+    for(int i=ch*PB_CHUNK;i<i1;i++){int c=cell[i],cx=c%nx,cy=(c/nx)%ny,cz=c/(nx*ny);
+      for(int dz=-1;dz<=1;dz++)for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++){
+        int X=cx+dx,Y=cy+dy,Z=cz+dz;if(X<0||Y<0||Z<0||X>=nx||Y>=ny||Z>=nz)continue;
+        for(int j=head[(Z*ny+Y)*nx+X];j>=0;j=next[j]){if(j<=i)continue;
+          double ddx=S->pos[3*i]-S->pos[3*j],ddy=S->pos[3*i+1]-S->pos[3*j+1],ddz=S->pos[3*i+2]-S->pos[3*j+2],rc=S->brad[i]+S->brad[j]+S->pairRange+skin;
+          if(ddx*ddx+ddy*ddy+ddz*ddz<rc*rc){
+            if(B->n+2>B->cap){B->cap=2*B->cap+256;B->p=xrealloc(B->p,sizeof(int)*B->cap);}
+            B->p[B->n]=i;B->p[B->n+1]=j;B->n+=2;}}}}}
+  int tot=0;for(int ch=0;ch<nch;ch++){int m=pb[ch].n;pb[ch].off=tot;tot+=m;}
+  if(tot>S->capPairs){S->capPairs=tot+tot/2+1024;S->pairs=xrealloc(S->pairs,sizeof(int)*S->capPairs);}
+  #pragma omp parallel for schedule(static)
+  for(int ch=0;ch<nch;ch++)if(pb[ch].n)memcpy(S->pairs+pb[ch].off,pb[ch].p,sizeof(int)*pb[ch].n);
+  S->npairs=tot/2;
   free(head);free(next);free(cell);
   /* pares em ordem i<j; cada partícula soma os seus pares nessa ordem */
   memset(S->pStart,0,sizeof(int)*(n+1));
