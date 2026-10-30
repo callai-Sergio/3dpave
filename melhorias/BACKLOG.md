@@ -229,3 +229,22 @@ Grade `stress/grids/a11_segk.json`, PC local, Node 24.11.1, [W], AVC travado →
 | 1000 g | 2 | 3,70 · 2,92 | 3,31 | 0,39 | 23,4 / 7,16 | 0,46 |
 
 No CP de 250 g uma única faixa da borda vai de 2,5 a 29,7 % de vazios entre sementes: são cordas do círculo com poucos voxels. Mais força tira vazios do miolo (3,5 → 2,0 %) e não muda a borda. Em 1000 g o K14 é estável. Decisão: manter k = 1 e avisar no app. Não mexi no KPI; uma alternativa futura é medir a banheira em anéis (raio) em vez de faixas do diâmetro.
+
+### F10 e S2 (2026-10-30): núcleo em C no app e onde vai o tempo
+
+**JS × C no mesmo caso** (Marshall 1200 g, Albayati Pb 5, semente 2024, padrões da A6, PC Windows): JavaScript 4549 s (76 min; parte do tempo dividindo a máquina com outro cálculo) × núcleo C com 16 threads 1578 s (26 min): **C ~2,9× mais rápido**. Resultados: `stress/results/f10_js_marshall.jsonl`, `a6_defaults.jsonl`.
+
+**Giratório pelo C** (Ø102 mm, 1000 g, 30 giros simulados): 7,7 min, AVC 12,6 % (escala de pressão não calibrada), K33 0,3 %, K19 0 (`f10_gir_c.jsonl`).
+
+**Perfil do mdsim** (Marshall 1200 g, 5 golpes simulados por face, 8 threads, cópia instrumentada; a máquina estava dividida com outro mdsim, então os números absolutos estão inflados): 93 650 passos; a varredura de candidatos rodou em 75 554 (81 %).
+
+| Parte | % do tempo | Roda em |
+|---|---|---|
+| Varredura de candidatos (busca) | 24 | paralelo |
+| Varredura: cópia + CSR | 14 | 1 núcleo |
+| Forças por par | 19 | paralelo |
+| Forças por partícula | 19 | paralelo |
+| Montagem dos pares | 5 | 1 núcleo |
+| Rotações, conferência de movimento, somas | ~19 | parte em 1 núcleo |
+
+S2 começa pela varredura: refazer só o que mudou e em paralelo, e revarrer menos vezes (sem mudar o golden do C).

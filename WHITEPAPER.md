@@ -145,7 +145,7 @@ node stress/run.mjs stress/grids/smoke.json --jobs 6
 ```
 Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unificado.md`), sempre com Node 24.11.1.
 
-**Distribuição (versão alfa 1.1.0a1):** `pacote/` é um mini app Python que abre o simulador numa janela própria (pywebview; WebView2 no Windows), com o three.js r128 (MIT) embutido para funcionar sem internet. `python pacote/build_pacote.py --exe` gera o wheel, o `MarshallSimulator.exe` (PyInstaller, Windows, sem Python) e o zip para os colegas. O motor continua em JavaScript dentro da janela; usar o núcleo em C no app fica para a beta (F10).
+**Distribuição (versão alfa 1.1.0a1):** `pacote/` é um mini app Python que abre o simulador numa janela própria (pywebview; WebView2 no Windows), com o three.js r128 (MIT) embutido para funcionar sem internet. `python pacote/build_pacote.py --exe` gera o wheel, o `MarshallSimulator.exe` (PyInstaller, Windows, sem Python) e o zip para os colegas. Desde a F10, a física do Marshall e do giratório roda no núcleo em C dentro do app: o mini app serve a página e o `mdsim` num servidor local, o worker manda a compactação para ele e mostra o progresso; sem o `mdsim`, a mesma simulação roda em JavaScript. No mesmo Marshall de 1200 g, o C levou 26 min (16 threads) e o JavaScript 76 min. O [W] continua em JavaScript até o C passar no golden (M14). O app abre parado; uma simulação nova cancela a anterior.
 
 ## Histórico
 
@@ -161,3 +161,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 | 2026-10-30 | A11: varredura da força radial k (0,5–2) × 3 sementes. A instabilidade do K14 vem do CP pequeno (poucas pedras nas faixas da borda), não de k = 1; em 1000 g o K14 é estável e fica na faixa com k = 1 e 2. Padrão mantido (k = 1); aviso PT/EN junto do campo |
 | 2026-10-30 | A6: padrões do app com a calibração da A5 (λ 0,55, escala de energia 0,002; antes 0,3 e 0,005), também no worker e no harness |
 | 2026-10-30 | F3: versão alfa 1.1.0a1 como mini app Python (janela própria, three.js embutido, `.exe` do Windows e wheel), no lugar do artefato |
+| 2026-10-30 | F10: física do Marshall e do giratório no núcleo em C dentro do app (2,9× mais rápido que o JavaScript no Marshall de 1200 g); Marshall com animação, giratório só com o resultado; o app abre parado |
