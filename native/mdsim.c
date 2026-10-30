@@ -50,6 +50,20 @@ static void progress(const char *stage,double pct,const char *text,int force){
 /* número com vírgula decimal, como br() do worker */
 static const char *br(char *buf,double x,int d){sprintf(buf,"%.*f",d,x);for(char *c=buf;*c;c++)if(*c=='.')*c=',';return buf;}
 
+/* ---------- régua (S2a): tempo por etapa, só com MD_PROF=1; impresso no stderr no fim em linhas "PROF ..." ---------- */
+enum{PT_PARES,PT_ROT,PT_CONF,PT_VARRF,PT_VARRP,PT_VARRS,PT_FPAR,PT_FPART,PT_INTEG,PT_PEN,PT_N};
+enum{PN_PASSOS,PN_BUILD,PN_VARRF,PN_VARRP,PN_PARES,PN_CAND,PN_N};
+static int prof=0;static double PT[PT_N];static long PN[PN_N];
+static double ptime(void){
+#ifdef _OPENMP
+  return omp_get_wtime();
+#else
+  return now_s();
+#endif
+}
+#define PBEG(v) double v=prof?ptime():0
+#define PEND(v,k) do{if(prof)PT[k]+=ptime()-(v);}while(0)
+
 /* ---------- formas ---------- */
 typedef struct{int npr,npl;double *pr,*pl,vol,I[3],area,rmax;}Tpl;
 
@@ -193,6 +207,7 @@ static void scanCandidates(Sim *S,double range,int full){
     if(bufs[t].n){memcpy(S->cand+3*base,bufs[t].c,sizeof(int)*3*bufs[t].n);memcpy(S->candPl+4*base,bufs[t].pl,sizeof(short)*4*bufs[t].n);}
     base+=bufs[t].n;free(bufs[t].c);free(bufs[t].pl);}
   newPS[np]=base;memcpy(S->candPS,newPS,sizeof(int)*(np+1));free(newPS);free(bufs);S->ncand=base;
+  PBEG(ts_);
   for(int i=0;i<n;i++)if(full||S->stale[i]){memcpy(S->prS+3*S->prStart[i],S->prW+3*S->prStart[i],sizeof(double)*3*(S->prStart[i+1]-S->prStart[i]));S->stale[i]=0;}
   /* CSR partícula → candidatos, na ordem dos candidatos */
   memset(S->cStart,0,sizeof(int)*(n+1));
@@ -203,6 +218,7 @@ static void scanCandidates(Sim *S,double range,int full){
   for(int c=0;c<base;c++){int p=S->cand[3*c],side=S->cand[3*c+1],a=S->pairs[2*p],b=S->pairs[2*p+1],A=side?b:a,Bp=side?a:b;
     S->cList[fill[A]++]=2*c;S->cList[fill[Bp]++]=2*c+1;}
   free(fill);S->candStale=0;
+  PEND(ts_,PT_VARRS);
 }
 
 /* ---------- forças ---------- */
@@ -256,16 +272,24 @@ static Out run(Sim *S,int nsteps,const Opt *o){
   Out out;memset(&out,0,sizeof out);
   for(int step=0;step<nsteps;step++){
     double t=o->t0+step*dt,dmax=0;
+    PBEG(t0_);
     for(int i=0;i<3*n;i+=3){double dx=S->pos[i]-S->posB[i],dy=S->pos[i+1]-S->posB[i+1],dz=S->pos[i+2]-S->posB[i+2],dd=dx*dx+dy*dy+dz*dz;if(dd>dmax)dmax=dd;}
-    if(sqrt(dmax)>skin*0.45)buildPairs(S,skin);
+    if(sqrt(dmax)>skin*0.45){buildPairs(S,skin);PN[PN_BUILD]++;}
+    PEND(t0_,PT_PARES);
+    PBEG(t1_);
     rotations(S);
-    if(S->candStale)scanCandidates(S,range,1);
+    PEND(t1_,PT_ROT);
+    if(S->candStale){PBEG(t3_);scanCandidates(S,range,1);PEND(t3_,PT_VARRF);PN[PN_VARRF]++;}
     else{double lim=0.25*CAND_MARGIN*CAND_MARGIN;int any=0;
+      PBEG(t2_);
       #pragma omp parallel for schedule(static) reduction(|:any)
       for(int i=0;i<n;i++){for(int k=3*S->prStart[i],e=3*S->prStart[i+1];k<e;k+=3){double dx=S->prW[k]-S->prS[k],dy=S->prW[k+1]-S->prS[k+1],dz=S->prW[k+2]-S->prS[k+2];
         if(dx*dx+dy*dy+dz*dz>lim){S->stale[i]=1;any=1;break;}}}
-      if(any)scanCandidates(S,range,0);}
+      PEND(t2_,PT_CONF);
+      if(any){PBEG(t4_);scanCandidates(S,range,0);PEND(t4_,PT_VARRP);PN[PN_VARRP]++;}}
+    if(prof){PN[PN_PASSOS]++;PN[PN_PARES]+=S->npairs;PN[PN_CAND]+=S->ncand;}
     /* 1. por par: molas dos candidatos (registro por candidato) e lubrificação no menor g (registro por par) */
+    PBEG(t5_);
     #pragma omp parallel for schedule(dynamic,64)
     for(int p=0;p<S->npairs;p++){
       int a=S->pairs[2*p],b=S->pairs[2*p+1];double gmin=1e9,*pd=S->pairD+6*p;Hit h;
@@ -280,7 +304,9 @@ static Out run(Sim *S,int nsteps,const Opt *o){
       S->pairG[p]=gmin;double *pf=S->pairF+10*p;memset(pf,0,sizeof(double)*10);
       if(lubR>0&&gmin<range)pf[9]=masticRec(S,a,b,pd[0],pd[1],pd[2],gmin,pd[3],pd[4],pd[5],0,0,0,0.5*mind(S->area[a],S->area[b]),pf,pf+3,pf+6);
     }
+    PEND(t5_,PT_FPAR);
     /* 2. por partícula: soma dos registros (ordem fixa), paredes, força radial; depois a integração */
+    PBEG(t6_);
     double phi=S->phi+omega*(t-o->t0),ax=st*cos(phi),ay=st*sin(phi),az=ct,dax=-omega*st*sin(phi),day=omega*st*cos(phi),zc=(S->zb+S->zp)/2;
     int moving=!o->ham&&o->vp>0&&(S->zp-S->zb)>o->gapT;double vh=moving?o->vp/2:0;
     double vT=o->ham&&o->hside>0?S->hv:o->servo?S->vs:(o->hasVt?o->vt:-vh),vB=o->ham&&o->hside<0?S->hv:(o->hasVb?o->vb:vh);
@@ -319,6 +345,8 @@ static Out run(Sim *S,int nsteps,const Opt *o){
       /* força radial (castanha-do-pará, [W] §3.3) */
       if(o->fbn>0){double dx=-S->pos[3*i],dy=-S->pos[3*i+1],dz=zc-S->pos[3*i+2],L=sqrt(dx*dx+dy*dy+dz*dz);if(L>1e-6){F[0]+=o->fbn*dx/L;F[1]+=o->fbn*dy/L;F[2]+=o->fbn*dz/L;}}
     }
+    PEND(t6_,PT_FPART);
+    PBEG(t7_);
     double ftop=0,fbot=0,maxov=0;for(int i=0;i<n;i++){ftop+=S->ftI[i];fbot+=S->fbI[i];if(S->ovI[i]>maxov)maxov=S->ovI[i];}
     /* mistura: força igual para todas, em direção aleatória (serial: o sorteio segue a ordem das partículas) */
     int kickOn=0;
@@ -364,6 +392,7 @@ static Out run(Sim *S,int nsteps,const Opt *o){
     if(S->gapMin>0&&S->zp-S->zb<S->gapMin){if(o->ham){if(o->hside>0){S->zp=S->zb+S->gapMin;if(S->hv<0)S->hv=0;}else{S->zb=S->zp-S->gapMin;if(S->hv>0)S->hv=0;}}
       else if(o->servo){S->zp=S->zb+S->gapMin;S->vs=0;}}
     out.maxov=maxov;out.ftop=ftop;out.fbot=fbot;out.fpist=(ftop+fbot)/2;out.ke=ke;
+    PEND(t7_,PT_INTEG);
   }
   if(omega)S->phi+=omega*nsteps*dt;
   out.gap=S->zp-S->zb;return out;
@@ -577,6 +606,7 @@ int main(int argc,char **argv){
 #ifdef _OPENMP
   if(argc>3)omp_set_num_threads(atoi(argv[3]));
 #endif
+  {const char *e=getenv("MD_PROF");prof=e&&*e&&strcmp(e,"0")!=0;}
   fin=fopen(argv[1],"rb");if(!fin){fprintf(stderr,"não abri %s\n",argv[1]);return 1;}
   if(rdI()!=0x4D445331){fprintf(stderr,"entrada inválida\n");return 1;}
   Cfg c;memset(&c,0,sizeof c);
@@ -607,8 +637,21 @@ int main(int argc,char **argv){
   double t0=now_s();
   Res R=c.proto==1?protoMarshall(S,&c,&rec):c.proto==2?protoGiratorio(S,&c,&rec):protoW(S,&c,&rec);
   double zs=S->zb;for(int i=0;i<n;i++)S->pos[3*i+2]-=zs;S->zp-=zs;S->zb=0;
+  PBEG(tp_);
   Pen P=penetration(S);
+  PEND(tp_,PT_PEN);
   double tDem=now_s()-t0;
+  if(prof){long ns=PN[PN_PASSOS]?PN[PN_PASSOS]:1;
+    fprintf(stderr,"PROF passos=%ld buildPairs=%ld varrCompleta=%ld varrParcial=%ld paresMed=%.0f candMed=%.0f threads=%d\n",
+      PN[PN_PASSOS],PN[PN_BUILD],PN[PN_VARRF],PN[PN_VARRP],(double)PN[PN_PARES]/ns,(double)PN[PN_CAND]/ns,
+#ifdef _OPENMP
+      omp_get_max_threads()
+#else
+      1
+#endif
+      );
+    fprintf(stderr,"PROF t(s) pares=%.1f rot=%.1f conf=%.1f varrCompleta=%.1f varrParcial=%.1f (serial=%.1f) fPar=%.1f fPart=%.1f integ=%.1f penet=%.1f dem=%.1f ms/passo=%.3f\n",
+      PT[PT_PARES],PT[PT_ROT],PT[PT_CONF],PT[PT_VARRF],PT[PT_VARRP],PT[PT_VARRS],PT[PT_FPAR],PT[PT_FPART],PT[PT_INTEG],PT[PT_PEN],tDem,1e3*tDem/ns);}
   /* saída: cabeçalho JSON + vetores binários */
   FILE *fo=fopen(argv[2],"wb");if(!fo){fprintf(stderr,"não gravei %s\n",argv[2]);return 1;}
   char *js=xmalloc(64+rec.nf*256+4096);int L=0;
