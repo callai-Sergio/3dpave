@@ -6,9 +6,13 @@ function interp(g,x){ // g ordenado desc; interpolação linear em log da abertu
 }
 // tamanhos do CP: [massa (g), diâmetro do molde (mm), voxel (mm)]
 const SIZES={p:[250,65,0.25],w:[1000,102,0.4],m:[1200,101.6,0.4],g:[4700,150,0.6]};
+// giratório (AASHTO T 312 / R 35): CP de 115 ± 5 mm; a massa sai da densidade da mistura no AVC alvo, como no laboratório
+// (4700 g é só o valor típico para agregado de ~2,65 g/cm³)
+const H_GIR=115;
 function composicao(cfg){
-  const SZ=SIZES[cfg.size]||SIZES.p,mass=cfg.mass??SZ[0],D=cfg.D??SZ[1],R=D/2;
-  const Gmm=100/((100-cfg.pb)/cfg.ra+cfg.pb/cfg.rb),Gmb=Gmm*(1-cfg.avc/100),V=mass/Gmb,H=V*1000/(Math.PI*R*R);
+  const SZ=SIZES[cfg.size]||SIZES.p,D=cfg.D??SZ[1],R=D/2;
+  const Gmm=100/((100-cfg.pb)/cfg.ra+cfg.pb/cfg.rb),Gmb=Gmm*(1-cfg.avc/100);
+  const mass=cfg.mass??(cfg.size==='g'?Math.round(Gmb*Math.PI*R*R*H_GIR/1000):SZ[0]),V=mass/Gmb,H=V*1000/(Math.PI*R*R);
   const m_agg=mass*(1-cfg.pb/100),m_bit=mass*cfg.pb/100,p2=interp(cfg.grad,2),m_fino=m_agg*p2/100,m_graudo=m_agg-m_fino;
   const edges=[...new Set(cfg.grad.map(r=>r.s).filter(s=>s>2).concat([2]))].sort((a,b)=>a-b),fracoes=[];
   for(let i=0;i<edges.length-1;i++){const lo=edges[i],hi=edges[i+1],pct=interp(cfg.grad,hi)-interp(cfg.grad,lo);if(pct>0)fracoes.push([lo,hi,pct]);}
@@ -198,7 +202,7 @@ function onInputs(){
   const {cfg,errs}=readForm();showErrs(errs);updateBandCells();renderGradChart();
   $('h-nome').textContent=cfg.nome;$('form').dataset.p=cfg.proto;
   $('n-proto').textContent=cfg.proto==='marshall'?'A mistura cai no molde com gravidade e recebe os golpes do soquete nas duas faces (DNER-ME 043 / ASTM D6926).':
-    cfg.proto==='giratorio'?'A mistura cai no molde e é compactada com pressão constante e o molde inclinado girando (AASHTO T 312). O corpo de prova é o do giratório: 4700 g em Ø150 mm.':
+    cfg.proto==='giratorio'?'A mistura cai no molde e é compactada com pressão constante e o molde inclinado girando (AASHTO T 312). O corpo de prova é o do giratório: Ø150 mm e 115 mm de altura; a massa sai da densidade da mistura.':
     'Método de Wan et al. (2024): sem gravidade e sem atrito, pistões até AVC 50% e força crescente até o AVC alvo.';
   $('n-avcmode').textContent=cfg.avcMode==='livre'?'A altura final medida define o AVC do CP. Compare o AVC previsto com o do laboratório.':
     'Se a compactação não chegar à altura do AVC alvo, um ajuste leva até lá, com a mesma física. O painel mostra quanto da compactação foi pelo ajuste.';
@@ -207,7 +211,7 @@ function onInputs(){
   if(cfg.proto!=='w'){const v=viscMastic(cfg,comp);
     $('n-visc').textContent=`Viscosidade estimada a ${fmt(cfg.temp,0)} °C: betume ${fmt(v.etaB,2)} Pa·s; mastique com fíler e finos ${fmt(v.etaM,1)} Pa·s. Referência EN 12697-35 para ${cfg.grade}: ${fmt(tRef(cfg.grade),0)} °C.`;}
   const slow=cfg.size==='g'?' O molde de Ø150 mm pode levar mais de 1 hora no navegador.':cfg.size!=='p'?' Leva de 10 a 40 min no navegador.':'';
-  $('n-size').textContent=`Altura calculada pela densidade: ${fmt(comp.H,1)} mm.${slow}`;
+  $('n-size').textContent=cfg.size==='g'?`Massa para 115 mm de altura no AVC alvo: ${fmt(comp.mass,0)} g.${slow}`:`Altura calculada pela densidade: ${fmt(comp.H,1)} mm.${slow}`;
   // TNM: uma peneira acima da primeira com menos de 90% passante; molde deve ter pelo menos 4 × TNM
   const gi=cfg.grad.findIndex(r=>r.p<90),tnm=gi>0?cfg.grad[gi-1].s:cfg.grad[0].s;
   const big=4*tnm>comp.D+1e-9;$('w-size').hidden=!big;if(big)$('w-size').textContent=`O TNM de ${fmt(tnm,1)} mm pede um molde de pelo menos Ø${fmt(4*tnm,0)} mm. Use uma faixa mais fina.`;

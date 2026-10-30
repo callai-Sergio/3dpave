@@ -50,9 +50,9 @@ O desafio é a plausibilidade: o CP virtual precisa fechar volume e massa, não 
 |---|---|---|
 | [W] | Sem gravidade e sem atrito; pistões até AVC 50 % (Eq. 1), depois força crescente até o AVC alvo | Wan et al. (2024) |
 | Marshall | Queda com gravidade; 75 golpes do soquete por face, com o molde virado; 1200 g em Ø101,6 mm | DNER-ME 043, ASTM D6926 |
-| Giratório | Queda; pressão constante e molde inclinado em precessão; 4700 g em Ø150 mm | AASHTO T 312 |
+| Giratório | Queda; pressão constante e molde inclinado em precessão; Ø150 mm × 115 mm, massa pela densidade no AVC alvo | AASHTO T 312 |
 
-Moldes por protocolo: o corpo de prova segue a compactação escolhida. O Marshall usa o CP Marshall (1200 g em Ø101,6 mm) e o giratório usa o CP do giratório (4700 g em Ø150 mm); o [W] usa 1000 g em Ø102 mm, como no paper, ou o CP rápido de 250 g em Ø65 mm.
+Moldes por protocolo: o corpo de prova segue a compactação escolhida. O Marshall usa o CP Marshall (1200 g em Ø101,6 mm) e o giratório usa o CP do giratório (Ø150 mm com 115 mm de altura, AASHTO T 312; a massa sai da densidade da mistura no AVC alvo, ~4600–5200 g); o [W] usa 1000 g em Ø102 mm, como no paper, ou o CP rápido de 250 g em Ø65 mm.
 
 **Esqueleto que não cabe no [W] (A10):** o [W] leva os pistões até a altura do AVC alvo. Em granulometrias abertas ou com AVC alvo baixo, o esqueleto de pedras não cabe nessa altura, e antes o pistão empurrava as pedras umas para dentro das outras (até 1,4 mm de penetração, K8). Agora o pistão para quando uma pedra entra mais de 0,1 mm em outra e espera 0,1 s; se a penetração não cai, o CP fica na altura em que o esqueleto travou, com o AVC medido, e o app avisa (PT/EN). É uma diferença de [W]: o paper sempre chega ao AVC alvo. Nos casos que chegam ao alvo nada muda (golden idêntico bit a bit).
 
@@ -162,3 +162,4 @@ Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unifica
 | 2026-10-30 | A6: padrões do app com a calibração da A5 (λ 0,55, escala de energia 0,002; antes 0,3 e 0,005), também no worker e no harness |
 | 2026-10-30 | F3: versão alfa 1.1.0a1 como mini app Python (janela própria, three.js embutido, `.exe` do Windows e wheel), no lugar do artefato |
 | 2026-10-30 | F10: física do Marshall e do giratório no núcleo em C dentro do app (2,9× mais rápido que o JavaScript no Marshall de 1200 g); Marshall com animação, giratório só com o resultado; o app abre parado |
+| 2026-10-30 | A3c: CP do giratório com 115 mm de altura (AASHTO T 312 / R 35); a massa sai da densidade da mistura no AVC alvo (antes, 4700 g fixos davam 103–117 mm conforme a densidade do agregado) |
