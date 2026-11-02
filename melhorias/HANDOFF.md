@@ -1,4 +1,6 @@
-# Handoff (atualizado em 2026-11-02)
+# Handoff (atualizado em 2026-11-02, depois do push)
+
+**Estado do git:** tudo commitado e enviado para `origin/main` (c242d1b exemplos em LFS, f39e89d app, ce7d6a9 docs). Pacote 1.1.0a2. **No PC:** dois cliques em `pacote\construir_no_pc.bat` (git pull + lfs pull, wheel, .exe, zip); teste no EXE ainda não feito. Mandar aos colegas: o zip `pacote\MarshallSimulator_1.1.0a2.zip` (cópia) ou o repositório (git, com `git lfs install`).
 
 ## Feito nesta sessão (no `main`, PR #1)
 - S2o–S2s: forças 10–18 % mais rápidas, saída idêntica. S2i/S2j medidas e descartadas. Detalhes no BACKLOG ("S2 forças", "S2 Fase 2").
