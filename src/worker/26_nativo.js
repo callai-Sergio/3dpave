@@ -44,7 +44,7 @@ function compactarNativo(cfg,P,lib,NA,comp,send,probe){
   for(let i=0;i<n;i++){const t=lib[Ps.tpl[i]],s=Ps.sc[i];brad[i]=t.rmax*s;mass[i]=t.vol*s*s*s*rho;}
   const S0={n,brad,pos:new Float64Array(3*n),q:new Float64Array(4*n)};
   const raised=placeColumn(S0,R,r1,0.1);
-  const H=nativeOutput(send(nativeInput(cfg,comp,lib,Ps,S0.pos,S0.q)));
+  const rawOut=send(nativeInput(cfg,comp,lib,Ps,S0.pos,S0.q)),H=nativeOutput(rawOut);
   const S={n,pos:H.pos,q:H.q,mass,brad,zb:0,zp:H.zp},proto=cfg.proto||'w';
   if(probe){
     probe.S=S;probe.lib=lib;probe.Ps=Ps;probe.trace=H.trace;probe.native={tDem:H.tDem,threads:H.threads,vcap:H.vcap};
@@ -55,7 +55,7 @@ function compactarNativo(cfg,P,lib,NA,comp,send,probe){
   const info=proto==='marshall'?{golpes:I[0],ns:I[1],v0:I[2],Mh:I[3],E:I[4],film:I[5],tFilm:I[6],AVCsolto:I[7],AVCcomp:I[8]}
     :proto==='giratorio'?{N:I[0],ns:I[1],Fp:I[2],ang:I[3],Tg:I[4],film:I[5],tFilm:I[6],AVCsolto:I[7],AVCcomp:I[8]}:null;
   return {S,Ps,n,out:{maxov:H.maxov},forced:!!H.forced,stalled:!!H.stalled,Hf:H.Hf,hist:H.hist,locked:!!H.locked,dH:H.dH,
-    Hsolto:H.Hsolto>=0&&proto!=='w'?H.Hsolto:undefined,Hcomp:H.Hcomp,info,anim:H.anim,raised,pen:H.pen,motor:{nome:'C',threads:H.threads}};
+    Hsolto:H.Hsolto>=0&&proto!=='w'?H.Hsolto:undefined,Hcomp:H.Hcomp,info,anim:H.anim,raised,pen:H.pen,motor:{nome:'C',threads:H.threads},rawOut};
 }
 
 // envio no app: POST síncrono (permitido em workers) para o servidor local do mini app, que roda o mdsim

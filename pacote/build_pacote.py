@@ -48,6 +48,20 @@ def copiar_web():
         f.write(html)
     shutil.copy(three, os.path.join(WEB, 'three.min.js'))
     shutil.copy(os.path.join(AQUI, 'vendor', 'LICENSE-three.txt'), os.path.join(WEB, 'LICENSE-three.txt'))
+    # exemplos prontos (stress/gerar_exemplos.mjs grava em ../exemplos): o app só mostra o menu se a pasta existir
+    ex = os.path.join(RAIZ, 'exemplos')
+    destino = os.path.join(WEB, 'exemplos')
+    shutil.rmtree(destino, ignore_errors=True)
+    if os.path.isfile(os.path.join(ex, 'index.json')):
+        os.makedirs(destino)
+        for nome in os.listdir(ex):
+            if nome.endswith('.mdres.gz') and os.path.getsize(os.path.join(ex, nome)) < 1024:
+                sys.exit(f'{nome} é só um ponteiro do Git LFS: rode "git lfs install" e "git lfs pull" e tente de novo')
+            if nome == 'index.json' or nome.endswith('.mdres.gz'):
+                shutil.copy(os.path.join(ex, nome), os.path.join(destino, nome))
+        print('exemplos:', len([n for n in os.listdir(destino) if n.endswith('.mdres.gz')]))
+    else:
+        print('sem exemplos (pasta exemplos/ não encontrada): o menu fica oculto')
 
 
 def gcc():

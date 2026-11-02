@@ -12,7 +12,7 @@ let W = null;
 const worker = () => W || (W = new Function('self', '__probe', workerSource() + '\n;return {compactarNativo};')({ postMessage() {} }, null));
 
 // mesma assinatura e mesmo retorno do compactar(cfg,P,lib,NA,comp) do worker
-export function makeNativeCompactar({ bin, threads, probe, verbose }) {
+export function makeNativeCompactar({ bin, threads, probe, verbose, onRaw }) {
   const send = buf => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mdsim-')), fin = path.join(dir, 'in.bin'), fout = path.join(dir, 'out.bin');
     try {
@@ -20,6 +20,7 @@ export function makeNativeCompactar({ bin, threads, probe, verbose }) {
       const r = spawnSync(bin, [fin, fout, String(threads || os.cpus().length)], { stdio: ['ignore', 'ignore', verbose ? 'inherit' : 'pipe'], maxBuffer: 1 << 28 });
       if (r.status !== 0) throw new Error(`mdsim falhou (código ${r.status}): ${r.stderr ? r.stderr.toString().slice(-2000) : ''}`);
       const b = fs.readFileSync(fout);
+      if (onRaw) onRaw(b);
       return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   };

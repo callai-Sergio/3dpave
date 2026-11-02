@@ -18,3 +18,6 @@ stress/logs/
 *.log
 .claude/settings.local.json
 node_modules/
+
+# cópia gerada pelo build_pacote.py a partir de exemplos/ (Git LFS)
+pacote/src/marshall_simulator/web/exemplos/

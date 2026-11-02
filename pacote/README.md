@@ -11,7 +11,7 @@ Corpo de prova Marshall virtual pelo método de Wan et al. (2024), *Algorithms t
 **Com Python 3.9 ou mais novo (Windows, Linux, macOS):**
 
 ```
-pip install marshall_simulator-1.1.0a1-py3-none-any.whl
+pip install marshall_simulator-1.1.0a2-py3-none-any.whl
 ```
 
 ## Uso
@@ -33,6 +33,12 @@ ou `python -m marshall_simulator`. O programa abre numa janela própria. No Wind
 - Um CP isolado pode variar ~1 pp de AVC com a semente; compare médias de vários CPs.
 - As peneiras intermediárias das faixas AC/PA da TL Asphalt-StB 07/13 são aproximadas (status R): confira-as na norma. Os valores K também ainda precisam ser conferidos.
 
+## Exemplos e resultados salvos
+
+O menu "Exemplos prontos" abre misturas já calculadas (pasta `exemplos/` da raiz, Git LFS); "Salvar resultado" e "Abrir resultado…" gravam e abrem arquivos `.mdres.gz`. Os exemplos entram na wheel e no `.exe`.
+
 ## Montar o pacote
+
+No Windows, `construir_no_pc.bat` faz tudo: `git pull`, `git lfs pull`, wheel, `.exe` e o zip.
 
 Na raiz do repositório, `node build.mjs`; depois, nesta pasta, `python build_pacote.py --exe`. O three.js r128 (MIT, `vendor/`) é copiado para dentro do pacote.

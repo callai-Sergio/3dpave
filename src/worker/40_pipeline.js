@@ -182,8 +182,8 @@ function runAll(cfg){
   const posF=new Float32Array(S.pos),qF=new Float32Array(S.q);
   const libOut=lib.map(t=>({v:t.v,f:t.f}));
   const tr=[lab.buffer,phase.buffer,posF.buffer,qF.buffer,tplArr.buffer,scArr.buffer,frArr.buffer,mE.pos.buffer,mE.idx.buffer,bubF.buffer];
-  const A=C.anim;tr.push(A.P.buffer,A.Q.buffer);
-  post({type:'done',res:{mar:{anim:A},nx,ny,nz,h,R,H,lab,phase,pos:posF,q:qF,tpl:tplArr,sc:scArr,fr:frArr,lib:libOut,meshE:mE,bubbles:bubF,st,NA,bub,rel:P.rel,
+  const A=C.anim;tr.push(A.P.buffer,A.Q.buffer);if(C.rawOut)tr.push(C.rawOut);
+  post({type:'done',res:{mar:{anim:A},nx,ny,nz,h,R,H,lab,phase,pos:posF,q:qF,tpl:tplArr,sc:scArr,fr:frArr,lib:libOut,meshE:mE,bubbles:bubF,st,NA,bub,rel:P.rel,rawOut:C.rawOut,
     tTotal:(Date.now()-t0)/1000}},tr);
 }
 

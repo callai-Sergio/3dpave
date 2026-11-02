@@ -231,39 +231,51 @@ function getWorkerURL(){if(!workerURL)workerURL=URL.createObjectURL(new Blob([$(
 const STAGES=['comp','formas','mistura','compac','pintura','bolhas','pronto'];
 const STAGE_W={comp:[0,2],formas:[2,6],mistura:[6,20],compac:[20,86],pintura:[86,93],bolhas:[93,99],pronto:[100,100]};
 const STAGE_ALIAS={queda:'mistura',golpes:'compac',giros:'compac'};
+// tempo decorrido (O9): relógio da rodada e duração de cada etapa concluída
+let tRun0=0,tStage=null,tStage0=0,tTick=null;
+const fmtT=s=>{s=Math.round(s);return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
+function tempoTick(){$('ptime').textContent=l10n('Decorrido')+' '+fmtT((performance.now()-tRun0)/1000);}
+function tempoIni(){tRun0=tStage0=performance.now();tStage=null;document.querySelectorAll('#steps li em').forEach(e=>e.remove());clearInterval(tTick);tTick=setInterval(tempoTick,500);tempoTick();}
+function tempoFim(){clearInterval(tTick);tTick=null;tempoTick();}
+function tempoEtapa(s){
+  if(s===tStage)return;const now=performance.now(),li=tStage&&document.querySelector(`#steps li[data-s="${tStage}"]`);
+  if(li&&!li.querySelector('em'))li.insertAdjacentHTML('beforeend',`<em>${fmtT((now-tStage0)/1000)}</em>`);
+  tStage=s;tStage0=now;
+}
 function setStage(s,pct,text){
-  s=STAGE_ALIAS[s]||s;const i=STAGES.indexOf(s);
+  s=STAGE_ALIAS[s]||s;const i=STAGES.indexOf(s);tempoEtapa(s);
   document.querySelectorAll('#steps li').forEach((li,k)=>{li.classList.toggle('done',k<i);li.classList.toggle('on',k===i);});
   const [a,b]=STAGE_W[s]||[0,100];$('pbar').style.width=(a+(b-a)*Math.min(Math.max(pct||0,0),1))+'%';
   if(text!=null)$('ptext').textContent=text;
 }
-function generate(){
+function generate(opts){
   const {cfg,errs}=readForm();showErrs(errs);
   if(Object.keys(errs).length){$('e-grad').scrollIntoView({block:'nearest'});return;}
   const comp=composicao(cfg);
   if(!comp.fracoes.length){showErrs({grad:'Não há agregados acima de 2 mm nesta granulometria.'});return;}
-  lastCfg=Object.assign(cfg,{comp});sampled=null;stale=false;$('stale-note').hidden=true;
+  runForm=formSnap();lastCfg=Object.assign(cfg,{comp});sampled=null;stale=false;$('stale-note').hidden=true;
   const c=band;
   const pname=cfg.proto==='marshall'?`Marshall ${cfg.golpes} golpes`:cfg.proto==='giratorio'?`giratório ${cfg.ngir} giros`:'[W] pistões';
   $('h-spec').textContent=`${c?(c.user?c.des:`${c.norma} · ${c.des}`):`Wan et al. (2024), Tabela 1`} · ${STONE_NAME[cfg.lib]}${cfg.lib[0]==='W'?' [W]':''} · betume ${fmt(cfg.pb,1)}% · AVC ${fmt(cfg.avc,1)}%${cfg.avcMode==='livre'?' (livre)':''} · ${fmt(comp.mass,0)} g em Ø${fmt(comp.D,1)} mm · ${pname}`;
-  renderPanel();renderLegend();setExport(false);
+  renderPanel();renderLegend();setExport(false);setSalvar(true);
   if(worker)worker.terminate();
   stopAnim();$('animbar').hidden=true;
-  running=true;$('overlay').hidden=false;$('errbox').textContent='';setStage('comp',1,'Composição calculada');
+  running=true;$('overlay').hidden=false;$('errbox').textContent='';tempoIni();setStage('comp',1,'Composição calculada');
   try{worker=new Worker(getWorkerURL());}catch(e){running=false;showError('Não consegui iniciar o Web Worker: '+e.message);return;}
   worker.onmessage=ev=>{const m=ev.data;
     if(m.type==='progress')setStage(m.stage,m.pct,m.text);
     else if(m.type==='nativo'){nativoPoll(m.on);if(m.erro)console.warn('mdsim falhou; a simulação segue em JavaScript:',m.erro);}
     else if(m.type==='sampled'){sampled=m;renderPanel();renderLegend();
       $('ptext').textContent=`${fmt(m.NA,0)} agregados sorteados (${fmt(m.NA*comp.k1000,0)} por 1000 g)`;}
-    else if(m.type==='done'){running=false;result=Object.assign(m.res,{stone:cfg.lib});setStage('pronto',1,`Pronto em ${fmt(m.res.tTotal,0)} s`);
+    else if(m.type==='done'){running=false;tempoFim();result=Object.assign(m.res,{stone:cfg.lib});setStage('pronto',1,`Pronto em ${fmt(m.res.tTotal,0)} s`);
       try{buildScene(result);}catch(e){showError('Falha ao montar a cena 3D: '+e.message);return;}
-      renderPanel();renderLegend();setExport(true);setTimeout(()=>{if(!running)$('overlay').hidden=true;},700);initSection();
-      if(result.mar&&result.mar.anim&&result.mar.anim.nf>1&&cfg.proto==='marshall'){setTimeout(()=>{if(!running){setViewMode('a');setFrame(0);playAnim();}},800);}}
-    else if(m.type==='error'){running=false;showError('Erro na simulação: '+m.message);}
+      renderPanel();renderLegend();setExport(true);setSalvar();setTimeout(()=>{if(!running)$('overlay').hidden=true;},700);initSection();
+      if(result.mar&&result.mar.anim&&result.mar.anim.nf>1&&(cfg.proto==='marshall'||cfg.proto==='giratorio')){setTimeout(()=>{if(!running){setViewMode('a');setFrame(0);playAnim();}},800);}}
+    else if(m.type==='error'){running=false;tempoFim();showError('Erro na simulação: '+m.message);}
   };
-  worker.onerror=e=>{running=false;showError('Erro no worker: '+(e.message||'desconhecido'));};
-  const msg=workerMsg(cfg,comp);
+  worker.onerror=e=>{running=false;tempoFim();showError('Erro no worker: '+(e.message||'desconhecido'));};
+  const msg=workerMsg(cfg,comp),rp=opts&&opts.replay;
+  if(rp){msg.replay=rp;msg.replayNA=opts.na;worker.postMessage(msg,[rp]);return;}
   nativoInfo().then(nat=>{if(nat)msg.native=nat;worker.postMessage(msg);});
 }
 // F10: no mini app Python (pacote/), o servidor local roda o núcleo em C (mdsim). Fora dele, native/info não existe e

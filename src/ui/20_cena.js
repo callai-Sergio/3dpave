@@ -76,8 +76,8 @@ function buildScene(r){
 let mold=null,base=null,foot=null,shaft=null,viewMode='c',camA=null,camC=null,curF=0,playing=false,speed=1,accF=0,lastT=0;
 function buildAnimParts(r){
   const A=r.mar&&r.mar.anim;mold=base=foot=shaft=null;
-  // giratório: só o corpo de prova resultante, sem animação (decisão do usuário, 2026-10-30)
-  if(!A||A.nf<2||(r.st&&r.st.comp&&r.st.comp.proto==='giratorio')){$('animbar').hidden=true;return;}
+  // a animação vale para os três protocolos; o giratório volta a tê-la (pedido do usuário, 2026-11-02; o corte de 2026-10-30 caiu)
+  if(!A||A.nf<2){$('animbar').hidden=true;return;}
   const metal=new THREE.MeshStandardMaterial({color:0x8d8a86,roughness:0.45,metalness:0.6});
   let ztop=0;for(let k=0;k<A.nf;k++)ztop=Math.max(ztop,Math.min(A.Z[6*k+3]-A.Z[6*k],4*r.H+40));
   const mh=Math.max(ztop,r.H)+5;

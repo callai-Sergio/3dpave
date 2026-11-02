@@ -230,6 +230,11 @@ function protoGiratorio(S,cfg,comp,R,H,rec,r1){
 function compactar(cfg,P,lib,NA,comp){
   // no servidor o harness pode trocar a física pelo núcleo em C (native/mdsim.c), com o mesmo retorno
   if(PROBE&&PROBE.compactar)return PROBE.compactar(cfg,P,lib,NA,comp);
+  // exemplo pronto: a saída do mdsim gravada no servidor entra no lugar da física; o resto (voxels, mastique, bolhas) roda normalmente
+  if(cfg.replay){
+    if(cfg.replayNA&&cfg.replayNA!==NA)throw new Error(`O arquivo foi gerado por outra versão do app (${cfg.replayNA} partículas gravadas, ${NA} nesta versão).`);
+    return compactarNativo(cfg,P,lib,NA,comp,()=>cfg.replay);
+  }
   // no mini app (F10) o mdsim compilado faz a física do Marshall e do giratório (calibrados com ele, A5); o [W] fica em
   // JavaScript até o C passar no golden (M14). Se o mdsim falhar, a mesma simulação segue em JavaScript
   if(cfg.native&&!PROBE&&(cfg.proto==='marshall'||cfg.proto==='giratorio')){

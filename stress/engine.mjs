@@ -206,7 +206,7 @@ export function runCase(spec, { htmlPath } = {}) {
     else if (verbose && o.type === 'progress') console.error(`[${((Date.now() - tv0) / 1000).toFixed(0)} s] ${o.stage} ${o.text}`); } };
   // MD_NATIVE=<mdsim>: a compactação roda no núcleo em C, com MD_THREADS núcleos
   const nat = spec.native ?? process.env.MD_NATIVE;
-  if (nat) probe.compactar = makeNativeCompactar({ bin: nat, threads: +(spec.threads ?? process.env.MD_THREADS ?? 0) || undefined, probe, verbose });
+  if (nat) probe.compactar = makeNativeCompactar({ bin: nat, threads: +(spec.threads ?? process.env.MD_THREADS ?? 0) || undefined, probe, verbose, onRaw: spec.onRaw });
   const { runAll } = app.makeRunAll(self, probe);
   const t0 = Date.now();
   try { runAll(msg); } catch (err) {
