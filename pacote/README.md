@@ -39,6 +39,6 @@ O menu "Exemplos prontos" abre misturas já calculadas (pasta `exemplos/` da rai
 
 ## Montar o pacote
 
-No Windows, `construir_no_pc.bat` faz tudo: `git pull`, `git lfs pull`, wheel, `.exe` e o zip.
+No Windows, `python pacote/gerar_exe.py` faz tudo (git pull, git lfs pull, wheel, `.exe` e o zip); `construir_no_pc.bat` chama o mesmo script.
 
 Na raiz do repositório, `node build.mjs`; depois, nesta pasta, `python build_pacote.py --exe`. O three.js r128 (MIT, `vendor/`) é copiado para dentro do pacote.
