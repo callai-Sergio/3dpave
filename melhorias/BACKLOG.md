@@ -93,7 +93,8 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | S2 | BR §6.6 | Paralelizar ou reduzir `buildPairs`, CSR e cópias da varredura em `mdsim.c` | C × JS bate; escala > 5× com 24 núcleos | **alta** (com F10) | falta. Medido 2026-10-30: Marshall 1200 g leva 1554 s com 16 threads no PC e 1613 s com 4 no vid1, ou seja, quase não escala |
 | S2a–S2g | plano de desempenho, Fase 1 | Núcleo C sem mudar o resultado: varredura parcial sem cópia e CSR em paralelo, candidatos sem força marcados, conferência de movimento por partícula, SoA/SIMD em `probeIn`, uma região OpenMP por passo, `penetration` paralela; timers atrás de `MD_PROF` | referência C bit a bit com 1, 4 e 16 threads | **alta** | **feito** (2026-10-30), com uma troca: a "região OpenMP por passo" (S2f) não entrou — medida com a régua, as aberturas de região e as somas seriais ficam abaixo de 2 % do passo; no lugar, o `buildPairs` passou a rodar em paralelo com a mesma ordem de pares. Saída bit a bit igual à do código anterior em 4 casos (Marshall 250 g livre e travado, [W] 250 g, giratório 1000 g) × 2 flags (`-march=native`, `-march=x86-64-v2` do pacote) × 1 e 4 threads, e no caso do perfil (1200 g). Marshall 1200 g (5 golpes/face, 4 threads): 400,8 → 202,6 s (1,98×). Ver "S2 Fase 1" nas medições. 16 threads não foi conferido aqui (VM de 4 núcleos) |
 | S2m, S2n | perfil da S2a | Extras de categoria I: o laço por partícula percorre os candidatos pelos pares (mesma ordem) e o CSR partícula → candidato deixa de existir (S2m); candidatos em faixas fixas por par, e a varredura parcial regrava só os pares revarridos (S2n) | referência C bit a bit; o rearranjo das faixas exercido com folga 0 e 2 | alta | **feito** (2026-10-30): varredura parcial do caso do perfil 154,6 → 28,6 s |
-| S2h–S2l | plano de desempenho, Fase 2 | Molas somadas por par (sem CSR de candidatos), `buildPairs` com grade fina e paralelo, folgas maiores, coluna inicial mais densa, queda mais curta | calibração reduzida (12 rodadas) dentro do ruído | **alta** | falta |
+| S2h–S2l | plano de desempenho, Fase 2 | Molas somadas por par (sem CSR de candidatos), `buildPairs` com grade fina e paralelo, folgas maiores, coluna inicial mais densa, queda mais curta | calibração reduzida (12 rodadas) dentro do ruído | **alta** | **S2i e S2j medidas e descartadas** (2026-11-02, vid1): não ganham tempo depois da Fase 1, ver "S2 Fase 2". Faltam S2k e S2l |
+| S2o–S2s | perfil por amostragem (2026-11-02, vid1) | Forças sem mudar o resultado: cópia local da Sim por núcleo (S2o); só os registros com força, compactados no início da faixa do par, e a soma por partícula lê só esses (S2p); dados das duas cascas carregados uma vez por par (S2q); planos intercalados no teste rápido, uma linha de cache por plano (S2r); `probeIn` sai antes de montar o top4 (S2s) | saída bit a bit igual | alta | **feito** (2026-11-02): idêntica à base em 5 casos × 1/4/16 threads × `-march=native` e `x86-64-v2`; 1200 g 4 threads 292,8 → 253,2 s, 16 threads 96,2 → 86,1 s; giratório 1000 g 4 threads 417,5 → 340,6 s. Ver "S2 forças" |
 | S5 | BR §6.7 | WebAssembly no navegador; botão "Abrir resultado do servidor" | Ø150 em tempo aceitável; K32 | baixa | falta |
 | S6 | BR §6.8 | Escala de massa; fim do golpe pelo repouso | K12, tempo | baixa | falta |
 | S6a–S6c | plano de desempenho, Fase 3 | dt 4e-5 com escala de inércia nas pedras < 3 mm; 25 golpes simulados por face; assentamento pós-golpe 0,001 s | grade de calibração completa | média | falta (depende das Fases 1–2) |
@@ -236,6 +237,42 @@ Grade `stress/grids/a11_segk.json`, PC local, Node 24.11.1, [W], AVC travado →
 | 1000 g | 2 | 3,70 · 2,92 | 3,31 | 0,39 | 23,4 / 7,16 | 0,46 |
 
 No CP de 250 g uma única faixa da borda vai de 2,5 a 29,7 % de vazios entre sementes: são cordas do círculo com poucos voxels. Mais força tira vazios do miolo (3,5 → 2,0 %) e não muda a borda. Em 1000 g o K14 é estável. Decisão: manter k = 1 e avisar no app. Não mexi no KPI; uma alternativa futura é medir a banheira em anéis (raio) em vez de faixas do diâmetro.
+
+### S2 forças (2026-11-02, vid1): S2o–S2s, 10–18 % com o mesmo resultado
+
+Sem `perf` no vid1 (`perf_event_paranoid` = 4), o perfil saiu de um amostrador próprio (SIGPROF a cada 0,5 ms por `LD_PRELOAD`, endereços pelo `addr2line`), com 1 thread. No Marshall 250 g, por passo: 16,4 mil candidatos, 81 % acertam um plano, 23 % viram mola de película e ~17 viram contato de pedra. A soma por partícula gastava 8 % do tempo só lendo a marca dos candidatos sem força, e o teste rápido buscava os 4 planos em 4 vetores separados de 2244 cascas (~6,6 MB, fora do cache).
+
+Prova: as entradas do `mdsim` de 5 casos (Marshall 250 g livre e travado, [W] 250 g, giratório 1000 g, Marshall 1200 g com 5 golpes simulados) foram gravadas e o `mdsim` roda direto sobre elas; a saída inteira (posições, orientações, quadros, histórico, traço, penetração e o JSON sem `tDem`/`threads`) é comparada byte a byte com a da base (Fase 1). Igual em todos: 5 casos com 4 threads, 1200 g e giratório com 16, três casos com 1 thread, e quatro casos compilados com `-march=x86-64-v2` (base e nova com a mesma flag).
+
+Tempo, base e nova rodando lado a lado (o vid1 é compartilhado; rodadas soltas oscilam ±10 %):
+
+| Caso | Threads | Base | Nova | Forças por par | Forças por partícula |
+|---|---|---|---|---|---|
+| Marshall 1200 g | 4 | 292,8 s | **253,2 s** (−13,5 %) | 109,0 → 103,5 s | 69,1 → 45,3 s |
+| Marshall 1200 g | 16 | 96,2 s | **86,1 s** (−10,5 %) | 34,1 → 31,9 s | 21,9 → 15,9 s |
+| Giratório 1000 g | 4 | 417,5 s | **340,6 s** (−18,4 %) | 200,8 → 180,7 s | 116,3 → 70,7 s |
+
+A S2o sozinha não mediu ganho, mas fica: tira do compilador a obrigação de reler a Sim a cada gravação. O que sobra no perfil é latência de memória no teste rápido (pontos e planos de outra casca) e a rotação dos 128 mil pontos a cada passo; o próximo ganho bit a bit exigiria calcular os pontos só onde são usados.
+
+### S2 Fase 2 (2026-11-02, vid1): S2i e S2j não ganham depois da Fase 1
+
+Retomada no vid1 (a sessão de nuvem parou por falta de créditos). Caso do perfil (Marshall 1200 g, 5 golpes simulados por face, semente 2024), `gcc -O3 -march=native -fopenmp`, Node 24.11.1, `MD_PROF=1`. O vid1 é compartilhado (carga ~55 de 96 núcleos), então os tempos oscilam alguns %.
+
+| Variante | Folga / margem (mm) | Herança das faixas | DEM 4 threads | ms/passo | Forças par + partícula | Varreduras (completa + parcial) | Candidatos/passo | AVC | K33 |
+|---|---|---|---|---|---|---|---|---|---|
+| Base (Fase 1) | 0,6 / 0,15 | — | 298,3 s | 2,76 | 185 s | 74 s | 61 mil | 6,666 % | 0,88 % |
+| A: só a grade fina | 0,6 / 0,15 | não | 315,0 s | 2,86 | 203 s | 75 s | 61 mil | 5,859 % | 1,25 % |
+| S2i (patch da nuvem) | 0,6 / 0,15 | sim | 298,6 s | 2,84 | 184 s | 77 s | 60 mil | 6,075 % | 1,70 % |
+| B: S2j moderada | 1,0 / 0,3 | não | 297,4 s | 2,82 | 216 s | 48 s | 74 mil | 6,061 % | 0,92 % |
+| C: S2j do plano | 1,5 / 0,4 | não | 303,7 s | 2,82 | 228 s | 40 s | 85 mil | 6,883 % | 1,87 % |
+| D: S2i + S2j | 1,5 / 0,4 | sim | 319,2 s | 3,00 | 240 s | 42 s | 85 mil | 7,482 % | 0,64 % |
+
+Com 16 threads: base 86,6 s (0,80 ms/passo), S2i 88,4 s (0,84 ms/passo).
+
+- **Depois da Fase 1, as forças são o gargalo** (~65 % do passo); a lista de pares e as varreduras somam ~25 %. A S2i tira o `buildPairs` (7,7 → 4,4 s) e as varreduras completas, mas cada reconstrução passa a rearranjar todas as faixas (3817 rearranjos contra 5) e a varredura parcial dobra. Folgas maiores (S2j) varrem menos, mas aumentam os candidatos e as forças crescem na mesma medida.
+- **Ruído da ordem de soma:** a variante A só muda a ordem dos pares e já leva o AVC de 6,67 para 5,86 %. Entre as 6 variantes o AVC vai de 5,9 a 7,5 % (é o mesmo modelo): cada rodada é uma realização diferente, com dispersão da ordem da dispersão entre sementes (0,5–0,8 pp). Por isso a diferença de AVC da S2i não indica bug; uma mudança de categoria II só se prova pela calibração reduzida, não por um caso.
+- **Determinismo por threads:** base 4 e 16 threads idênticas (AVC 6,666 %, K33 0,88 %), o que a Fase 1 não tinha conferido com 16; S2i 4 e 16 threads idênticas.
+- **Decisão:** S2i e S2j ficam fora. O patch fica em `melhorias/wip/fase2_S2i_em_andamento.patch`, agora com `-DS2I_CARRY=0|1`, `-DPAIR_SKIN` e `-DCAND_MARGIN` para repetir as medições. Para o giratório (≈ 4× partículas), a S2i pode voltar a valer, porque lá o `buildPairs` cresce com n²: medir antes de descartar de vez.
 
 ### S2 Fase 1 (2026-10-30): núcleo C 2× mais rápido com o mesmo resultado
 

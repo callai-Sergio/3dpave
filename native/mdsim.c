@@ -80,7 +80,7 @@ typedef struct{
   int *cand,ncand,capCand;short *candPl;int *candPS,capPS; /* candidatos [par, lado, ponto] em faixas por par: início candPS, usados candN, folga candCap (S2n) */
   int *candN,*candCap,*candN2;long nRelayout;
   int *cand2,capCand2;short *candPl2;int *candPS2;unsigned char *pairSt,*bufT;int *bufO,*work; /* S2b: segundo jogo (troca de ponteiros); par revarrido: marca, bloco e posição; lista de trabalho */
-  double *candF;int capCandF;unsigned char *candOn;     /* por candidato: fA[3], tA[3], tB[3], pen; candOn = registro com força (S2c) */
+  double *candF;int capCandF;unsigned char *candSd;int *pairNOn; /* registros com força, compactados no início da faixa do par (S2p): fA[3], tA[3], tB[3], pen; candSd = lado; pairNOn = quantos */
   void *bufs;int nbufs;                                 /* blocos por núcleo da varredura, persistentes (S2b) */
   PBuf *pbuf;int npbuf;                                 /* blocos de pares por faixa de partículas (S2f) */
   double *pairF,*pairG,*pairD;int capPairF;unsigned char *pairOn; /* por par: lubrificação fA[3], tA[3], tB[3], c; menor g; ponto+normal; pairOn = com lubrificação (S2c) */
@@ -156,7 +156,7 @@ static void buildPairs(Sim *S,double skin){
   int *fill=xmalloc(sizeof(int)*n);for(int i=0;i<n;i++)fill[i]=S->pStart[i];
   for(int p=0;p<S->npairs;p++){S->pList[fill[S->pairs[2*p]]++]=2*p;S->pList[fill[S->pairs[2*p+1]]++]=2*p+1;}
   free(fill);
-  if(S->npairs+1>S->capPS){S->capPS=2*S->npairs+2;S->candPS=xrealloc(S->candPS,sizeof(int)*S->capPS);S->candPS2=xrealloc(S->candPS2,sizeof(int)*S->capPS);S->candN=xrealloc(S->candN,sizeof(int)*S->capPS);S->candCap=xrealloc(S->candCap,sizeof(int)*S->capPS);S->candN2=xrealloc(S->candN2,sizeof(int)*S->capPS);S->pairSt=xrealloc(S->pairSt,S->capPS);S->bufT=xrealloc(S->bufT,S->capPS);S->bufO=xrealloc(S->bufO,sizeof(int)*S->capPS);S->work=xrealloc(S->work,sizeof(int)*S->capPS);}
+  if(S->npairs+1>S->capPS){S->capPS=2*S->npairs+2;S->candPS=xrealloc(S->candPS,sizeof(int)*S->capPS);S->candPS2=xrealloc(S->candPS2,sizeof(int)*S->capPS);S->candN=xrealloc(S->candN,sizeof(int)*S->capPS);S->candCap=xrealloc(S->candCap,sizeof(int)*S->capPS);S->candN2=xrealloc(S->candN2,sizeof(int)*S->capPS);S->pairSt=xrealloc(S->pairSt,S->capPS);S->bufT=xrealloc(S->bufT,S->capPS);S->bufO=xrealloc(S->bufO,sizeof(int)*S->capPS);S->work=xrealloc(S->work,sizeof(int)*S->capPS);S->pairNOn=xrealloc(S->pairNOn,sizeof(int)*S->capPS);}
   if(S->npairs>S->capPairF){S->capPairF=2*S->npairs+16;S->pairF=xrealloc(S->pairF,sizeof(double)*10*S->capPairF);
     S->pairG=xrealloc(S->pairG,sizeof(double)*S->capPairF);S->pairD=xrealloc(S->pairD,sizeof(double)*6*S->capPairF);S->pairOn=xrealloc(S->pairOn,S->capPairF);}
   memcpy(S->posB,S->pos,sizeof(double)*3*n);S->candStale=1;S->built=1;S->builtRange=S->pairRange;
@@ -164,12 +164,25 @@ static void buildPairs(Sim *S,double skin){
 
 /* menor distância com sinal de um ponto à casca de b (positiva fora), normal no mundo; top4 guarda os 4 planos mais altos */
 typedef struct{double g,nx,ny,nz;}Hit;
+#define PROBE_MAXPL 256 /* acima disso, probeIn usa o laço de uma passada só */
 static int probeIn(const Sim *S,int b,double x,double y,double z,double range,Hit *h,short *top4){
   const double *R=S->Rm+9*b;double dx=x-S->pos[3*b],dy=y-S->pos[3*b+1],dz=z-S->pos[3*b+2],rr=S->brad[b]+range;
   if(dx*dx+dy*dy+dz*dz>rr*rr)return 0;
   double lx=R[0]*dx+R[3]*dy+R[6]*dz,ly=R[1]*dx+R[4]*dy+R[7]*dz,lz=R[2]*dx+R[5]*dy+R[8]*dz;
   const Tpl *t=&S->tpls[S->tpl[b]];const double *NX=t->nx,*NY=t->ny,*NZ=t->nz,*ND=t->nd,s=S->sc[b];int npl=t->npl;
   double best=-1e9,t4v[4]={-1e9,-1e9,-1e9,-1e9};int bp=0;
+  /* S2s: primeiro só a saída (algum plano acima do alcance, a mesma condição do laço antigo), em blocos de 8; o maior e o
+     top4 saem depois, numa segunda passada sequencial pelas mesmas distâncias, só para os pontos que ficam */
+  if(npl<=PROBE_MAXPL){double dd[PROBE_MAXPL+8];
+    for(int p0=0;p0<npl;p0+=8){double *d=dd+p0;int over=0;
+      for(int j=0;j<8;j++)d[j]=NX[p0+j]*lx+NY[p0+j]*ly+NZ[p0+j]*lz+ND[p0+j]*s;
+      int pe=npl-p0;if(pe>8)pe=8;
+      for(int j=0;j<pe;j++)over|=d[j]>range;
+      if(over)return 0;}
+    for(int p=0;p<npl;p++){double dj=dd[p];
+      if(dj>best){best=dj;bp=p;}
+      if(top4&&dj>t4v[3]){int q=3;while(q>0&&dj>t4v[q-1]){t4v[q]=t4v[q-1];top4[q]=top4[q-1];q--;}t4v[q]=dj;top4[q]=(short)p;}}
+  }else
   /* S2e: as distâncias de 8 planos saem de uma vez (vetorizável, mesma ordem de operações); a decisão continua plano a plano */
   for(int p0=0;p0<npl;p0+=8){
     double d[8];for(int j=0;j<8;j++)d[j]=NX[p0+j]*lx+NY[p0+j]*ly+NZ[p0+j]*lz+ND[p0+j]*s;
@@ -180,13 +193,17 @@ static int probeIn(const Sim *S,int b,double x,double y,double z,double range,Hi
   double ax=NX[bp],ay=NY[bp],az=NZ[bp];
   h->g=best;h->nx=R[0]*ax+R[1]*ay+R[2]*az;h->ny=R[3]*ax+R[4]*ay+R[5]*az;h->nz=R[6]*ax+R[7]*ay+R[8]*az;return 1;
 }
-static int probeQuick(const Sim *S,int b,double x,double y,double z,double range,const short *pl4,Hit *h){
-  const double *R=S->Rm+9*b;double dx=x-S->pos[3*b],dy=y-S->pos[3*b+1],dz=z-S->pos[3*b+2];
+/* S2q: teste rápido de um candidato (só os 4 planos guardados na varredura), com os dados da casca b já carregados (uma vez por par, não por candidato) */
+typedef struct{double R[9],px,py,pz,s;const double *PL;}Frame; /* PL: planos intercalados (nx, ny, nz, nd), uma linha de cache por plano */
+static void frameOf(const Sim *S,int b,Frame *f){memcpy(f->R,S->Rm+9*b,sizeof f->R);f->px=S->pos[3*b];f->py=S->pos[3*b+1];f->pz=S->pos[3*b+2];
+  const Tpl *t=&S->tpls[S->tpl[b]];f->PL=t->pl;f->s=S->sc[b];}
+static inline int probeFrame(const Frame *f,double x,double y,double z,double range,const short *pl4,Hit *h){
+  const double *R=f->R;double dx=x-f->px,dy=y-f->py,dz=z-f->pz;
   double lx=R[0]*dx+R[3]*dy+R[6]*dz,ly=R[1]*dx+R[4]*dy+R[7]*dz,lz=R[2]*dx+R[5]*dy+R[8]*dz;
-  const Tpl *t=&S->tpls[S->tpl[b]];const double *NX=t->nx,*NY=t->ny,*NZ=t->nz,*ND=t->nd,s=S->sc[b];double best=-1e9;int bp=0;
-  for(int j=0;j<4;j++){int p=pl4[j];if(p<0)continue;double d=NX[p]*lx+NY[p]*ly+NZ[p]*lz+ND[p]*s;if(d>best){best=d;bp=p;}}
+  const double *PL=f->PL,s=f->s;double best=-1e9;int bp=0;
+  for(int j=0;j<4;j++){int p=pl4[j];if(p<0)continue;const double *q=PL+4*p;double d=q[0]*lx+q[1]*ly+q[2]*lz+q[3]*s;if(d>best){best=d;bp=p;}}
   if(best>range)return 0;
-  double ax=NX[bp],ay=NY[bp],az=NZ[bp];
+  double ax=PL[4*bp],ay=PL[4*bp+1],az=PL[4*bp+2];
   h->g=best;h->nx=R[0]*ax+R[1]*ay+R[2]*az;h->ny=R[3]*ax+R[4]*ay+R[5]*az;h->nz=R[6]*ax+R[7]*ay+R[8]*az;return 1;
 }
 
@@ -271,7 +288,7 @@ static void scanCandidates(Sim *S,double range,int full){
       #pragma omp single
       {tot=nslot[np];if(!full)S->nRelayout++;
         if(tot>S->capCand2){free(S->cand2);free(S->candPl2);S->capCand2=tot+tot/2+256;S->cand2=xmalloc(sizeof(int)*3*S->capCand2);S->candPl2=xmalloc(sizeof(short)*4*S->capCand2);}
-        if(tot>S->capCandF){free(S->candF);free(S->candOn);S->capCandF=tot+tot/2+256;S->candF=xmalloc(sizeof(double)*10*S->capCandF);S->candOn=xmalloc(S->capCandF);}}
+        if(tot>S->capCandF){free(S->candF);free(S->candSd);S->capCandF=tot+tot/2+256;S->candF=xmalloc(sizeof(double)*10*S->capCandF);S->candSd=xmalloc(S->capCandF);}}
       int *c2=S->cand2;short *pl2=S->candPl2;
       for(int p=p0;p<p1;){int q=p+1;
         if(pairSt[p]){int m=ncnt[p],t=bufT[p],o0=bufO[p],d0=nslot[p];
@@ -364,34 +381,42 @@ static Out run(Sim *S,int nsteps,const Opt *o){
     if(prof){PN[PN_PASSOS]++;PN[PN_PARES]+=S->npairs;PN[PN_CAND]+=S->ncand;}
     /* 1. por par: molas dos candidatos (registro por candidato) e lubrificação no menor g (registro por par) */
     PBEG(t5_);
-    #pragma omp parallel for schedule(dynamic,64)
+    /* S2o: cada núcleo lê de uma cópia local da Sim. As gravações em candSd (char) e nos registros (double) podiam ser
+       alias dos campos de *S, o que obrigava o compilador a reler ponteiros e parâmetros a cada candidato; a conta é a mesma */
+    #pragma omp parallel
+    {const Sim SL=*S;const Sim *S=&SL;
+    #pragma omp for schedule(dynamic,64)
     for(int p=0;p<S->npairs;p++){
-      int a=S->pairs[2*p],b=S->pairs[2*p+1];double gmin=1e9,*pd=S->pairD+6*p;Hit h;
-      for(int c=S->candPS[p],ce=c+S->candN[p];c<ce;c++){
-        int side=S->cand[3*c+1],k=S->cand[3*c+2],A=side?b:a,B=side?a:b;double *cf=S->candF+10*c;
+      int a=S->pairs[2*p],b=S->pairs[2*p+1],c0=S->candPS[p],no=0;double gmin=1e9,*pd=S->pairD+6*p;Hit h;
+      Frame fr[2];int ce=c0+S->candN[p];if(ce>c0){frameOf(S,b,&fr[0]);frameOf(S,a,&fr[1]);}
+      for(int c=c0;c<ce;c++){
+        int side=S->cand[3*c+1],k=S->cand[3*c+2],A=side?b:a,B=side?a:b;
         double x=S->prX[k],y=S->prY[k],z=S->prZ[k];
-        /* S2c: sem força, o registro fica só marcado (candOn = 0); somar um registro zerado não mudaria nada */
-        if(!probeQuick(S,B,x,y,z,range,S->candPl+4*c,&h)){S->candOn[c]=0;continue;}
-        if(h.g<film){cf[9]=springRec(S,A,B,x,y,z,h.g,h.nx,h.ny,h.nz,0,0,0,cf,cf+3,cf+6);S->candOn[c]=1;}else S->candOn[c]=0;
+        /* S2c/S2p: só os candidatos com força ganham registro, gravados em sequência no início da faixa (mesma ordem);
+           somar um registro zerado não mudaria nada, e a soma por partícula passa a ler só os que existem */
+        if(!probeFrame(&fr[side],x,y,z,range,S->candPl+4*c,&h))continue;
+        if(h.g<film){double *cf=S->candF+10*(c0+no);cf[9]=springRec(S,A,B,x,y,z,h.g,h.nx,h.ny,h.nz,0,0,0,cf,cf+3,cf+6);S->candSd[c0+no]=(unsigned char)side;no++;}
         if(h.g<gmin){double sg=side?-1:1;gmin=h.g;pd[0]=x;pd[1]=y;pd[2]=z;pd[3]=sg*h.nx;pd[4]=sg*h.ny;pd[5]=sg*h.nz;}
       }
-      S->pairG[p]=gmin;double *pf=S->pairF+10*p;
+      S->pairNOn[p]=no;S->pairG[p]=gmin;double *pf=S->pairF+10*p;
       if(lubR>0&&gmin<range){pf[9]=masticRec(S,a,b,pd[0],pd[1],pd[2],gmin,pd[3],pd[4],pd[5],0,0,0,0.5*mind(S->area[a],S->area[b]),pf,pf+3,pf+6);S->pairOn[p]=1;}else S->pairOn[p]=0;
-    }
+    }}
     PEND(t5_,PT_FPAR);
     /* 2. por partícula: soma dos registros (ordem fixa), paredes, força radial; depois a integração */
     PBEG(t6_);
     double phi=S->phi+omega*(t-o->t0),ax=st*cos(phi),ay=st*sin(phi),az=ct,dax=-omega*st*sin(phi),day=omega*st*cos(phi),zc=(S->zb+S->zp)/2;
     int moving=!o->ham&&o->vp>0&&(S->zp-S->zb)>o->gapT;double vh=moving?o->vp/2:0;
     double vT=o->ham&&o->hside>0?S->hv:o->servo?S->vs:(o->hasVt?o->vt:-vh),vB=o->ham&&o->hside<0?S->hv:(o->hasVb?o->vb:vh);
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel
+    {const Sim SL=*S;const Sim *S=&SL;const Opt OL=*o;const Opt *o=&OL; /* S2o: idem */
+    #pragma omp for schedule(static)
     for(int i=0;i<n;i++){
       double *F=S->F+3*i,*T=S->T+3*i,*FL=S->FL+3*i,*TL=S->TL+3*i,cs=0,ov=0,fb=0,ft=0;
       F[0]=F[1]=F[2]=T[0]=T[1]=T[2]=FL[0]=FL[1]=FL[2]=TL[0]=TL[1]=TL[2]=0;
       /* S2m: os candidatos vêm pelos pares da partícula (pList em ordem de par, candidatos contíguos por par): a mesma ordem
          crescente de candidato de antes, sem o CSR partícula → candidato. F/T e FL/TL/cs são acumuladores separados. */
       for(int j=S->pStart[i];j<S->pStart[i+1];j++){int e=S->pList[j],p=e>>1,rp=e&1;
-        for(int c=S->candPS[p],ce=c+S->candN[p];c<ce;c++){if(!S->candOn[c])continue;const double *cf=S->candF+10*c;int role=S->cand[3*c+1]^rp;
+        for(int c=S->candPS[p],ce=c+S->pairNOn[p];c<ce;c++){const double *cf=S->candF+10*c;int role=S->candSd[c]^rp;
           if(role==0){F[0]+=cf[0];F[1]+=cf[1];F[2]+=cf[2];T[0]+=cf[3];T[1]+=cf[4];T[2]+=cf[5];if(cf[9]>ov)ov=cf[9];}
           else{F[0]-=cf[0];F[1]-=cf[1];F[2]-=cf[2];T[0]+=cf[6];T[1]+=cf[7];T[2]+=cf[8];}}
         if(S->pairOn[p]){const double *pf=S->pairF+10*p;
@@ -427,7 +452,7 @@ static Out run(Sim *S,int nsteps,const Opt *o){
       S->Cs[i]=cs;S->ovI[i]=ov;S->fbI[i]=fb;S->ftI[i]=ft;
       /* força radial (castanha-do-pará, [W] §3.3) */
       if(o->fbn>0){double dx=-S->pos[3*i],dy=-S->pos[3*i+1],dz=zc-S->pos[3*i+2],L=sqrt(dx*dx+dy*dy+dz*dz);if(L>1e-6){F[0]+=o->fbn*dx/L;F[1]+=o->fbn*dy/L;F[2]+=o->fbn*dz/L;}}
-    }
+    }}
     PEND(t6_,PT_FPART);
     PBEG(t7_);
     double ftop=0,fbot=0,maxov=0;for(int i=0;i<n;i++){ftop+=S->ftI[i];fbot+=S->fbI[i];if(S->ovI[i]>maxov)maxov=S->ovI[i];}
