@@ -1,5 +1,6 @@
 // Mede o tempo do núcleo em C por número de núcleos, num caso fixo, e confere que o resultado não muda.
 //   MD_NATIVE=native/mdsim node stress/bench_native.mjs [threads,...] [spec json]
+//   Com MD_PROF=1 MD_VERBOSE=1 o mdsim imprime no stderr o tempo por etapa (linhas "PROF ...", S2a).
 // Padrão: Marshall em tamanho real (1200 g, Ø101,6 mm), 5 golpes simulados por face, AVC livre, C-12,5.
 import { runCase } from './engine.mjs';
 

@@ -56,6 +56,9 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | A1 | PM P1a, PU F4 | Camada junto à face sem vazios (pintura trata pistões como agregado) | Peso das faces `faceW` na distância | `src/worker/40_pipeline.js:61` | K27, K28 | K27 ≥ 1; K28 ≤ 0,5 mm | alta | **feito no smoke** (K27 = 2,15; K28 = 0 mm); a diferença de [W] §3.6 agora está no "Sobre o método" (PT/EN). Falta confirmar na triagem |
 | A2 | PM P1b, ST 1 | Esqueleto denso nas pontas e frouxo no meio (AVC alto, sem força radial) | No Marshall/giratório, a gravidade e os golpes por face já existem; no [W], testar avisar quando k = 0 ou alternar o pistão | `25_protocolos.js` | K29, K16b | K29 ≥ 0,85 | alta | parcial (Marshall/giratório: medir; [W]: falta) |
 | A3 | BR §6.3, decisão | Marshall só em tamanho real | Tirar 250 g/Ø65 do Marshall; giratório padrão 4700 g/Ø150 | `src/ui/00_base.js` (`SIZE_BY_PROTO`) | prévia + smoke | — | alta | **feito**: Marshall só 1200 g/Ø101,6; giratório Ø150 (padrão) ou Ø102; [W] 250 g ou 1000 g. O harness continua aceitando qualquer tamanho (golden [W] em 250 g) |
+| A3b | usuário | O CP precisa seguir a compactação | Marshall → só CP Marshall; giratório → só CP do giratório (sem o Ø102); campo Compactação antes do CP | `head.html`, `00_base.js` | prévia | — | alta | **feito** (2026-10-30) |
+| A3c | usuário | 4700 g fixos no giratório davam 103–117 mm conforme a densidade (norma: 115 ± 5 mm, AASHTO T 312 / R 35) | Massa = Gmb no AVC alvo × área × 115 mm | `10_painel.js` (`composicao`) | prévia: 4842 g na mistura padrão, 5151 g com agregado 2,90 | 115 mm | alta | **feito** (2026-10-30) |
+| A3d | usuário | 1200 g fixos no Marshall davam 57,5–64,8 mm (norma 63,5 ± 1,27 mm, ASTM D6926); a energia do golpe escalava com massa/1200 | Massa para 63,5 mm no AVC alvo; no molde real (Ø ≥ 100 mm) o golpe é sempre o da norma (`massaSoquete`, JS e entrada do C); grades de calibração com `mass: 1200` para reproduzir a A5 | `10_painel.js`, `25_protocolos.js`, `26_nativo.js`, grades | entrada do C idêntica nos casos antigos (250 g e 1200 g) | 63,5 mm | alta | **feito** (2026-10-30). Na mistura padrão: 1227 g |
 | A4 | BR §6.2, §5 | K33 = 6–8 % com λ 0,5 (o golpe afunda pedras pela película) | Causa: a mola de pedra tinha kn fixo e saturava em 0,25 mm (`min(-g, 0,25)`); pedras grandes, sob o golpe, afundavam além disso com força constante (todas as rodadas com K33 alto tinham penetração > 0,25 mm). Correção: kn × max(1, sa·sb/(sa+sb)) (Hertz linearizado) e trava = 0,125 × Min Feret da menor, em JS e C | `20_dem.js`, `mdsim.c` | K33, K8 | K33 ≤ 2 %; K8 ≤ 0,10 | alta | **feito**: piores casos (λ 0,5, Pb 4 %) K33 0,017–0,021 → 0,003; o AVC cai 2–3 pp e o leito solto passa de AVC 60 % para 45 % → **refazer a calibração (A5)**. Golden [W] idêntico |
 | A5 | BR §6.1 | Calibração com 1 semente | Grade `calib_albayati_m2.json`: λ 0,45–0,6 × escE 0,001/0,002 × 3 sementes × 4 Pb (96 rodadas, 8 × 4 núcleos = 32) | `stress/grids/` | V1 | MAE ≤ 0,5 pp, inclinação ±30 % | alta | **feito** (2026-10-30, vid1, app com A7): λ 0,55 + escE 0,002 → AVC 6,65/4,93/3,45/2,29 × lab 6,1/4,8/3,3/2,7; MAE 0,31 pp, inclinação 128 %, K33 ≤ 0,5 %; dp entre sementes 0,5–0,8 pp. 96/96 ok. Resultado em `stress/results/vid1/calib_albayati_m2.jsonl` |
 | A6 | BR §6.4 | Padrões do app (λ 0,3, escE 0,005) erram 3,7 pp | Aplicar λ/escE calibrados | `head.html`, `25_protocolos.js`, `engine.mjs` | V1, golden | MAE ≤ 0,5 pp | alta | **feito** (2026-10-30): λ 0,55, escE 0,002. Golden não muda ([W] não usa λ). Conferência com os padrões (Pb 5, s2024, Windows x16): mesmos parâmetros da A5, AVC 4,54 × 3,03 no vid1 — diferença de plataforma/threads do tamanho da variação entre sementes. Giratório: λ novo sem recalibrar a escala de pressão |
@@ -88,8 +91,13 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | ID | Origem | Mudança | Prova | Prio | Status |
 |---|---|---|---|---|---|
 | S2 | BR §6.6 | Paralelizar ou reduzir `buildPairs`, CSR e cópias da varredura em `mdsim.c` | C × JS bate; escala > 5× com 24 núcleos | **alta** (com F10) | falta. Medido 2026-10-30: Marshall 1200 g leva 1554 s com 16 threads no PC e 1613 s com 4 no vid1, ou seja, quase não escala |
+| S2a–S2g | plano de desempenho, Fase 1 | Núcleo C sem mudar o resultado: varredura parcial sem cópia e CSR em paralelo, candidatos sem força marcados, conferência de movimento por partícula, SoA/SIMD em `probeIn`, uma região OpenMP por passo, `penetration` paralela; timers atrás de `MD_PROF` | referência C bit a bit com 1, 4 e 16 threads | **alta** | **feito** (2026-10-30), com uma troca: a "região OpenMP por passo" (S2f) não entrou — medida com a régua, as aberturas de região e as somas seriais ficam abaixo de 2 % do passo; no lugar, o `buildPairs` passou a rodar em paralelo com a mesma ordem de pares. Saída bit a bit igual à do código anterior em 4 casos (Marshall 250 g livre e travado, [W] 250 g, giratório 1000 g) × 2 flags (`-march=native`, `-march=x86-64-v2` do pacote) × 1 e 4 threads, e no caso do perfil (1200 g). Marshall 1200 g (5 golpes/face, 4 threads): 400,8 → 202,6 s (1,98×). Ver "S2 Fase 1" nas medições. 16 threads não foi conferido aqui (VM de 4 núcleos) |
+| S2m, S2n | perfil da S2a | Extras de categoria I: o laço por partícula percorre os candidatos pelos pares (mesma ordem) e o CSR partícula → candidato deixa de existir (S2m); candidatos em faixas fixas por par, e a varredura parcial regrava só os pares revarridos (S2n) | referência C bit a bit; o rearranjo das faixas exercido com folga 0 e 2 | alta | **feito** (2026-10-30): varredura parcial do caso do perfil 154,6 → 28,6 s |
+| S2h–S2l | plano de desempenho, Fase 2 | Molas somadas por par (sem CSR de candidatos), `buildPairs` com grade fina e paralelo, folgas maiores, coluna inicial mais densa, queda mais curta | calibração reduzida (12 rodadas) dentro do ruído | **alta** | **S2i e S2j medidas e descartadas** (2026-11-02, vid1): não ganham tempo depois da Fase 1, ver "S2 Fase 2". Faltam S2k e S2l |
+| S2o–S2s | perfil por amostragem (2026-11-02, vid1) | Forças sem mudar o resultado: cópia local da Sim por núcleo (S2o); só os registros com força, compactados no início da faixa do par, e a soma por partícula lê só esses (S2p); dados das duas cascas carregados uma vez por par (S2q); planos intercalados no teste rápido, uma linha de cache por plano (S2r); `probeIn` sai antes de montar o top4 (S2s) | saída bit a bit igual | alta | **feito** (2026-11-02): idêntica à base em 5 casos × 1/4/16 threads × `-march=native` e `x86-64-v2`; 1200 g 4 threads 292,8 → 253,2 s, 16 threads 96,2 → 86,1 s; giratório 1000 g 4 threads 417,5 → 340,6 s. Ver "S2 forças" |
 | S5 | BR §6.7 | WebAssembly no navegador; botão "Abrir resultado do servidor" | Ø150 em tempo aceitável; K32 | baixa | falta |
 | S6 | BR §6.8 | Escala de massa; fim do golpe pelo repouso | K12, tempo | baixa | falta |
+| S6a–S6c | plano de desempenho, Fase 3 | dt 4e-5 com escala de inércia nas pedras < 3 mm; 25 golpes simulados por face; assentamento pós-golpe 0,001 s | grade de calibração completa | média | falta (depende das Fases 1–2) |
 
 ## Backlog (não implementar agora)
 
@@ -229,6 +237,62 @@ Grade `stress/grids/a11_segk.json`, PC local, Node 24.11.1, [W], AVC travado →
 | 1000 g | 2 | 3,70 · 2,92 | 3,31 | 0,39 | 23,4 / 7,16 | 0,46 |
 
 No CP de 250 g uma única faixa da borda vai de 2,5 a 29,7 % de vazios entre sementes: são cordas do círculo com poucos voxels. Mais força tira vazios do miolo (3,5 → 2,0 %) e não muda a borda. Em 1000 g o K14 é estável. Decisão: manter k = 1 e avisar no app. Não mexi no KPI; uma alternativa futura é medir a banheira em anéis (raio) em vez de faixas do diâmetro.
+
+### S2 forças (2026-11-02, vid1): S2o–S2s, 10–18 % com o mesmo resultado
+
+Sem `perf` no vid1 (`perf_event_paranoid` = 4), o perfil saiu de um amostrador próprio (SIGPROF a cada 0,5 ms por `LD_PRELOAD`, endereços pelo `addr2line`), com 1 thread. No Marshall 250 g, por passo: 16,4 mil candidatos, 81 % acertam um plano, 23 % viram mola de película e ~17 viram contato de pedra. A soma por partícula gastava 8 % do tempo só lendo a marca dos candidatos sem força, e o teste rápido buscava os 4 planos em 4 vetores separados de 2244 cascas (~6,6 MB, fora do cache).
+
+Prova: as entradas do `mdsim` de 5 casos (Marshall 250 g livre e travado, [W] 250 g, giratório 1000 g, Marshall 1200 g com 5 golpes simulados) foram gravadas e o `mdsim` roda direto sobre elas; a saída inteira (posições, orientações, quadros, histórico, traço, penetração e o JSON sem `tDem`/`threads`) é comparada byte a byte com a da base (Fase 1). Igual em todos: 5 casos com 4 threads, 1200 g e giratório com 16, três casos com 1 thread, e quatro casos compilados com `-march=x86-64-v2` (base e nova com a mesma flag).
+
+Tempo, base e nova rodando lado a lado (o vid1 é compartilhado; rodadas soltas oscilam ±10 %):
+
+| Caso | Threads | Base | Nova | Forças por par | Forças por partícula |
+|---|---|---|---|---|---|
+| Marshall 1200 g | 4 | 292,8 s | **253,2 s** (−13,5 %) | 109,0 → 103,5 s | 69,1 → 45,3 s |
+| Marshall 1200 g | 16 | 96,2 s | **86,1 s** (−10,5 %) | 34,1 → 31,9 s | 21,9 → 15,9 s |
+| Giratório 1000 g | 4 | 417,5 s | **340,6 s** (−18,4 %) | 200,8 → 180,7 s | 116,3 → 70,7 s |
+
+A S2o sozinha não mediu ganho, mas fica: tira do compilador a obrigação de reler a Sim a cada gravação. O que sobra no perfil é latência de memória no teste rápido (pontos e planos de outra casca) e a rotação dos 128 mil pontos a cada passo; o próximo ganho bit a bit exigiria calcular os pontos só onde são usados.
+
+### S2 Fase 2 (2026-11-02, vid1): S2i e S2j não ganham depois da Fase 1
+
+Retomada no vid1 (a sessão de nuvem parou por falta de créditos). Caso do perfil (Marshall 1200 g, 5 golpes simulados por face, semente 2024), `gcc -O3 -march=native -fopenmp`, Node 24.11.1, `MD_PROF=1`. O vid1 é compartilhado (carga ~55 de 96 núcleos), então os tempos oscilam alguns %.
+
+| Variante | Folga / margem (mm) | Herança das faixas | DEM 4 threads | ms/passo | Forças par + partícula | Varreduras (completa + parcial) | Candidatos/passo | AVC | K33 |
+|---|---|---|---|---|---|---|---|---|---|
+| Base (Fase 1) | 0,6 / 0,15 | — | 298,3 s | 2,76 | 185 s | 74 s | 61 mil | 6,666 % | 0,88 % |
+| A: só a grade fina | 0,6 / 0,15 | não | 315,0 s | 2,86 | 203 s | 75 s | 61 mil | 5,859 % | 1,25 % |
+| S2i (patch da nuvem) | 0,6 / 0,15 | sim | 298,6 s | 2,84 | 184 s | 77 s | 60 mil | 6,075 % | 1,70 % |
+| B: S2j moderada | 1,0 / 0,3 | não | 297,4 s | 2,82 | 216 s | 48 s | 74 mil | 6,061 % | 0,92 % |
+| C: S2j do plano | 1,5 / 0,4 | não | 303,7 s | 2,82 | 228 s | 40 s | 85 mil | 6,883 % | 1,87 % |
+| D: S2i + S2j | 1,5 / 0,4 | sim | 319,2 s | 3,00 | 240 s | 42 s | 85 mil | 7,482 % | 0,64 % |
+
+Com 16 threads: base 86,6 s (0,80 ms/passo), S2i 88,4 s (0,84 ms/passo).
+
+- **Depois da Fase 1, as forças são o gargalo** (~65 % do passo); a lista de pares e as varreduras somam ~25 %. A S2i tira o `buildPairs` (7,7 → 4,4 s) e as varreduras completas, mas cada reconstrução passa a rearranjar todas as faixas (3817 rearranjos contra 5) e a varredura parcial dobra. Folgas maiores (S2j) varrem menos, mas aumentam os candidatos e as forças crescem na mesma medida.
+- **Ruído da ordem de soma:** a variante A só muda a ordem dos pares e já leva o AVC de 6,67 para 5,86 %. Entre as 6 variantes o AVC vai de 5,9 a 7,5 % (é o mesmo modelo): cada rodada é uma realização diferente, com dispersão da ordem da dispersão entre sementes (0,5–0,8 pp). Por isso a diferença de AVC da S2i não indica bug; uma mudança de categoria II só se prova pela calibração reduzida, não por um caso.
+- **Determinismo por threads:** base 4 e 16 threads idênticas (AVC 6,666 %, K33 0,88 %), o que a Fase 1 não tinha conferido com 16; S2i 4 e 16 threads idênticas.
+- **Decisão:** S2i e S2j ficam fora. O patch fica em `melhorias/wip/fase2_S2i_em_andamento.patch`, agora com `-DS2I_CARRY=0|1`, `-DPAIR_SKIN` e `-DCAND_MARGIN` para repetir as medições. Para o giratório (≈ 4× partículas), a S2i pode voltar a valer, porque lá o `buildPairs` cresce com n²: medir antes de descartar de vez.
+
+### S2 Fase 1 (2026-10-30): núcleo C 2× mais rápido com o mesmo resultado
+
+Régua: `MD_PROF=1` imprime no stderr o tempo por etapa e as contagens (S2a; no harness, `MD_PROF=1 MD_VERBOSE=1`). Caso do perfil (Marshall 1200 g, 5 golpes simulados por face, semente 2024, 108 250 passos, 2244 partículas, ~12 mil pares e ~61 mil candidatos por passo), VM de nuvem com 4 núcleos, `gcc -O3 -march=native -fopenmp`, uma rodada de cada vez. A base (S2a) foi medida de novo nas mesmas condições: 400,8 s (o perfil de 487 s do plano foi tirado com a máquina dividida; esta VM oscila, e as etapas curtas — rotações, integração — são as que mais sentem). A saída (posições, orientações, quadros, histórico, traço e penetração) é idêntica bit a bit à do código anterior em todos os casos conferidos, com 1 e 4 threads e com as duas flags (native e x86-64-v2).
+
+| Etapa | Antes (S2a) | Depois (S2n) | |
+|---|---|---|---|
+| Lista de pares (`buildPairs`, 3227 vezes) | 19,9 s | 5,9 s | S2f: paralelo com a mesma ordem |
+| Rotações + conferência de movimento | 12,5 + 8,5 s | 12,6 s | S2d: limite por partícula antes de olhar os pontos |
+| Varredura completa (3228 vezes) | 46,6 s | 29,1 s | S2b, S2e, S2m |
+| Varredura parcial (85 602 vezes) | 154,6 s (33,8 s seriais) | 28,6 s | S2b, S2m, S2n: sem cópia dos 61 mil candidatos, sem CSR, pares revarridos distribuídos |
+| Forças por par | 95,0 s | 73,7 s | S2c: sem zerar 80 B por candidato |
+| Forças por partícula | 57,5 s | 47,6 s | S2c, S2d (paredes só para grãos perto delas) |
+| Integração e somas | 5,8 s | 5,0 s | |
+| **Total do DEM, 4 threads** | **400,8 s (3,70 ms/passo)** | **202,6 s (1,87 ms/passo)**; repetição 204,1 s | **1,98×** |
+| Total do DEM, 1 thread | ~920 s (4 threads = 2,3× uma, no plano) | 687,3 s (6,35 ms/passo) | 4 threads = **3,4×** uma thread |
+
+Por item, nos casos pequenos (4 threads salvo nota; tempos de parede, sujeitos à oscilação da VM): S2b m250 1 thread 99,6 → 94,3 s (a parte serial da varredura, 3,6 s, some); S2d w250 24 → 16 s e m250 1 thread 94 → 84 s; S2e m250 1 thread 83,5 → 80,6 s; S2f g1000 142 → 128 s; S2g penetração < 1 s; S2m g1000 128 → 121 s; S2n g1000 varredura parcial 17,6 → 15,3 s (no 1200 g, 92 → 29 s).
+
+Cuidado com o número de threads: com mais threads que núcleos as barreiras do OpenMP (espera ativa) ficam muito lentas — nesta VM de 4 núcleos, uma rodada de 4 threads com um processo a mais ao lado levou 15× o tempo. O app chama o `mdsim` com 20 núcleos; num PC de 16 threads o certo é ≤ 16 (ou `OMP_WAIT_POLICY=passive`). Fica como item de acompanhamento na F10.
 
 ### F10 e S2 (2026-10-30): núcleo em C no app e onde vai o tempo
 

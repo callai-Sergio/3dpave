@@ -2,6 +2,7 @@
  "name": "S2: perfil do mdsim, Marshall 1200 g com 5 golpes simulados por face",
  "base": {
   "size": "m",
+  "mass": 1200,
   "proto": "marshall",
   "avcMode": "livre",
   "lib": "RT",

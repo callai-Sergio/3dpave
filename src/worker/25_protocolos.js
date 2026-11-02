@@ -133,6 +133,10 @@ function deposit(S,cfg,rec,tt,R,comp){
   return tt;
 }
 
+// massa de referência do soquete: no molde Marshall real (Ø ≥ 100 mm) o golpe é o da norma, igual para qualquer massa de CP;
+// nos CPs menores, soquete e energia escalam pela massa (1200 g = golpe da norma). Usada também pelo núcleo C (26_nativo.js).
+const massaSoquete=comp=>comp.R>=50?1200:comp.mass;
+
 // ---------- Marshall: queda no molde e golpes do soquete por face, com o molde virado na face 2 ----------
 function protoMarshall(S,cfg,comp,R,H,rec,r1){
   const MC=cfg.marshall,dt=cfg.dt,chunk=Math.round(0.005/dt),chunkB=Math.round(0.001/dt),area=Math.PI*R*R/1000,Vsol=comp.V_graudo+comp.M;
@@ -140,9 +144,10 @@ function protoMarshall(S,cfg,comp,R,H,rec,r1){
   const ms=masticSetup(S,comp,cfg);
   let tt=deposit(S,cfg,rec,0,R,comp);
   const nb=MC.golpes,ns=Math.max(1,Math.min(nb,MC.sim||nb));
-  // energia de um golpe real: 4,536 kg caindo 457,2 mm (20,3 J), escalada pela massa do CP (norma: ~1200 g) e pela escala de carga
-  // do modelo (as pedras do DEM são ~1000× mais moles que as reais); cada golpe simulado leva a energia de nb/ns golpes
-  const Mh=4.536*comp.mass/1200,E=MC.escE*20.35e6*comp.mass/1200*nb/ns,v0=Math.sqrt(2*E/Mh);
+  // energia de um golpe real: 4,536 kg caindo 457,2 mm (20,3 J), pela escala de carga do modelo (as pedras do DEM são ~1000× mais
+  // moles que as reais); no molde real o soquete é o da norma, nos CPs menores ele é escalado pela massa (massaSoquete);
+  // cada golpe simulado leva a energia de nb/ns golpes
+  const mS=massaSoquete(comp),Mh=4.536*mS/1200,E=MC.escE*20.35e6*mS/1200*nb/ns,v0=Math.sqrt(2*E/Mh);
   let Mtot=0;for(let i=0;i<S.n;i++)Mtot+=S.mass[i];const keStop=0.5*Mtot*10*10;
   let e=heightOf(S);const Hsolto=e.H,hist=[[0,Hsolto]];
   for(let f=1;f<=2;f++){

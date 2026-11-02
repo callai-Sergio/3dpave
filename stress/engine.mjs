@@ -54,7 +54,7 @@ function patch(src, find, repl, label) {
 
 // The worker reads hooks from __probe (stage timer, sim handle, end of phases, settled state); no text splices needed.
 
-const MAIN_DECLS = ['GRADLIB', 'DEFAULT_CURVE', 'DEFAULTS', 'WMIX', 'FINES', 'TYPE_RANGE', 'midOf', 'wGradation', 'interp', 'SIZES', 'composicao', 'AVTS', 'TREF', 'etaBinder', 'tRef', 'viscMastic'];
+const MAIN_DECLS = ['GRADLIB', 'DEFAULT_CURVE', 'DEFAULTS', 'WMIX', 'FINES', 'TYPE_RANGE', 'midOf', 'wGradation', 'interp', 'SIZES', 'H_GIR', 'composicao', 'AVTS', 'TREF', 'etaBinder', 'tRef', 'viscMastic'];
 
 let cached = null;
 export function loadApp(htmlPath = APP_HTML) {
