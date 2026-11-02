@@ -1,0 +1,86 @@
+<title>Exemplos prontos do Marshall Digital</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: uma coluna de leitura (~72ch); passos como lista numerada (a ordem é informação); tabela de formatos rola dentro do próprio bloco */
+:root{
+  --bg:#f5f6f4; --surface:#ffffff; --fg:#1d2321; --muted:#5d6763; --line:#d9deda; --accent:#1f6f5c; --accent-soft:#e3efeb; --warn:#8a5a00; --warn-bg:#f8eed8;
+  --display:'Archivo',system-ui,sans-serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141917; --surface:#1c2320; --fg:#e6ebe8; --muted:#9aa6a1; --line:#2f3935; --accent:#6fc4ac; --accent-soft:#1e302a; --warn:#e6b85c; --warn-bg:#33291a; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141917; --surface:#1c2320; --fg:#e6ebe8; --muted:#9aa6a1; --line:#2f3935; --accent:#6fc4ac; --accent-soft:#1e302a; --warn:#e6b85c; --warn-bg:#33291a; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--body);padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:72ch;margin:0 auto;display:flex;flex-direction:column;gap:36px;min-width:0}
+h1{font:800 clamp(28px,5vw,40px)/1.1 var(--display);margin:0;text-wrap:balance}
+h2{font:700 22px/1.2 var(--display);margin:0 0 12px;text-wrap:balance}
+p{margin:0 0 10px}
+.meta{font:500 13px var(--mono);color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+code{font:14px var(--mono);background:var(--accent-soft);padding:1px 5px;border-radius:3px}
+.callout{background:var(--warn-bg);color:var(--fg);border-left:3px solid var(--warn);padding:12px 16px;border-radius:0 6px 6px 0}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+ol.steps{list-style:none;counter-reset:s;padding:0;margin:0;display:flex;flex-direction:column;gap:14px}
+ol.steps>li{counter-increment:s;display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px}
+ol.steps>li::before{content:counter(s);font:700 15px var(--mono);color:var(--accent);background:var(--accent-soft);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+ol.steps b{font-family:var(--display)}
+.done{font:12px var(--mono);color:var(--muted);display:block;margin-top:2px}
+ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<main>
+<header>
+  <div class="meta">Plano de implementação · O2 sobre O3 · 2 nov 2026</div>
+  <h1>Exemplos prontos do Marshall Digital</h1>
+  <p>Um menu "Exemplos" com misturas já calculadas no vid1, para demonstrar o app sem esperar 16 minutos. Para isso o app precisa antes salvar e abrir resultados (O3). <b>Implementado em 2 nov 2026</b> com um desenho mais simples: o arquivo guarda a compactação (a parte de 16 min) e o app refaz só voxels, mastique e bolhas ao abrir (23 s no Marshall, 51 s no giratório, no Chrome). Resultado salvo e reaberto dá o mesmo AVC. Ficou pendente testar no EXE e decidir como levar os 75 MB de exemplos ao PC.</p>
+</header>
+
+<section>
+  <h2>O que o código mostra hoje</h2>
+  <ul>
+    <li>A tela usa o objeto <code>res</code> que o worker devolve no fim de <code>runAll</code> (<code>src/worker/40_pipeline.js</code>): voxels (<code>lab</code>, <code>phase</code>), partículas (<code>pos</code>, <code>q</code>, <code>tpl</code>, <code>sc</code>, <code>fr</code>), malha, bolhas, estatísticas <code>st</code> e os quadros da animação.</li>
+    <li>O giratório Ø150 tem voxels de 0,6 mm: cerca de 250 × 250 × 190 = <b>12 milhões</b>. Sem compressão, <code>lab</code> pesa ~48 MB e <code>phase</code> ~12 MB.</li>
+    <li>A saída do núcleo C do giratório tem 40 MB (posições finais mais 128 quadros de animação); é só a parte DEM. Voxels, mastique e bolhas são refeitos depois (pós-DEM, 38 s no vid1).</li>
+    <li>O servidor local do pacote (<code>app.py</code>) já salva arquivos (<code>save_file</code>), mas não abre arquivos nem tem pasta de exemplos.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Passos</h2>
+  <ol class="steps">
+    <li><div><b>Medir o tamanho real do resultado.</b> Rodar o <code>runAll</code> no harness com um CP pequeno, serializar o <code>res</code> e medir bruto e gzip de cada campo; extrapolar para o giratório pelo número de voxels e de partículas. Sem mudar o app.<span class="done">Pronto: tabela de bytes por campo. Decide o passo 2.</span></div></li>
+    <li><div><b>Escolher o formato do <code>.mdres</code></b> (tabela abaixo).<span class="done">Inclinação atual: híbrido (C), a confirmar com a medida.</span></div></li>
+    <li><div><b>Salvar resultado.</b> Botão ao lado de "Exportar". No pacote usa o <code>save_file</code>; no navegador, download. Cabeçalho com versão do formato, versão do app, a entrada e o hash dela (o mesmo do O1).</div></li>
+    <li><div><b>Abrir resultado.</b> Extrair do ramo <code>done</code> de <code>generate()</code> uma função <code>loadResult</code>, usada pela rodada normal e pelo arquivo. Preenche o formulário com a entrada gravada e recusa versão desconhecida com mensagem clara.</div></li>
+    <li><div><b>Menu "Exemplos".</b> Lista com nome, tipo, AVC, número de partículas e tempo de cálculo original. "Abrir" usa o passo 4; "Recalcular" volta ao formulário com a mesma entrada.</div></li>
+    <li><div><b>Lote no vid1.</b> Script que roda a lista com 16 threads, uma por vez e em segundo plano, grava cada <code>.mdres</code> e um <code>exemplos.json</code>.<span class="done">Pronto: todos abrem no app e o AVC do arquivo bate com o da rodada. Pode rodar em paralelo aos passos 3–5.</span></div></li>
+    <li><div><b>Entrega no pacote.</b> Pasta <code>exemplos/</code> no <code>build_pacote.py</code> e rota no servidor local para listar e servir. No HTML único o menu fica oculto. A decisão entre exemplos dentro do pacote ou baixados sob demanda depende do passo 1.</div></li>
+    <li><div><b>Provas.</b> <code>node stress/golden.mjs --determinism</code> (o worker muda no passo 4); abrir cada exemplo e comparar as estatísticas com as gravadas; abrir um arquivo corrompido e outro de versão futura.</div></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Formato do arquivo (passo 2)</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Opção</th><th>O que guarda</th><th>Tamanho</th><th>Ao abrir</th></tr></thead>
+    <tbody>
+      <tr><td><b>A, completo</b></td><td>posições e o acabamento pronto (voxels, malha, bolhas)</td><td>grande, talvez dezenas de MB por giratório</td><td>na hora</td></tr>
+      <tr><td><b>B, compacto</b></td><td>só a entrada e as posições</td><td>pequeno</td><td>dezenas de segundos (refaz o acabamento no PC do colega)</td></tr>
+      <tr><td><b>C, híbrido</b></td><td>posições e parte do acabamento</td><td>médio</td><td>poucos segundos</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Decisões</h2>
+  <ul>
+    <li><b>Formato:</b> medir antes; inclinação pelo híbrido (C).</li>
+    <li><b>Lote:</b> Marshall 1200 g, giratório Ø150 e variações de curva (2 a 3, por exemplo AC, PA e SMA, mesma compactação). O CP rápido de 250 g ficou fora.</li>
+  </ul>
+  <div class="callout" style="margin-top:14px"><b>Em aberto:</b> exemplos dentro do pacote ou sob demanda (depende do passo 1); curvas exatas e semente de cada exemplo.</div>
+</section>
+</main>

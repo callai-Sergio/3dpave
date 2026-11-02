@@ -1,0 +1,202 @@
+<title>Rapidez e testes do Marshall Digital</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: uma coluna de leitura (~70ch) com tabelas largas que rolam dentro do próprio bloco; cada fase do plano é uma faixa com etiqueta de tipo de resultado */
+:root{
+  --bg:#f5f6f4; --surface:#ffffff; --fg:#1d2321; --muted:#5d6763; --line:#d9ddda;
+  --accent:#0f6b5c; --accent-soft:#e2efeb;
+  --same:#1f6f43; --same-bg:#e3f1e8; --equiv:#8a5a00; --equiv-bg:#f6ecd6; --recal:#9b2f2f; --recal-bg:#f6e2e0;
+  --bar1:#0f6b5c; --bar2:#5c9c8f; --bar3:#c89b3c; --bar4:#9aa5a1;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141917; --surface:#1b211f; --fg:#e4e9e6; --muted:#9aa6a1; --line:#2e3734;
+  --accent:#4fbfa8; --accent-soft:#1d2e2a;
+  --same:#6fcf97; --same-bg:#1c2e24; --equiv:#e3b65a; --equiv-bg:#33291a; --recal:#ef8f86; --recal-bg:#3a2321;
+  --bar1:#4fbfa8; --bar2:#2f7f71; --bar3:#d9ac4a; --bar4:#5f6b67; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --surface:#1b211f; --fg:#e4e9e6; --muted:#9aa6a1; --line:#2e3734;
+  --accent:#4fbfa8; --accent-soft:#1d2e2a;
+  --same:#6fcf97; --same-bg:#1c2e24; --equiv:#e3b65a; --equiv-bg:#33291a; --recal:#ef8f86; --recal-bg:#3a2321;
+  --bar1:#4fbfa8; --bar2:#2f7f71; --bar3:#d9ac4a; --bar4:#5f6b67; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 64px}
+main{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:48px}
+.prose{max-width:70ch}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:clamp(28px,5vw,40px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:24px;font-weight:700;padding-top:8px;border-top:2px solid var(--fg)}
+h3{font-size:18px;font-weight:700}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:12px}
+.lede{font-size:18px;color:var(--fg);max-width:65ch}
+.meta{font-family:var(--mono);font-size:13px;color:var(--muted)}
+ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+code,.num{font-family:var(--mono);font-size:.9em}
+.num{font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:14.5px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface)}
+tr:last-child td{border-bottom:0}
+td.id{font-family:var(--mono);white-space:nowrap;color:var(--accent);font-weight:500}
+td.r{white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.same{color:var(--same);background:var(--same-bg)} .equiv{color:var(--equiv);background:var(--equiv-bg)} .recal{color:var(--recal);background:var(--recal-bg)}
+.wave{display:flex;flex-direction:column;gap:12px}
+.wavehead{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:14px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+/* barra do tempo por fase */
+.bar{display:flex;height:34px;border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.bar div{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:#fff;min-width:0;overflow:hidden;white-space:nowrap}
+.b1{background:var(--bar1)} .b2{background:var(--bar2)} .b3{background:var(--bar3);color:#1d2321!important} .b4{background:var(--bar4)}
+.barkey{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 20px;font-size:14px}
+.barkey div{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.sw{width:12px;height:12px;border-radius:2px;flex:none;margin-top:5px}
+.note{font-size:14px;color:var(--muted);max-width:70ch}
+.callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:14px 16px;border-radius:0 6px 6px 0;max-width:72ch}
+.steps{counter-reset:s;list-style:none;padding:0;gap:10px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:28px 1fr;gap:10px}
+.steps li::before{content:counter(s);font-family:var(--mono);font-size:13px;color:var(--accent);border:1px solid var(--accent);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;margin-top:2px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px 24px;font-size:14.5px}
+.fields div{border-bottom:1px dashed var(--line);padding-bottom:6px;min-width:0}
+.fields b{font-weight:600}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+a{color:var(--accent)}
+</style>
+
+<main>
+<header>
+  <span class="eyebrow">Marshall Digital · v1.1.0a2 · plano de 02/11/2026</span>
+  <h1>Rapidez e testes do Marshall Digital</h1>
+  <p class="lede">Hoje cada simulação começa do zero, e o giratório Ø150 é o caso mais lento. Este plano mostra onde o tempo vai e em que ordem cortá-lo. A primeira onda cuida de não calcular de novo o que já foi calculado. Depois vem o roteiro para os colegas testarem o app nos seus PCs.</p>
+  <p class="meta">Medições no servidor vid1 (Xeon Gold 5318Y, compartilhado), núcleo C após as otimizações S2o–S2s.</p>
+</header>
+
+<section>
+  <h2>Onde o tempo vai no giratório</h2>
+  <p class="prose">Caso padrão do app: CP de Ø150 × 115 mm, 11 046 partículas, AVC livre, 100 giros (30 simulados), 16 threads. O núcleo C levou <b class="num">958 s (16 min)</b>; o total, com as formas, a pintura em voxels e as bolhas, ficou em <b class="num">1000 s (16 min 40 s)</b>.</p>
+  <div class="bar" role="img" aria-label="Tempo por fase do giratório"><div class="b1" style="flex:282">282 s</div><div class="b2" style="flex:239">239 s</div><div class="b3" style="flex:441">441 s</div><div class="b4" style="flex:38">38 s</div></div>
+  <div class="barkey"><div><span class="sw" style="background:var(--bar1)"></span><span><b>Reunir a mistura (formas 5 s + colocação 277 s)</b><br>282 s · 28,2 %</span></div><div><span class="sw" style="background:var(--bar2)"></span><span><b>Queda e assentamento da coluna</b><br>239 s · 23,9 %</span></div><div><span class="sw" style="background:var(--bar3)"></span><span><b>Giros simulados (30 de 100)</b><br>441 s · 44,1 %</span></div><div><span class="sw" style="background:var(--bar4)"></span><span><b>Pós-DEM: voxels, ruído, bolhas e malha</b><br>38 s · 3,8 %</span></div></div>
+  <p class="note">Medido no vid1, 16 threads, em 2 de novembro de 2026: reunir + queda = 521 s (52 % do total); o ganho do O6 é essa fração. Contas das estimativas, marcadas <b>est.</b> na tabela (tudo escala só o tempo da fase; não foram rodadas):<br><b>O5</b> ≈ 3,2×: 341 s com 4 threads ÷ 107 s com 16, medidos no giratório de 1 kg; aqui 1000 s com 16 threads ficariam perto de 3 000 s com 4 (PC do usuário).<br><b>O8</b> −367 s: giros 441 s × 25/30 (5 giros em vez de 30, custo por giro constante) ≈ 367 s a menos; a prévia levaria ≈ 633 s, ou ≈ 112 s com a mistura solta guardada (O6).<br><b>S2k</b> ≈ −220 s: queda e assentamento ∝ √(altura); (250–300 mm) ÷ 822 mm → √0,33 ≈ 0,58, logo 521 s × (1 − 0,58) ≈ 220 s.<br><b>S2l</b> ≈ −120 s: queda de 239 s pela metade.<br><b>S6g</b> ≈ −220 s: giros de 441 s × 15/30.<br><b>S2i</b> medido: mdsim_s2i contra mdsim_final, mesma entrada e 16 threads, rodados juntos: 1217 s contra 970 s (+26 %), saída diferente (6260 contra 6108 refações da lista de pares).</p>
+</section>
+
+<section>
+  <h2>Plano de otimização</h2>
+  <p class="prose">Três ondas, da mais segura para a mais trabalhosa. A etiqueta de cada item diz o que acontece com o resultado:</p>
+  <div class="legend">
+    <span><span class="tag same">idêntico</span>o mesmo resultado de antes, bit a bit</span>
+    <span><span class="tag equiv">equivalente</span>o mesmo modelo, dentro do ruído entre sementes</span>
+    <span><span class="tag recal">recalibrar</span>muda a física ou o protocolo e passa pela grade de calibração</span>
+  </div>
+
+  <div class="wave">
+    <div class="wavehead"><h3>Onda 1 · Não calcular de novo</h3><span class="meta">≈ 1 semana · entra na v1.1.0a2</span></div>
+    <p class="prose">O núcleo C dá a mesma saída em qualquer número de núcleos e com a flag do pacote, e o JS bate entre Linux e Windows. Por isso, um resultado calculado uma vez, aqui ou em outro PC, vale para qualquer PC que monte a mesma entrada.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Mudança</th><th>Ganho</th><th>Resultado</th></tr></thead>
+      <tbody>
+        <tr><td class="id">O1</td><td><b>Guardar cada resultado no PC.</b> O servidor local do app calcula a impressão digital (hash) da entrada do núcleo C e guarda a saída numa pasta do usuário. Rodar o mesmo caso de novo abre o resultado guardado.</td><td class="r">repetir: segundos</td><td><span class="tag same">idêntico</span></td></tr>
+        <tr><td class="id">O2</td><td><b>Exemplos prontos no pacote.</b> Um menu "Exemplos" com casos já calculados no vid1: Marshall 1200 g e giratório Ø150 nas curvas e teores mais usados. Quem montar exatamente um desses casos também recebe o resultado na hora, pelo mesmo hash da O1.</td><td class="r">exemplo: segundos</td><td><span class="tag same">idêntico</span></td></tr>
+        <tr><td class="id">O3</td><td><b>Salvar e abrir resultado</b> (arquivo <code>.mdres</code>). Um colega roda e manda o arquivo; quem recebe abre sem recalcular.</td><td class="r">compartilhar: segundos</td><td><span class="tag same">idêntico</span></td></tr>
+        <tr><td class="id">O4</td><td><b>Ler N<sub>ini</sub>, N<sub>des</sub> e N<sub>máx</sub> da curva.</b> A altura já é gravada a cada giro e a curva AVC × giro já é desenhada. Mostrar o AVC em cada N da norma tira a necessidade de rodar 50, 75 e 100 giros em separado. No Marshall vale o mesmo para 35, 50 e 75 golpes.</td><td class="r">1 rodada no lugar de 3</td><td><span class="tag same">idêntico</span></td></tr>
+        <tr><td class="id">O5</td><td><b>Calcular no servidor.</b> Um botão manda a entrada para o vid1 (96 núcleos), que devolve o resultado para o app. Com 16 threads o giratório de 1 kg leva 107 s, contra 341 s com 4. Precisa de rede da universidade ou VPN.</td><td class="r">≈ 3,2× <small>(est.)</small></td><td><span class="tag same">idêntico</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="wave">
+    <div class="wavehead"><h3>Onda 2 · Reaproveitar etapas</h3><span class="meta">≈ 1–2 semanas</span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Mudança</th><th>Ganho</th><th>Resultado</th></tr></thead>
+      <tbody>
+        <tr><td class="id">O6</td><td><b>Guardar a mistura solta.</b> O estado depois de reunir a mistura e da queda depende da curva, das formas, da semente, da massa, do molde e do mastique, mas não da compactação. Mudar só os giros, a pressão, o ângulo ou os golpes reaproveita esse estado.</td><td class="r">−521 s (−52 %)</td><td><span class="tag equiv">equivalente</span></td></tr>
+        <tr><td class="id">O7</td><td><b>Continuar de onde parou.</b> Rodar 50 giros, olhar, e pedir mais 50 a partir do estado guardado, em vez de recomeçar com 100.</td><td class="r">metade, em sequência</td><td><span class="tag equiv">equivalente</span></td></tr>
+        <tr><td class="id">O8</td><td><b>Prévia rápida.</b> Uma rodada com 5 giros simulados para conferir montagem, massa e altura antes da rodada completa, marcada na tela como prévia.</td><td class="r">≈ −367 s <small>(est.)</small></td><td><span class="tag equiv">só conferência</span></td></tr>
+        <tr><td class="id">O9</td><td><b>Contador de tempo decorrido.</b> A tela de progresso mostra o tempo desde o início da rodada e o tempo de cada fase concluída (reunir, queda, giros, pós-DEM), como o log do servidor já faz. Não encurta a rodada, mas deixa o usuário saber quanto falta e dá os tempos reais nos testes com colegas. Só interface; não mexe no núcleo.</td><td class="r">sem ganho de tempo</td><td><span class="tag same">idêntico</span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">"Equivalente" porque retomar um estado guardado refaz as listas de contato num instante diferente, e isso muda a ordem das somas. Na medição de hoje, só trocar essa ordem moveu o AVC do 1200 g em até 0,8 pp, a mesma faixa da diferença entre sementes. A prova é a calibração reduzida: 12 rodadas, com MAE ≤ 0,5 pp.</p>
+  </div>
+
+  <div class="wave">
+    <div class="wavehead"><h3>Onda 3 · Encurtar a simulação</h3><span class="meta">≈ 2–3 semanas, com calibração</span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Mudança</th><th>Ganho esperado</th><th>Resultado</th></tr></thead>
+      <tbody>
+        <tr><td class="id">S2k</td><td><b>Coluna inicial mais densa.</b> Hoje a mistura solta parte de 822 mm de altura para um CP de 115 mm, porque a colocação testa a esfera envolvente de cada pedra. Testar pelo eixo entre os centros, como a varredura já faz, deixa a coluna perto de 250–300 mm.</td><td class="r">≈ −220 s <small>(est.)</small></td><td><span class="tag recal">recalibrar</span></td></tr>
+        <tr><td class="id">S2l</td><td><b>Queda mais curta:</b> parar quando a energia cinética assenta, ou amortecer mais.</td><td class="r">≈ −120 s <small>(est.)</small></td><td><span class="tag recal">recalibrar</span></td></tr>
+        <tr><td class="id">S6a</td><td><b>Passo de tempo 2×</b> com a inércia das pedras &lt; 3 mm aumentada (17 % das partículas, 0,8 % da massa). Dobrar o passo sem isso já foi testado e descartado: AVC −4,9 pp.</td><td class="r">≈ 2× em tudo</td><td><span class="tag recal">recalibrar</span></td></tr>
+        <tr><td class="id">S6g</td><td><b>Menos giros simulados:</b> 15 em vez de 30, cada um com o dobro do efeito, testando 10, 15 e 30 contra o laboratório.</td><td class="r">≈ −220 s <small>(est.)</small></td><td><span class="tag recal">recalibrar</span></td></tr>
+        <tr><td class="id">S2i</td><td><b>Grade fina na lista de pares</b>, descartada no Marshall 1200 g e de novo neste caso (11 046 partículas): ficou 26 % mais lenta. Fica descartada.</td><td class="r">+26 % mais lento (medido)</td><td><span class="tag recal">descartada</span></td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout">O giratório ainda não tem calibração no tamanho real (item A13 do backlog). Ela depende da curva altura × giro medida no laboratório, e o teste T7 abaixo é o que traz esses dados. Sem eles, a Onda 3 só pode ser validada no Marshall.</div>
+  </div>
+</section>
+
+<section>
+  <h2>Plano de testes com usuários</h2>
+  <p class="prose">O objetivo é saber se o app instala e roda em PCs comuns, quanto tempo leva de verdade, se os resultados conferem com o laboratório e onde as pessoas se perdem. Cada colega faz o roteiro uma vez com a v1.1.0a2. Depois da Onda 1, refaz os testes T2 e T6.</p>
+
+  <h3>Quem e com o quê</h3>
+  <ul class="prose">
+    <li><b>3 a 5 colegas</b>, cada um num PC diferente. No mínimo um notebook de 4 núcleos e um desktop de 8 a 16.</li>
+    <li>O zip da versão, a ficha de registro abaixo (uma linha por teste) e, para o T7, uma mistura com resultado de laboratório conhecido.</li>
+    <li>Cerca de <b>1 h 30</b> por pessoa, a maior parte esperando o giratório. Quem tiver pouco tempo pula o T5.</li>
+  </ul>
+
+  <h3>Roteiro</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Teste</th><th>O que fazer</th><th>O que anotar</th><th>Passa se</th></tr></thead>
+    <tbody>
+      <tr><td class="id">T1</td><td><b>Instalar e abrir.</b> Descompactar o zip e abrir o <code>.exe</code>.</td><td>Windows, processador, núcleos, RAM; tempo até a janela; qualquer aviso do Windows ou do antivírus</td><td>abre sem ajuda</td></tr>
+      <tr><td class="id">T2</td><td><b>Abrir um exemplo pronto</b> (depois da Onda 1).</td><td>tempo até o CP aparecer; a vista 3D gira</td><td>&lt; 10 s</td></tr>
+      <tr><td class="id">T3</td><td><b>CP rápido [W] 250 g</b> com os valores padrão.</td><td>tempo total; AVC; avisos na tela</td><td>&lt; 2 min, sem erro</td></tr>
+      <tr><td class="id">T4</td><td><b>Marshall 1200 g</b> padrão, 75 golpes por face.</td><td>tempo por fase (barra de progresso) e total; AVC previsto; se o PC ficou usável durante o cálculo</td><td>≤ 10 min num PC de 8 núcleos</td></tr>
+      <tr><td class="id">T5</td><td><b>Giratório Ø150</b> padrão, 100 giros.</td><td>tempo por fase e total; AVC; se o botão de parar funciona (testar numa segunda rodada)</td><td>termina sem travar; o tempo é registrado</td></tr>
+      <tr><td class="id">T6</td><td><b>Repetir o T4</b> sem mudar nada (depois da Onda 1).</td><td>tempo; o AVC é o mesmo do T4</td><td>&lt; 10 s, AVC igual</td></tr>
+      <tr><td class="id">T7</td><td><b>Mistura do laboratório.</b> Montar a curva, o teor e o ligante de uma mistura já ensaiada e rodar Marshall e, se houver, giratório.</td><td>AVC do laboratório e do app; no giratório, a altura medida em cada giro (planilha do equipamento)</td><td>Marshall: diferença ≤ 1 pp; giratório: só registrar</td></tr>
+      <tr><td class="id">T8</td><td><b>Entender o resultado.</b> Sem ajuda, achar o AVC, a curva AVC × giro e o perfil de vazios, e explicar um aviso que aparecer.</td><td>onde hesitou; o que não entendeu; o que esperava achar</td><td>acha os três</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Ficha de registro</h3>
+  <p class="note">Uma linha por teste, numa planilha compartilhada. Para erros, juntar um print da tela e a pasta do resultado.</p>
+  <div class="fields">
+    <div><b>Testador</b> e data</div><div><b>PC:</b> processador, núcleos, RAM</div><div><b>Versão</b> do app (rodapé da janela)</div>
+    <div><b>Teste</b> (T1–T8)</div><div><b>Entrada:</b> protocolo, curva, Pb, massa, semente</div><div><b>Tempo</b> por fase e total (min)</div>
+    <div><b>AVC</b> do app e do laboratório</div><div><b>Funcionou?</b> sim / não / com ajuda</div><div><b>Comentário</b> livre</div>
+  </div>
+
+  <h3>Depois dos testes</h3>
+  <ol class="steps prose">
+    <li>Juntar as fichas e calcular, por PC, o tempo do Marshall e do giratório. São os números que dizem quanto a Onda 3 precisa cortar.</li>
+    <li>Com os resultados do T7, medir o erro do Marshall contra o laboratório e montar a calibração do giratório (A13) com as curvas altura × giro.</li>
+    <li>Passar cada problema de uso (T1, T8) para o backlog, com o print.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Ordem e prazos</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Quando</th><th>Otimização</th><th>Testes</th></tr></thead>
+    <tbody>
+      <tr><td class="r">Semana 1</td><td>Pacote v1.1.0a2 com o núcleo novo; O1–O4; exemplos calculados no vid1</td><td>T1, T3, T4, T5, T8; depois T2 e T6</td></tr>
+      <tr><td class="r">Semana 2</td><td>O5 (servidor), O6–O8</td><td>T7 com as misturas do laboratório</td></tr>
+      <tr><td class="r">Semanas 3–4</td><td>S2k, S2l, S6a, S6g com a calibração reduzida; calibração do giratório com os dados do T7</td><td>T4 e T5 de novo, para medir o ganho real</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Os prazos são estimativas de trabalho. Os ganhos da Onda 3 vêm do perfil medido e só valem depois da calibração.</p>
+</section>
+
+<footer>Fontes no repositório <code>callai-Sergio/3dpave</code>: <code>melhorias/BACKLOG.md</code> (seções "S2 forças", "S2 Fase 2" e item A13) e <code>melhorias/PLANO_DESEMPENHO.md</code>. As medições do giratório Ø150 são de 02/11/2026, no vid1.</footer>
+</main>
