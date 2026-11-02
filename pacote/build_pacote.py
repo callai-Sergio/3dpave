@@ -36,7 +36,8 @@ def versao():
 def copiar_web():
     three = os.path.join(AQUI, 'vendor', 'three.min.js')
     with open(three, 'rb') as f:
-        if hashlib.sha256(f.read()).hexdigest() != THREE_SHA256:
+        # o Git do Windows pode trocar LF por CRLF (core.autocrlf): o hash vale para o arquivo com LF
+        if hashlib.sha256(f.read().replace(b'\r\n', b'\n')).hexdigest() != THREE_SHA256:
             sys.exit('vendor/three.min.js não é o r128 esperado')
     with open(os.path.join(RAIZ, 'marshall_digital_app.html'), encoding='utf-8') as f:
         html = f.read()
