@@ -16,7 +16,6 @@ const LISTA = [
   { id: 'marshall-dnit-c125', nome: 'Marshall 1200 g · CA DNIT 031 faixa C', curve: 'BR_DNIT031-2024_C-12,5', proto: 'marshall', size: 'm', nota: 'Marshall, 75 golpes por face' },
   { id: 'giratorio-us-m323-125', nome: 'Giratório Ø150 · Superpave 12,5 mm (AASHTO M 323)', curve: 'US_M323_12.5', proto: 'giratorio', size: 'g', nota: 'Giratório, 100 giros (30 simulados)' },
   { id: 'giratorio-us-m323-190', nome: 'Giratório Ø150 · Superpave 19,0 mm (AASHTO M 323)', curve: 'US_M323_19.0', proto: 'giratorio', size: 'g', nota: 'Giratório, 100 giros (30 simulados)' },
-  { id: 'giratorio-us-sma-125', nome: 'Giratório Ø150 · SMA 12,5 mm (AASHTO M 325)', curve: 'US_M325_SMA_12.5', proto: 'giratorio', size: 'g', nota: 'Giratório, 100 giros (30 simulados)' },
   { id: 'marshall-de-ac11ds', nome: 'Marshall 1200 g · AC 11 D S (TL Asphalt-StB 07/13)', curve: 'DE_TL0713_AC11DS', proto: 'marshall', size: 'm', nota: 'Marshall, 75 golpes por face' },
   { id: 'marshall-de-sma11s', nome: 'Marshall 1200 g · SMA 11 S (TL Asphalt-StB 07/13)', curve: 'DE_TL0713_SMA11S', proto: 'marshall', size: 'm', nota: 'Marshall, 75 golpes por face' },
   { id: 'marshall-de-pa11', nome: 'Marshall 1200 g · PA 11 drenante (TL Asphalt-StB 07/13)', curve: 'DE_TL0713_PA11', proto: 'marshall', size: 'm', nota: 'Marshall, 75 golpes por face' },

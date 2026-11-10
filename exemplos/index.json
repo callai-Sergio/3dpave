@@ -55,17 +55,6 @@
   "bytes": 19440628
  },
  {
-  "id": "giratorio-us-sma-125",
-  "nome": "Giratório Ø150 · SMA 12,5 mm (AASHTO M 325)",
-  "nota": "Giratório, 100 giros (30 simulados) · atenção: o giratório em tamanho real ainda não está calibrado (A13); o AVC alto não é de laboratório",
-  "arquivo": "giratorio-us-sma-125.mdres.gz",
-  "tDem": 407.789,
-  "threads": 16,
-  "avc": 19.325377335995416,
-  "na": 5234,
-  "bytes": 15210335
- },
- {
   "id": "giratorio-us-m323-125",
   "nome": "Giratório Ø150 · Superpave 12,5 mm (AASHTO M 323)",
   "nota": "Giratório, 100 giros (30 simulados)",
