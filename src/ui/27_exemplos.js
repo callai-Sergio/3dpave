@@ -24,6 +24,7 @@ async function abrirMdres(gzbuf){
   try{buf=await gunzip(gzbuf);jl=new DataView(buf).getUint32(0,true);h=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,4,jl)));}
   catch(e){throw new Error('o arquivo não é um resultado do Marshall Simulator');}
   if(h.formato!==1)throw new Error(`o arquivo é de um formato mais novo (v${h.formato}); atualize o app`);
+  if(((h.form||{}).vals||{})['f-size']==='p')throw new Error('o arquivo é de um CP rápido de 250 g, que o app não calcula mais');
   restoreForm(h.form);
   generate({replay:buf.slice(4+jl),na:h.na});
 }

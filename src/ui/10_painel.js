@@ -4,7 +4,8 @@ function interp(g,x){ // g ordenado desc; interpolação linear em log da abertu
   for(let i=1;i<g.length;i++)if(x>=g[i].s){const a=g[i],b=g[i-1],t=(Math.log(x)-Math.log(a.s))/(Math.log(b.s)-Math.log(a.s));return a.p+(b.p-a.p)*t;}
   return 0;
 }
-// tamanhos do CP: [massa (g), diâmetro do molde (mm), voxel (mm)]
+// tamanhos do CP: [massa (g), diâmetro do molde (mm), voxel (mm)]. O 'p' (250 g em Ø65) não aparece mais no app:
+// fica só como caso interno de regressão do harness (stress/engine.mjs, grades antigas)
 const SIZES={p:[250,65,0.25],w:[1000,102,0.4],m:[1200,101.6,0.4],g:[4700,150,0.6]};
 // giratório (AASHTO T 312 / R 35): CP de 115 ± 5 mm; a massa sai da densidade da mistura no AVC alvo, como no laboratório
 // (4700 g é só o valor típico para agregado de ~2,65 g/cm³). Marshall (ASTM D6926 / DNER-ME 043): 63,5 ± 1,27 mm no Ø101,6,

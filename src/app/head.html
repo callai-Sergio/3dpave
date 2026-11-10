@@ -262,7 +262,7 @@ ul.lim,ol.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);displ
               <select id="f-proto"><option value="marshall">Marshall (soquete, golpes por face)</option><option value="giratorio">Giratório (SGC, pressão e giros)</option><option value="w">[W] pistões, sem gravidade (Wan et al. 2024)</option></select>
               <span class="note" id="n-proto"></span></div>
             <div class="field wide"><label for="f-size">Corpo de prova virtual</label>
-              <select id="f-size"><option value="p">Rápido: 250 g em molde Ø65 mm</option><option value="w">Como em [W]: 1000 g em molde Ø102 mm</option><option value="m">Marshall normal: Ø101,6 mm, 63,5 mm de altura</option><option value="g">Giratório normal: Ø150 mm, 115 mm de altura</option></select>
+              <select id="f-size"><option value="w">Como em [W]: 1000 g em molde Ø102 mm</option><option value="m">Marshall normal: Ø101,6 mm, 63,5 mm de altura</option><option value="g">Giratório normal: Ø150 mm, 115 mm de altura</option></select>
               <span class="note" id="n-size"></span>
               <span class="warn" id="w-size" hidden></span>
             </div>
@@ -298,7 +298,7 @@ ul.lim,ol.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);displ
                 <div class="field"><label for="f-facew">Peso das faces na pintura</label><input type="text" class="numin" id="f-facew" inputmode="decimal" value="2,5"></div>
                 <div class="field wide" data-proto="w"><label class="chk" style="border:0;padding:0;background:none"><input type="checkbox" id="f-seg" checked> Força radial (efeito castanha-do-pará, [W] §3.3)</label></div>
                 <div class="field wide" data-proto="w"><label for="f-segk">Intensidade: <span id="v-segk" class="num">1,0</span></label><input type="range" id="f-segk" min="0" max="2" step="0.1" value="1"></div>
-                <div class="field wide note" data-proto="w">[W] calibrou a força radial só com a mistura 1, em 1000 g. Mais força deixa mais vazios junto à parede (banheira). No CP rápido de 250 g a banheira varia muito entre sementes, porque há poucas pedras nas faixas da borda: para comparar intensidades, use 1000 g.</div>
+                <div class="field wide note" data-proto="w">[W] calibrou a força radial só com a mistura 1, em 1000 g. Mais força deixa mais vazios junto à parede (banheira).</div>
               </div>
             </details>
           </div>
@@ -330,7 +330,7 @@ ul.lim,ol.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);displ
           <button type="button" class="btn" id="b-stla" disabled>STL ASCII dos agregados</button>
           <button type="button" class="btn" id="b-stlv" disabled>STL ASCII dos vazios</button>
         </div>
-        <p class="note" id="exp-note" style="margin:8px 0">O STL dos agregados em tamanho real passa de 200 mil triângulos. Para testar a exportação, use o protocolo [W] com o corpo de prova rápido (250 g).</p>
+        <p class="note" id="exp-note" style="margin:8px 0">O STL dos agregados em tamanho real passa de 200 mil triângulos.</p>
         <div id="stl-box" hidden>
           <textarea id="stl-txt" readonly aria-label="Texto do STL"></textarea>
           <div class="row" style="margin-top:6px"><button type="button" class="btn" id="b-copy">Copiar</button><span class="note" id="copy-msg"></span></div>
