@@ -9,7 +9,7 @@ Simulador DEM de compactação de CPs asfálticos ([W], Marshall, giratório). A
 
 ## Máquina (vid1)
 - Node 24.11.1: `export PATH=/data/callai/workspace/3dpave_stress/.node/bin:$PATH` (o golden exige essa versão).
-- Núcleo C: `gcc -O3 -march=native -fopenmp -o <bin> native/mdsim.c -lm`; o pacote usa `-march=x86-64-v2`.
+- Núcleo C: `gcc -O3 -march=native -ffp-contract=off -fopenmp -o <bin> native/mdsim.c -lm`; o pacote usa `-march=x86-64-v2`. Nunca tirar o `-ffp-contract=off`: sem ele o nativo usa FMA e calcula diferente do pacote.
 - Servidor compartilhado (~55 de 96 núcleos ocupados): tempos oscilam ±10 %; comparar base e nova rodando juntas.
 - Provas do núcleo C (entradas gravadas, comparação byte a byte, amostrador sem `perf`): `stress/cref/README.md`.
 

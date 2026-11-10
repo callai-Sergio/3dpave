@@ -18,4 +18,4 @@ echo "→ $HOST:$DIR"
 tar -cf - --exclude='stress/logs' --exclude='stress/results/*' --exclude='*.log' --exclude='native/*.exe' \
   build.mjs marshall_digital_app.html src stress native \
   | "${SSH[@]}" "$HOST" "cd '$DIR' && tar -xf - && sed -i 's/\r\$//' stress/server/*.sh"
-"${SSH[@]}" "$HOST" "cd '$DIR' && gcc -O3 -march=native -fopenmp -Wall -Wno-unused-parameter -o native/mdsim native/mdsim.c -lm && echo 'mdsim compilado' && nproc && uptime"
+"${SSH[@]}" "$HOST" "cd '$DIR' && gcc -O3 -march=native -ffp-contract=off -fopenmp -Wall -Wno-unused-parameter -o native/mdsim native/mdsim.c -lm && echo 'mdsim compilado' && nproc && uptime"

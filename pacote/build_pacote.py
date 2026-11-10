@@ -3,11 +3,11 @@
 1. Copia ../marshall_digital_app.html para src/marshall_simulator/web/, trocando o three.js da CDN pela cópia
    local (vendor/three.min.js, r128, MIT), para o app abrir sem internet.
 2. Compila o núcleo em C (../native/mdsim.c) para src/marshall_simulator/bin/ com o gcc (no Windows, o WinLibs),
-   com -march=x86-64-v2 para rodar em qualquer PC x86-64 recente. Sem gcc, o pacote sai sem o mdsim e a física
+   com -march=x86-64-v2 -ffp-contract=off para rodar em qualquer PC x86-64 recente com a mesma saída. Sem gcc, o pacote sai sem o mdsim e a física
    roda em JavaScript.
 3. Gera o wheel e o sdist (python -m build).
 4. Com --exe, gera dist/MarshallSimulator.exe com o PyInstaller (Windows, sem precisar de Python).
-5. Zip para os colegas: LEIA-ME, wheel e o .exe (se gerado).
+5. Zip para os colegas: LEIA-ME, protocolo de teste, wheel e o .exe (se gerado).
 
 Rode na pasta pacote/:  python build_pacote.py [--exe]
 Antes, rode `node build.mjs` na raiz para o HTML estar atualizado.
@@ -84,7 +84,9 @@ def compilar_mdsim():
         return
     env = dict(os.environ, PATH=os.path.dirname(cc) + os.pathsep + os.environ.get('PATH', ''))
     estatico = ['-static'] if os.name == 'nt' else []
-    subprocess.run([cc, '-O3', '-march=x86-64-v2', '-fopenmp', *estatico, '-o', os.path.join(bindir, nome),
+    # -ffp-contract=off: sem fundir a*b+c (FMA), para qualquer máquina e qualquer -march darem a mesma saída
+    subprocess.run([cc, '-O3', '-march=x86-64-v2', '-ffp-contract=off', '-fopenmp', *estatico,
+                    '-o', os.path.join(bindir, nome),
                     os.path.join(RAIZ, 'native', 'mdsim.c'), '-lm'], env=env, check=True)
 
 
@@ -93,11 +95,12 @@ def wheel():
 
 
 def zipar(v):
-    """Zip para os colegas: LEIA-ME, wheel e, se foi gerado, o .exe."""
+    """Zip para os colegas: LEIA-ME, protocolo de teste, wheel e, se foi gerado, o .exe."""
     whl = f'marshall_simulator-{v}-py3-none-any.whl'
     exe_ = os.path.join(AQUI, 'dist', 'MarshallSimulator.exe')
     with zipfile.ZipFile(os.path.join(AQUI, f'MarshallSimulator_{v}.zip'), 'w', zipfile.ZIP_DEFLATED) as z:
         z.write(os.path.join(AQUI, 'LEIA-ME.md'), 'LEIA-ME.md')
+        z.write(os.path.join(AQUI, 'TEST_PROTOCOL.md'), 'TEST_PROTOCOL.md')
         z.write(os.path.join(AQUI, 'dist', whl), whl)
         if os.path.exists(exe_):
             z.write(exe_, 'MarshallSimulator.exe')
