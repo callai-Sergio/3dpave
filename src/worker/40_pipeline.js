@@ -59,7 +59,12 @@ function runAll(cfg){
   // [W] §3.6: pintura do mastique a partir das bordas dos agregados (as paredes contam como agregado)
   progress('pintura',0.2,'Distância até os agregados e as paredes',true);
   const D=new Uint16Array(nvox);
-  for(let zz=0;zz<nz;zz++){const fw=cfg.faceW??2.5,lim=Math.min(Math.round(3*fw*(zz+1)),Math.round(3*fw*(nz-zz)),65535);for(let k=0;k<sxy;k++){const id=zz*sxy+k;D[id]=phase[id]===1?lim:0;}}
+  // 3.1: a distância à parede lateral é a exata ao eixo (R − r), na mesma convenção da chanfrada (×3, em voxels, até o centro
+  // do primeiro voxel de fora). Antes a parede era o voxel de fora da máscara: nos eixos x e y o cilindro encosta na borda da
+  // grade, não há voxel de fora, a parede não era vista e os vazios se juntavam ali (picos a cada 90°)
+  const dW=new Uint16Array(sxy);
+  for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){const X=(x+0.5)*h-R,Y=(y+0.5)*h-R;dW[y*nx+x]=Math.max(1,Math.round(3*((R-Math.hypot(X,Y))/h+0.5)));}
+  for(let zz=0;zz<nz;zz++){const fw=cfg.faceW??2.5,lim=Math.min(Math.round(3*fw*(zz+1)),Math.round(3*fw*(nz-zz)),65535);for(let k=0;k<sxy;k++){const id=zz*sxy+k,p=phase[id];D[id]=p===1?Math.min(lim,dW[k]):(p===0?65535:0);}}
   chamfer(D,nx,ny,nz);
   const noise=valueNoise(cfg.seed*7+3),cellN=1/h;
   const dP=new Float32Array(nvox);
