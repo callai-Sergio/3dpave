@@ -1,7 +1,8 @@
 /* ---------- resultados salvos e exemplos prontos (O2/O3) ----------
    Arquivo .mdres.gz = gzip de [u32 tamanho do cabeçalho][cabeçalho JSON: formato, nome, formulário, números de conferência][saída do mdsim].
    Abrir um arquivo preenche o formulário e roda o app normal, mas a compactação (a parte lenta) sai do arquivo; só voxels, mastique e
-   bolhas são refeitos. Salvar grava o que o núcleo em C acabou de calcular. Os exemplos do pacote (exemplos/index.json) usam o mesmo formato. */
+   bolhas são refeitos. Salvar grava o que o núcleo em C acabou de calcular. Formato 2: os quadros da animação vão compactos
+   (26_quadros.js), todos; o formato 1 (metade dos quadros, em float32) continua abrindo. Os exemplos do pacote (exemplos/index.json) usam o mesmo formato. */
 const FORM_IDS=['f-nome','f-seed','f-lib','f-pb','f-avc','f-ra','f-rb','f-proto','f-size','f-avcmode','f-golpes','f-gsim','f-ngir','f-gsimg','f-press','f-ang','f-grade','f-temp',
   'f-bub','f-bB','f-bSc','f-bSh','f-lam','f-etak','f-escE','f-escP','f-facew','f-segk'];
 function formSnap(){
@@ -23,31 +24,19 @@ async function abrirMdres(gzbuf){
   let buf,h,jl;
   try{buf=await gunzip(gzbuf);jl=new DataView(buf).getUint32(0,true);h=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,4,jl)));}
   catch(e){throw new Error('o arquivo não é um resultado do Marshall Simulator');}
-  if(h.formato!==1)throw new Error(`o arquivo é de um formato mais novo (v${h.formato}); atualize o app`);
+  if(h.formato!==1&&h.formato!==2)throw new Error(`o arquivo é de um formato mais novo (v${h.formato}); atualize o app`);
   if(((h.form||{}).vals||{})['f-size']==='p')throw new Error('o arquivo é de um CP rápido de 250 g, que o app não calcula mais');
   restoreForm(h.form);
-  generate({replay:buf.slice(4+jl),na:h.na});
+  generate({replay:expandirQuadros(new Uint8Array(buf.slice(4+jl))).buffer,na:h.na});
 }
 function setSalvar(off){$('b-save').disabled=!!off||!(result&&result.rawOut&&!running);}
-// metade dos quadros da animação (os pares e o último): o arquivo cai quase à metade e a animação segue fluida (igual a stress/gerar_exemplos.mjs)
-function podarQuadros(buf){
-  const jl=new DataView(buf).getUint32(0,true),H=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,4,jl))),n=H.n,nf=H.nf;
-  if(nf<=240)return buf;
-  const keep=[];for(let k=0;k<nf;k+=2)keep.push(k);if(keep[keep.length-1]!==nf-1)keep.push(nf-1);
-  const u=new Uint8Array(buf);let off=4+jl;const seg=b=>{const s=u.subarray(off,off+b);off+=b;return s;};
-  const pos=seg(24*n),q=seg(32*n),P=seg(12*n*nf),Q=seg(16*n*nf),Z=seg(24*nf),F=seg(2*nf),rest=u.subarray(off);
-  const pick=(b,w)=>keep.map(k=>b.subarray(k*w,(k+1)*w));
-  H.nf=keep.length;H.txt=keep.map(k=>H.txt[k]);
-  const js=new TextEncoder().encode(JSON.stringify(H)),hd=new Uint8Array(4);new DataView(hd.buffer).setUint32(0,js.length,true);
-  return new Blob([hd,js,pos,q,...pick(P,12*n),...pick(Q,16*n),...pick(Z,24),...pick(F,2),rest]);
-}
 async function salvarMdres(){
   const r=result;if(!r||!r.rawOut)return;
   const nm=(runForm.vals['f-nome']||'mistura').replace(/[^\w-]+/g,'_')+'_'+runForm.vals['f-proto']+'.mdres.gz',note=$('exp-note');
   note.textContent='Gravando o resultado…';
-  const cab=new TextEncoder().encode(JSON.stringify({formato:1,nome:runForm.vals['f-nome'],form:runForm,tDem:r.st.tDem,threads:r.st.comp.motor.threads,avc:r.st.AVC,na:r.NA,criado:new Date().toISOString()}));
+  const cab=new TextEncoder().encode(JSON.stringify({formato:2,nome:runForm.vals['f-nome'],form:runForm,tDem:r.st.tDem,threads:r.st.comp.motor.threads,avc:r.st.AVC,na:r.NA,criado:new Date().toISOString()}));
   const n4=new Uint8Array(4);new DataView(n4.buffer).setUint32(0,cab.length,true);
-  const blob=await new Response(new Blob([n4,cab,podarQuadros(r.rawOut)]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
+  const blob=await new Response(new Blob([n4,cab,compactarQuadros(new Uint8Array(r.rawOut))]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
   if(window.pywebview&&window.pywebview.api&&window.pywebview.api.save_file){
     const b64=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.readAsDataURL(blob);});
     const path=await window.pywebview.api.save_file(nm,b64);note.textContent=path?`Resultado salvo em ${path} (${fmt(blob.size/1e6,1)} MB).`:'Salvamento cancelado.';return;}

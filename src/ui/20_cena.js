@@ -73,13 +73,42 @@ function buildScene(r){
 }
 
 /* ---------- animação da compactação: molde transparente, base, soquete (pé + haste) ou placa, molde inclinado no giratório ---------- */
-let mold=null,base=null,foot=null,shaft=null,viewMode='c',camA=null,camC=null,curF=0,playing=false,speed=1,accF=0,lastT=0;
+let mold=null,base=null,foot=null,shaft=null,viewMode='c',camA=null,camC=null,curF=0,playing=false,speed=1,animT=0,lastT=0,
+  aTL=null,aProto='w',tiltEx=true;
+// inclinação do giratório no desenho: 1,16° reais quase não se veem; a opção multiplica o ângulo só na tela
+const TILT_X=5;
+// linha do tempo (segundos a 1×): um golpe simulado por segundo (queda do soquete, impacto, apoio e volta), um giro simulado
+// por segundo (pelo ângulo phi acumulado do molde); as outras fases correm a 24 quadros por segundo.
+// f0 é o primeiro quadro mostrado: a fase "reunir a mistura" dos resultados antigos (sem gravidade, apertada por cima e por
+// baixo) não aparece; a animação começa na queda no molde
+const blowKey=t=>{const m=/^(Golpes?|Giro) (\d+)/.exec(t);return m?(m[1]==='Giro'?'r':'g')+m[2]+(t.includes('face 2')?'b':''):null;};
+function buildTimeline(A){
+  const nf=A.nf,T=new Float64Array(nf),key=A.txt.map(blowKey),ham=k=>A.F[2*k+1];
+  let f0=A.txt.findIndex(t=>t.startsWith('Queda no molde'));if(f0<0||f0>=nf-1)f0=0;
+  for(let k=f0+1;k<nf;){
+    const ky=key[k];
+    if(ky&&ky[0]==='g'){// os quadros de um golpe dividem 1 s: queda e impacto 0,5 · apoio 0,15 · volta 0,35
+      let b=k,s=0;while(b+1<nf&&key[b+1]===ky)b++;
+      const w=[];for(let j=k;j<=b;j++){const h0=ham(j-1),h1=ham(j),x=h0&&h1?0.15:h1?0.5:h0?0.35:1;w.push(x);s+=x;}
+      for(let j=k;j<=b;j++)T[j]=T[j-1]+w[j-k]/s;
+      k=b+1;continue;}
+    const dphi=A.Z[6*k+5]-A.Z[6*k-1];
+    T[k]=T[k-1]+(ky&&dphi>1e-6?dphi/(2*Math.PI):A.txt[k].startsWith('Molde virado')?0.8:1/24);k++;}
+  return {T,f0,key};
+}
+function syncTilt(){
+  const g=aProto==='giratorio'&&!!mold;$('tiltopt').hidden=!g;$('tiltnote').hidden=!(g&&tiltEx&&viewMode==='a');
+  if(!g)return;
+  const A=result.mar.anim;let t=0;for(let k=0;k<A.nf;k++)t=Math.max(t,A.Z[6*k+4]);
+  $('tiltnote').textContent=l10n(`Inclinação exagerada ${TILT_X}× no desenho (real: ${fmt(t*180/Math.PI,2)}°)`);
+}
 function buildAnimParts(r){
   const A=r.mar&&r.mar.anim;mold=base=foot=shaft=null;
   // a animação vale para os três protocolos; o giratório volta a tê-la (pedido do usuário, 2026-11-02; o corte de 2026-10-30 caiu)
   if(!A||A.nf<2){$('animbar').hidden=true;return;}
+  aTL=buildTimeline(A);aProto=(r.st.comp&&r.st.comp.proto)||'w';curF=aTL.f0;
   const metal=new THREE.MeshStandardMaterial({color:0x8d8a86,roughness:0.45,metalness:0.6});
-  let ztop=0;for(let k=0;k<A.nf;k++)ztop=Math.max(ztop,Math.min(A.Z[6*k+3]-A.Z[6*k],4*r.H+40));
+  let ztop=0;for(let k=aTL.f0;k<A.nf;k++)ztop=Math.max(ztop,Math.min(A.Z[6*k+3]-A.Z[6*k],4*r.H+40));
   const mh=Math.max(ztop,r.H)+5;
   const cg=new THREE.CylinderGeometry(r.R+0.6,r.R+0.6,mh,96,1,true);cg.rotateX(Math.PI/2);
   mold=new THREE.Mesh(cg,new THREE.MeshStandardMaterial({color:0xb9c3cc,roughness:0.3,metalness:0.2,transparent:true,opacity:0.16,side:THREE.DoubleSide,depthWrite:false}));
@@ -88,52 +117,101 @@ function buildAnimParts(r){
   const fg=new THREE.CylinderGeometry(r.R-0.5,r.R-0.5,4,96);fg.rotateX(Math.PI/2);foot=new THREE.Mesh(fg,metal);group.add(foot);
   const sg=new THREE.CylinderGeometry(7,7,90,32);sg.rotateX(Math.PI/2);shaft=new THREE.Mesh(sg,metal);group.add(shaft);
   camA={th:0.75,ph:1.15,r:Math.max(r.R*2,mh)*2.4,tx:0,ty:mh/2,tz:0};
-  $('frame').max=A.nf-1;$('animbar').hidden=false;
+  $('frame').min=aTL.f0;$('frame').max=A.nf-1;$('animbar').hidden=false;
   document.querySelectorAll('#seg-modo button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v==='c')));
-  showAnimParts(false);
+  showAnimParts(false);syncTilt();
 }
 function showAnimParts(on){[mold,base,foot,shaft].forEach(o=>{if(o)o.visible=on;});}
 // objetos three.js de trabalho, criados na primeira pose (a página ainda roda se o three.js não carregar)
-let am4,aq,ap,as,zAxis,tAxis;
+let am4,aq,aq2,ap,as,zAxis,tAxis;
+function animTmp(){if(!am4){am4=new THREE.Matrix4();aq=new THREE.Quaternion();aq2=new THREE.Quaternion();ap=new THREE.Vector3();as=new THREE.Vector3();zAxis=new THREE.Vector3(0,0,1);tAxis=new THREE.Vector3();}}
 function poseParticles(P,Q,oP,oQ){
-  if(!am4){am4=new THREE.Matrix4();aq=new THREE.Quaternion();ap=new THREE.Vector3();as=new THREE.Vector3();zAxis=new THREE.Vector3(0,0,1);tAxis=new THREE.Vector3();}
+  animTmp();
   for(const im of instMeshes){im.userData.ids.forEach((i,j)=>{ap.set(P[oP+3*i],P[oP+3*i+1],P[oP+3*i+2]);
     aq.set(Q[oQ+4*i+1],Q[oQ+4*i+2],Q[oQ+4*i+3],Q[oQ+4*i]);const s=result.sc[i];as.set(s,s,s);am4.compose(ap,aq,as);im.setMatrixAt(j,am4);});
     im.instanceMatrix.needsUpdate=true;}
 }
-function setFrame(k){
-  const r=result,A=r.mar.anim,n=r.tpl.length;curF=k;
-  poseParticles(A.P,A.Q,k*3*n,k*4*n);
-  const zb=A.Z[6*k],zp=A.Z[6*k+1],tilt=A.Z[6*k+4],phi=A.Z[6*k+5],flip=A.F[2*k],ham=A.F[2*k+1],ok=z=>Math.abs(z)<1e5;
+// partículas entre os quadros k e k1 (fração u): posição linear, rotação por slerp. sh (giratório) = cisalhamento do molde
+// inclinado [ax,ay,zc] no quadro k, no quadro k1 e no desenho: cada quadro é desinclinado com o seu ângulo, os dois são
+// interpolados e o resultado é inclinado com o ângulo (interpolado e, se pedido, exagerado) do desenho
+function poseLerp(A,k,k1,u,sh){
+  animTmp();
+  const n=result.tpl.length,P=A.P,Q=A.Q,a=k*3*n,b=k1*3*n,c=k*4*n,d=k1*4*n,v=1-u;
+  for(const im of instMeshes){im.userData.ids.forEach((i,j)=>{
+    let x=P[a+3*i],y=P[a+3*i+1],z=P[a+3*i+2];
+    if(sh){const e=z-sh[2];x-=sh[0]*e;y-=sh[1]*e;}
+    aq.set(Q[c+4*i+1],Q[c+4*i+2],Q[c+4*i+3],Q[c+4*i]);
+    if(u>0){let x1=P[b+3*i],y1=P[b+3*i+1];const z1=P[b+3*i+2];
+      if(sh){const e=z1-sh[5];x1-=sh[3]*e;y1-=sh[4]*e;}
+      x=v*x+u*x1;y=v*y+u*y1;z=v*z+u*z1;
+      aq2.set(Q[d+4*i+1],Q[d+4*i+2],Q[d+4*i+3],Q[d+4*i]);aq.slerp(aq2,u);}
+    if(sh){const e=z-sh[8];x+=sh[6]*e;y+=sh[7]*e;}
+    ap.set(x,y,z);const s=result.sc[i];as.set(s,s,s);am4.compose(ap,aq,as);im.setMatrixAt(j,am4);});
+    im.instanceMatrix.needsUpdate=true;}
+}
+// f = quadro com fração: a cena fica entre o quadro ⌊f⌋ e o seguinte
+function setFrame(f){
+  const r=result,A=r.mar.anim,Z=A.Z,last=A.nf-1,ok=z=>Math.abs(z)<1e5,mix=(p,q,t)=>p+(q-p)*t;
+  f=Math.min(last,Math.max(aTL.f0,f));curF=f;
+  const k=Math.floor(f),k1=Math.min(k+1,last),u=k1>k?f-k:0,fk=u>=0.5?k1:k;
+  const h0=A.F[2*k+1],h1=A.F[2*k1+1],flip=A.F[2*fk],ham=A.F[2*fk+1];
+  const lz=i=>{const p=Z[6*k+i],q=Z[6*k1+i];return ok(p)&&ok(q)?mix(p,q,u):u>=0.5?q:p;},zb=lz(0),zp=lz(1);
+  // soquete e placa de cima. No Marshall o soquete sobe entre os golpes e cai até a superfície (posições calculadas aqui:
+  // a simulação só grava o soquete em contato); enquanto ele cai, a mistura fica parada (up = fração das partículas)
+  let up=u,hz=null,dir=1,haste=false;
+  if(aProto==='marshall'){
+    const g0=aTL.key[k],g1=aTL.key[k1];
+    if(h0||h1||g0||g1){
+      const s=h1||h0||(flip?-1:1),LIFT=r.H,surf=j=>Z[6*j+(s>0?3:2)],face=j=>{const h=A.F[2*j+1];return h?Z[6*j+(h>0?1:0)]:surf(j)+s*LIFT;};
+      if(h0&&h1)hz=mix(face(k),face(k1),u);
+      else if(h1){if(u<0.7){const w=u/0.7;hz=mix(surf(k)+s*LIFT,surf(k),w*w);up=0;}else{up=(u-0.7)/0.3;hz=mix(surf(k),face(k1),up);}}
+      else if(h0)hz=mix(face(k),face(k1),1-(1-u)*(1-u));
+      // golpe sem quadro de contato (resultado com quadros descartados): o soquete desce até a superfície e volta
+      else if(g1&&g1[0]==='g'&&g1!==g0){if(u<0.5){const w=u/0.5;hz=mix(face(k),surf(k),w*w);up=0;}else{up=(u-0.5)/0.5;hz=mix(surf(k1),face(k1),1-(1-up)*(1-up));}}
+      else hz=mix(face(k),face(k1),u);
+      dir=s;haste=true;
+    }
+  }else if(ham===2)hz=zp;
+  // molde: no giratório, inclinado de tilt na direção phi (ângulo acumulado, interpolado: o molde gira de forma contínua)
+  const gir=aProto==='giratorio',tilt=mix(Z[6*k+4],Z[6*k1+4],u),phi=mix(Z[6*k+5],Z[6*k1+5],u),tD=tilt*(gir&&tiltEx?TILT_X:1);
+  const zc=ok(zp)&&ok(zb)&&ham===2?(zb+zp)/2:null,tg=Math.tan(tD),sx=tg*Math.cos(phi),sy=tg*Math.sin(phi);
+  let sh=null;
+  if(gir&&(tilt>0||Z[6*k+4]>0||Z[6*k1+4]>0)&&zc!=null){
+    const t0=Math.tan(Z[6*k+4]),t1=Math.tan(Z[6*k1+4]),p0=Z[6*k+5],p1=Z[6*k1+5];
+    sh=[t0*Math.cos(p0),t0*Math.sin(p0),(Z[6*k]+Z[6*k+1])/2,t1*Math.cos(p1),t1*Math.sin(p1),(Z[6*k1]+Z[6*k1+1])/2,sx,sy,zc];}
+  poseLerp(A,k,k1,up,sh);
   // face 2 do Marshall: o molde virado aparece de cabeça para baixo, com o apoio (placa do topo) embaixo
   group.rotation.x=flip?Math.PI/2:-Math.PI/2;group.position.y=flip?zp:0;
   const floorZ=flip?zp:zb,mh=mold.userData.h;
-  base.visible=ok(floorZ);base.position.set(0,0,floorZ+(flip?2:-2));
-  // molde: no giratório, inclinado de tilt na direção phi, girando em torno do centro do CP
-  tAxis.set(Math.sin(tilt)*Math.cos(phi),Math.sin(tilt)*Math.sin(phi),Math.cos(tilt));mold.quaternion.setFromUnitVectors(zAxis,tAxis);
-  const zc=ok(zp)&&ok(zb)&&ham===2?(zb+zp)/2:null;
+  // as placas ficam horizontais e acompanham o eixo inclinado do molde (deslocadas uma da outra, como no SGC)
+  const ox=z=>sh?sx*(z-zc):0,oy=z=>sh?sy*(z-zc):0;
+  base.visible=ok(floorZ);base.position.set(ox(floorZ),oy(floorZ),floorZ+(flip?2:-2));
+  tAxis.set(Math.sin(tD)*Math.cos(phi),Math.sin(tD)*Math.sin(phi),Math.cos(tD));mold.quaternion.setFromUnitVectors(zAxis,tAxis);
   mold.position.set(0,0,zc!=null?zc:flip?zp-mh/2:zb+mh/2);
-  const hz=ham===1||ham===2?zp:ham===-1?zb:null,dir=ham===-1?-1:1;
-  foot.visible=hz!=null&&ok(hz);shaft.visible=foot.visible&&ham!==2;
-  if(foot.visible){foot.position.set(0,0,hz+dir*2);shaft.position.set(0,0,hz+dir*49);}
-  $('frame').value=k;$('fnum').textContent=`${k+1} / ${A.nf}`;$('flabel').textContent=l10n(A.txt[k]);dirty=true;
+  foot.visible=hz!=null&&ok(hz);shaft.visible=foot.visible&&haste;
+  if(foot.visible){foot.position.set(ox(hz),oy(hz),hz+dir*2);shaft.position.set(0,0,hz+dir*49);}
+  $('frame').value=k;$('fnum').textContent=`${k+1-aTL.f0} / ${A.nf-aTL.f0}`;$('flabel').textContent=l10n(A.txt[u>0?k1:k]);dirty=true;
 }
 function setViewMode(m){
   stopAnim();if(!result||!mold||m===viewMode)return;
   if(viewMode==='a')camA=Object.assign({},cam);else camC=Object.assign({},cam);
-  viewMode=m;document.querySelectorAll('#seg-modo button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===m)));
+  viewMode=m;syncTilt();document.querySelectorAll('#seg-modo button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===m)));
   $('tb3d').hidden=m==='a';
   if(m==='c'){group.rotation.x=-Math.PI/2;group.position.y=0;poseParticles(result.pos,result.q,0,0);showAnimParts(false);Object.assign(cam,camC);
     $('flabel').textContent=l10n(`Corpo de prova compactado · AVC ${fmt(result.st.AVC,2)}%`);}
   else{Object.assign(cam,camA);showAnimParts(true);setFrame(curF);}
   applyModes();dirty=true;
 }
-function playAnim(){if(!result||!mold)return;if(viewMode!=='a')setViewMode('a');if(curF>=result.mar.anim.nf-1)setFrame(0);playing=true;$('b-play').textContent=l10n('❚❚ Pausar');lastT=performance.now();accF=0;requestAnimationFrame(tickAnim);}
+function playAnim(){if(!result||!mold)return;if(viewMode!=='a')setViewMode('a');const last=result.mar.anim.nf-1,T=aTL.T;if(curF>=last)setFrame(aTL.f0);
+  const k=Math.min(Math.floor(curF),last-1);animT=T[k]+(curF-k)*(T[k+1]-T[k]);
+  playing=true;$('b-play').textContent=l10n('❚❚ Pausar');lastT=performance.now();requestAnimationFrame(tickAnim);}
 function stopAnim(){playing=false;$('b-play').textContent=l10n('▶ Reproduzir');}
-function tickAnim(t){if(!playing)return;accF+=(t-lastT)/1000*24*speed;lastT=t;
-  const last=result.mar.anim.nf-1;
-  if(accF>=1){const k=Math.min(last,curF+Math.floor(accF));accF-=Math.floor(accF);setFrame(k);
-    if(k>=last){stopAnim();setTimeout(()=>{if(!playing&&viewMode==='a'&&curF===last)setViewMode('c');},900);return;}}
+// o tempo da animação anda com o relógio (× speed) e a cena é interpolada entre os dois quadros vizinhos
+function tickAnim(t){if(!playing)return;
+  const last=result.mar.anim.nf-1,T=aTL.T;animT+=Math.min(0.1,(t-lastT)/1000)*speed;lastT=t;
+  if(animT>=T[last]){setFrame(last);stopAnim();setTimeout(()=>{if(!playing&&viewMode==='a'&&curF===last)setViewMode('c');},900);return;}
+  let k=Math.min(Math.floor(curF),last-1);while(k<last-1&&T[k+1]<=animT)k++;
+  setFrame(k+Math.min(0.9999,Math.max(0,(animT-T[k])/Math.max(T[k+1]-T[k],1e-6))));
   requestAnimationFrame(tickAnim);}
 $('b-play').addEventListener('click',()=>playing?stopAnim():playAnim());
 $('frame').addEventListener('input',e=>{stopAnim();if(viewMode!=='a')setViewMode('a');setFrame(+e.target.value);});
@@ -189,6 +267,7 @@ function segGroup(id,cb){const el=$(id);el.addEventListener('click',e=>{const b=
 segGroup('seg-mast',v=>{mastMode=v==='1';applyModes();});
 segGroup('seg-modo',v=>{if(v==='c'){setViewMode('c');updateCaps(false);}else setViewMode('a');});
 segGroup('seg-speed',v=>{speed=+v;});
+$('chk-tilt').addEventListener('change',e=>{tiltEx=e.target.checked;syncTilt();if(viewMode==='a'&&result&&mold)setFrame(curF);});
 segGroup('seg-cor',v=>{colorMode=v;recolor();});
 segGroup('seg-corte',v=>{cutMode=v;$('cut').value=500;updateCaps(false);});
 $('cut').addEventListener('input',()=>updateCaps(false));

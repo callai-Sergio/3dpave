@@ -619,14 +619,13 @@ static double deposit(Sim *S,const Cfg *c,Rec *rec,double tt){
   double keStop=0.5*Mtot*20*20,area=PI*c->R*c->R/1000,gapL=(c->Vg+c->M)/(0.65*area);
   double zlo=1e9,zhi=-1e9;for(int i=0;i<S->n;i++){zlo=mind(zlo,S->pos[3*i+2]-S->brad[i]);zhi=maxd(zhi,S->pos[3*i+2]+S->brad[i]);}
   S->zb=zlo-0.5;S->zp=zhi+0.5;rec->ham=2;double gap0=S->zp-S->zb,tm=0;Out out;out.gap=gap0;char b1[32],txt[160];curPhase=1;
-  recSnap(rec,S,"Mistura com mastique",1);
   while(out.gap>gapL+1e-6&&tm<2){Opt o=opt0(dt,tt);o.gd=4;o.vp=300;o.gapT=gapL;out=runT(S,chunk,&o);tt+=chunk*dt;tm+=chunk*dt;
-    recSnap(rec,S,"Mistura com mastique",0);snprintf(txt,sizeof txt,"Reunindo a mistura · altura %s mm",br(b1,out.gap,1));
+    snprintf(txt,sizeof txt,"Reunindo a mistura · altura %s mm",br(b1,out.gap,1));
     progress("mistura",(gap0-out.gap)/maxd(gap0-gapL,1e-6),txt,0);}
   {Opt o=opt0(dt,tt);o.gd=8;runT(S,4*chunk,&o);tt+=4*chunk*dt;}
-  S->zb-=20;S->zp=1e6;rec->ham=0;double tq=0;recSnap(rec,S,"Queda no molde",1);
+  S->zb-=20;S->zp=1e6;rec->ham=0;double tq=0;int kq=0;recSnap(rec,S,"Queda no molde",1);
   while(tq<0.8){Opt o=opt0(dt,tt);o.gd=1;o.gz=-G_MM;out=runT(S,chunk,&o);tt+=chunk*dt;tq+=chunk*dt;
-    snprintf(txt,sizeof txt,"Queda no molde · %s s",br(b1,tq,2));recSnap(rec,S,txt,0);progress("queda",mind(tq/0.6,0.97),txt,0);
+    snprintf(txt,sizeof txt,"Queda no molde · %s s",br(b1,tq,2));if(++kq%2==0)recSnap(rec,S,txt,0);progress("queda",mind(tq/0.6,0.97),txt,0);
     if(tq>0.2&&out.ke<keStop)break;}
   return tt;
 }
@@ -648,13 +647,16 @@ static Res protoMarshall(Sim *S,const Cfg *c,Rec *rec){
       if(a==b)snprintf(lab,sizeof lab,"Golpe %d de %d · face %d",a,nb,f);else snprintf(lab,sizeof lab,"Golpes %d–%d de %d · face %d",a,b,nb,f);
       heightOf(S,&lo,&hi,&Hh);
       if(side>0)S->zp=hi+0.3;else S->zb=lo-0.3;
-      S->hv=-side*v0;rec->ham=side;recSnap(rec,S,lab,1);
+      /* três quadros por golpe: penetração máxima, soquete apoiado com o material parado e, sem o soquete, o material solto;
+         a queda do soquete até o contato é desenhada pela tela */
+      S->hv=-side*v0;rec->ham=side;
       double tb=0;int deep=0;
       /* o soquete fica apoiado até o material parar; o repique é amortecido */
       while(tb<0.03){Opt o=opt0(dt,tt);o.gd=deep?8:1;o.gz=gz;o.ham=1;o.hside=side;o.hM=Mh;o.hgk=c->escE;runT(S,chunkB,&o);tt+=chunkB*dt;tb+=chunkB*dt;
         if(!deep&&side*S->hv>=0){deep=1;recSnap(rec,S,lab,1);}
         if(deep)S->hv*=0.5;
         if(deep&&tb>0.012){double ke=0;for(int i=0;i<3*S->n;i++)ke+=0.5*S->mass[i/3]*S->vel[i]*S->vel[i];if(ke<keStop)break;}}
+      recSnap(rec,S,lab,1);
       if(side>0)S->zp=1e6;else S->zb=-1e6;rec->ham=0;
       {Opt o=opt0(dt,tt);o.gd=6;o.gz=gz;runT(S,chunk,&o);tt+=chunk*dt;}
       heightOf(S,&lo,&hi,&Hh);histPush((f-1)*nb+b,Hh);recSnap(rec,S,lab,1);
@@ -691,7 +693,7 @@ static Res protoGiratorio(Sim *S,const Cfg *c,Rec *rec){
     for(int cc=0;cc<nCh;cc++){
       S->tilt=ang*mind(1,(g-1+(double)cc/nCh));
       Opt o=opt0(dt,tt);o.gd=2;o.gz=-G_MM;o.servo=1;o.sF=Fp;o.sVmax=100;o.omega=omega;runT(S,chunk,&o);tt+=chunk*dt;
-      if(cc%snapEvery==0){snprintf(txt,sizeof txt,"Giro %d de %d",gReal,N);recSnap(rec,S,txt,0);}}
+      if(cc<nCh-1&&cc%snapEvery==0){snprintf(txt,sizeof txt,"Giro %d de %d",gReal,N);recSnap(rec,S,txt,0);}}
     double Hn=S->zp-S->zb;histPush(gReal,Hn);
     snprintf(txt,sizeof txt,"Giro %d de %d · altura %s mm",gReal,N,br(b1,Hn,1));recSnap(rec,S,txt,1);
     snprintf(txt,sizeof txt,"Giro %d de %d · altura %s mm · AVC %s%%",gReal,N,br(b1,Hn,1),br(b2,avcOf(c,Hn),1));
@@ -754,7 +756,7 @@ int main(int argc,char **argv){
   S->keI=xmalloc(sizeof(double)*n);S->fbI=xmalloc(sizeof(double)*n);S->ftI=xmalloc(sizeof(double)*n);S->ovI=xmalloc(sizeof(double)*n);
   S->stale=xmalloc(n);S->pStart=xmalloc(sizeof(int)*(n+1));
   S->lastKick=-1;S->rk.a=(uint32_t)(seed+3);S->zp=1e4;S->candStale=1;
-  Rec rec;memset(&rec,0,sizeof rec);rec.stride=1;rec.capF=(int)clampd(floor(48e6/(28.0*n)),80,600);
+  Rec rec;memset(&rec,0,sizeof rec);rec.stride=1;rec.capF=(int)clampd(floor(64e6/(28.0*n)),80,600);
   double t0=now_s();
   Res R=c.proto==1?protoMarshall(S,&c,&rec):c.proto==2?protoGiratorio(S,&c,&rec):protoW(S,&c,&rec);
   double zs=S->zb;for(int i=0;i<n;i++)S->pos[3*i+2]-=zs;S->zp-=zs;S->zb=0;

@@ -157,9 +157,11 @@ ul.lim,ol.lim{margin:0;padding-left:18px;font-size:12px;color:var(--muted);displ
             <button type="button" data-v="c" aria-pressed="true">Corpo de prova</button>
           </div>
           <button type="button" class="btn icon" id="b-play">▶ Reproduzir</button>
-          <div class="seg" id="seg-speed" role="group" aria-label="Velocidade"><button type="button" data-v="0.5" aria-pressed="false">0,5×</button><button type="button" data-v="1" aria-pressed="true">1×</button><button type="button" data-v="3" aria-pressed="false">3×</button></div>
+          <div class="seg" id="seg-speed" role="group" aria-label="Velocidade"><button type="button" data-v="0.5" aria-pressed="false">0,5×</button><button type="button" data-v="1" aria-pressed="true">1×</button><button type="button" data-v="3" aria-pressed="false">3×</button><button type="button" data-v="10" aria-pressed="false">10×</button></div>
+          <label class="chk" id="tiltopt" hidden><input type="checkbox" id="chk-tilt" checked> inclinação ×5</label>
           <span class="slider"><span id="fnum" class="num">0 / 0</span><input type="range" id="frame" min="0" max="0" value="0" aria-label="Quadro da animação"></span>
           <span class="flabel" id="flabel"></span>
+          <span class="flabel" id="tiltnote" hidden></span>
         </div>
         <div class="hint" id="hint">Arraste para girar · roda: zoom · Shift ou botão direito: mover</div>
         <div class="toolbar" id="tb3d">

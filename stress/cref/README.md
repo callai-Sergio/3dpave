@@ -7,4 +7,6 @@ Para mudanças de velocidade (categoria I): o resultado tem de ser byte a byte i
 3. Referência e comparação: `bash stress/cref/cmp.sh mdsim_base 4 m250l` (vira referência), depois `bash stress/cref/cmp.sh mdsim_nova 4 m250l w250` e com 1 e 16 threads.
 4. Tempo: rodar base e nova ao mesmo tempo (o vid1 é compartilhado; rodadas soltas oscilam ±10 %).
 
+Mudança só na gravação dos quadros da animação (`recSnap`): a saída muda de tamanho; comparar com `python3 -I stress/cref/outeq_fisica.py <base.out> <nova.out>`, que confere tudo menos os quadros (posições finais, curva, traço e cabeçalho).
+
 Perfil sem `perf` (bloqueado no vid1): `gcc -O2 -shared -fPIC -o sampler.so stress/cref/sampler.c -ldl`, compilar o mdsim com `-g`, rodar com `SAMPLE_OUT=s.txt LD_PRELOAD=./sampler.so` e 1 thread, e somar as linhas com `addr2line -e <bin> -f`.

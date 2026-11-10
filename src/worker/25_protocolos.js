@@ -24,9 +24,11 @@ function placeColumn(S,R,r1,gap){
   return raised;
 }
 
-// quadros da animação: posições, orientações e placas; acima do teto, descarta um quadro sim, um não
+// quadros da animação: posições, orientações e placas; acima do teto, descarta um quadro sim, um não.
+// A tela interpola entre os quadros (20_cena.js): gravam-se os estados que importam, não um filme.
+// A fase "reunir a mistura" não é gravada (a animação começa na queda no molde)
 function makeRecorder(S,n){
-  const capF=clamp(Math.floor(48e6/(28*n)),80,600);
+  const capF=clamp(Math.floor(64e6/(28*n)),80,600);
   let fP=[],fQ=[],fM=[],stride=1,count=0;
   const rec={flip:0,ham:0,
     snap(txt,force){if(!force&&(count++%stride))return;
@@ -115,18 +117,16 @@ function deposit(S,cfg,rec,tt,R,comp){
   let zlo=1e9,zhi=-1e9;for(let i=0;i<S.n;i++){zlo=Math.min(zlo,S.pos[3*i+2]-S.brad[i]);zhi=Math.max(zhi,S.pos[3*i+2]+S.brad[i]);}
   S.zb=zlo-0.5;S.zp=zhi+0.5;rec.ham=2;
   const gap0=S.zp-S.zb;let out={gap:gap0,ke:0},tm=0;
-  rec.snap('Mistura com mastique',true);
   while(out.gap>gapL+1e-6&&tm<2){
     out=S.run(chunk,{dt,gd:4,vp:300,gapT:gapL,t0:tt});tt+=chunk*dt;tm+=chunk*dt;
-    rec.snap('Mistura com mastique');
     progress('mistura',(gap0-out.gap)/Math.max(gap0-gapL,1e-6),`Reunindo a mistura · altura ${br(out.gap,1)} mm`);
   }
   S.run(4*chunk,{dt,gd:8,t0:tt});tt+=4*chunk*dt;
-  S.zb-=20;S.zp=1e6;rec.ham=0;let tq=0;
+  S.zb-=20;S.zp=1e6;rec.ham=0;let tq=0,kq=0;
   rec.snap('Queda no molde',true);
   while(tq<0.8){
     out=S.run(chunk,{dt,gd:1,gz:-G_MM,t0:tt});tt+=chunk*dt;tq+=chunk*dt;
-    rec.snap(`Queda no molde · ${br(tq,2)} s`);
+    if(++kq%2===0)rec.snap(`Queda no molde · ${br(tq,2)} s`);
     progress('queda',Math.min(tq/0.6,0.97),`Queda no molde · ${br(tq,2)} s`);
     if(tq>0.2&&out.ke<keStop)break;
   }
@@ -158,7 +158,9 @@ function protoMarshall(S,cfg,comp,R,H,rec,r1){
       const a=Math.round((k-1)*nb/ns)+1,b=Math.round(k*nb/ns),txt=`${a===b?'Golpe '+a:'Golpes '+a+'–'+b} de ${nb} · face ${f}`;
       e=heightOf(S);
       if(side>0)S.zp=e.hi+0.3;else S.zb=e.lo-0.3;
-      S.hv=-side*v0;rec.ham=side;rec.snap(txt,true);
+      // três quadros por golpe: penetração máxima, soquete apoiado com o material parado e, sem o soquete, o material solto.
+      // A queda do soquete até o contato é desenhada pela tela (a mistura ainda está como no quadro anterior)
+      S.hv=-side*v0;rec.ham=side;
       let tb=0,deep=false;
       // o soquete fica apoiado até o material parar (o repique é amortecido) para a energia elástica não lançar partículas
       while(tb<0.03){
@@ -167,6 +169,7 @@ function protoMarshall(S,cfg,comp,R,H,rec,r1){
         if(deep)S.hv*=0.5;
         if(deep&&tb>0.012){let ke=0;for(let i=0;i<3*S.n;i++)ke+=0.5*S.mass[(i/3)|0]*S.vel[i]*S.vel[i];if(ke<keStop)break;}
       }
+      rec.snap(txt,true);
       if(side>0)S.zp=1e6;else S.zb=-1e6;rec.ham=0;
       S.run(chunk,{dt,gd:6,gz,t0:tt});tt+=chunk*dt;
       e=heightOf(S);hist.push([(f-1)*nb+b,e.H]);rec.snap(txt,true);
@@ -210,7 +213,7 @@ function protoGiratorio(S,cfg,comp,R,H,rec,r1){
     for(let c=0;c<nCh;c++){
       S.tilt=ang*Math.min(1,(g-1+c/nCh)/1);// o ângulo sobe no primeiro giro
       S.run(chunk,{dt,gd:2,gz:-G_MM,servo,giro:{omega},t0:tt});tt+=chunk*dt;
-      if(c%Math.max(1,Math.floor(nCh/6))===0)rec.snap(`Giro ${Math.round(g*N/ns)} de ${N}`);
+      if(c<nCh-1&&c%Math.max(1,Math.floor(nCh/6))===0)rec.snap(`Giro ${Math.round(g*N/ns)} de ${N}`);
     }
     const Hn=S.zp-S.zb,gReal=Math.round(g*N/ns);hist.push([gReal,Hn]);
     rec.snap(`Giro ${gReal} de ${N} · altura ${br(Hn,1)} mm`,true);
