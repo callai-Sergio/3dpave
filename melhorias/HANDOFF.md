@@ -1,5 +1,11 @@
 # Handoff (atualizado em 2026-11-02, depois do push)
 
+> **2026-11-10:** o estado verificado e os próximos passos estão em `melhorias/RESUMO_E_PROXIMOS_PASSOS.md`. Leia esse arquivo primeiro; o que vem abaixo é o histórico.
+
+> **2026-11-10 (tarde):** próximo trabalho em `melhorias/PLANO_REALISMO_E_PC.md` (realismo do CP e da animação, CP de 250 g fora, mistura só por cima, cálculo rápido no PC). Slab anotado como A15 no BACKLOG.
+
+> **2026-11-10 (Bloco 1 do PLANO_REALISMO_E_PC feito, sem commit):** 1.1 `-ffp-contract=off` em `build_pacote.py`, `deploy_native.sh`, `CLAUDE.md` e `cref/README.md`; prova: v2 com a flag e nativo com a flag iguais byte a byte ao v2 de hoje nos 5 casos (4 threads; nativo também com 1 e 16), controle com FMA diferente; Marshall 1200 g com 4 threads, rodando juntos: nativo com FMA 203 s, sem FMA 167 s, v2 167 s. 1.2 opção de 250 g fora do menu (o `p` fica em `SIZES` só para o harness; `.mdres.gz` antigo de 250 g é recusado com mensagem). 1.3 `TEST_PROTOCOL.md` v2 (rápido = [W] 1000 g; R3 = Marshall AVC travado). 1.4 exemplo giratório SMA 12,5 removido (6 exemplos). 1.5 BACKLOG S2 e item 4 abaixo. Golden com `--determinism`: 12 ok, K26 idêntico, K32 0,000 %, `warn` (K15, K23, K30) como antes. **Falta:** OK do usuário para o commit; teste do menu no Chrome; os 6 exemplos ainda são do binário com FMA (recalcular só no Bloco 5); as referências em `~/workspace/s2_bin/ref` são do binário com FMA (regravar antes da próxima prova). Próximo: Bloco 2 (animação).
+
 **Estado do git:** tudo commitado e enviado para `origin/main` (c242d1b exemplos em LFS, f39e89d app, ce7d6a9 docs). Pacote 1.1.0a2. **No PC:** dois cliques em `pacote\construir_no_pc.bat` (git pull + lfs pull, wheel, .exe, zip); teste no EXE ainda não feito. Mandar aos colegas: o zip `pacote\MarshallSimulator_1.1.0a2.zip` (cópia) ou o repositório (git, com `git lfs install`).
 
 ## Feito nesta sessão (no `main`, PR #1)
@@ -9,7 +15,7 @@
 1. ~~Medição do giratório Ø150~~ **feita** (2026-11-02, vid1, 16 threads, 11 046 partículas, AVC 7,787 %): núcleo C 958 s, total 1000 s. Fases: reunir (formas 5 + colocação 277) 282 s · queda 239 s · giros (30) 441 s · pós-DEM 38 s. Reunir+queda = 52 %. Log: `~/workspace/s2_bin/casos/g4700.log`. S2i neste caso (mdsim_s2i × mdsim_final, rodados juntos): 1217 s × 970 s, +26 % mais lento e saída diferente: descartado de vez.
 2. ~~Plano de rapidez e testes~~ **publicado**: https://claude.ai/artifact/1EWf18Fvdu3uw3FSMCrAvF (privado; compartilhar pelo menu Share). Fonte: `melhorias/plano_rapidez_testes.html`, marcadores já preenchidos. Medidos: tempos por fase, O6 (−521 s), S2i. Estimados (contas na nota da página): O5, O8, S2k, S2l, S6g. Para virar medição: rodar S2k/S2l/S6g de verdade.
 3. **Pacote v1.1.0a2**: o usuário gera no PC (`H:\data\callai\workspace\3dpave`: `git pull`, `python pacote/build_pacote.py`) e testa; depois publicar a release prévia no GitHub.
-4. **Onda 1 do plano** (O1 cache por hash da entrada no servidor Python do pacote, O2 exemplos prontos, O3 salvar/abrir resultado, O4 AVC em N da norma na curva): ainda não começada.
+4. **Onda 1 do plano** (O1 cache por hash da entrada no servidor Python do pacote, O2 exemplos prontos, O3 salvar/abrir resultado, O4 AVC em N da norma na curva): **O2, O3 e O9 feitos** (itens 6 e 7); **faltam O1 e O4**.
 
 5. **Contador de tempo decorrido** (ideia do usuário, 2026-11-02, só planejada, nada implementado): incluída na página como O9 (Onda 2), com o tempo de cada fase.
 
@@ -18,3 +24,5 @@
 
 ## Sem commit
 `CLAUDE.md`, `melhorias/HANDOFF.md`, `melhorias/plano_rapidez_testes.html`, `stress/cref/`, `melhorias/PLANO_EXEMPLOS.md`, `melhorias/plano_exemplos.html`, `exemplos/`, `stress/gerar_exemplos.mjs`, `src/ui/27_exemplos.js` e as mudanças em `src/`, `native.mjs`/`engine.mjs` (gancho `onRaw`), `pacote/build_pacote.py`. Commitar com o OK do usuário.
+
+8. **Test protocol for colleagues** (2026-11-02, no commit): `pacote/TEST_PROTOCOL.md` (tests R, S, D, L, F, free testing; testers fill the tables of §10 in their copy). Goes into the zip (`build_pacote.py`). **Before the round:** run R1–R3 on the reference PC and fill the reference values in §10.R; assign tester IDs and seeds (§10.Seeds).
