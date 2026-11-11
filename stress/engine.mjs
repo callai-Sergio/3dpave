@@ -151,7 +151,7 @@ export function workerMsg(cfg, comp, spec, app) {
       V_void: comp.V_void, M: comp.M, V_graudo: comp.V_graudo },
     rhoA: cfg.ra, seed: cfg.seed, lib: cfg.lib, bub: cfg.bub, seg: cfg.seg, avc: cfg.avc,
     voxel: spec.voxel ?? (app.SIZES[cfg.size] || app.SIZES.p)[2], dt: spec.dt ?? 2e-5, coat: spec.coat ?? 0.25,
-    proto: spec.proto ?? 'w', avcMode: spec.avcMode ?? 'travado', faceW: spec.faceW,
+    proto: spec.proto ?? 'w', avcMode: spec.avcMode ?? 'travado',
     // replay: saída gravada do mdsim no lugar da física (como o "Abrir resultado" do app); sem MD_NATIVE
     replay: spec.replay, replayNA: spec.replayNA,
     mastic: Object.assign({ eta, lam: 0.55, kf: 0.05, coh: 0.005, mu: 0.2, etaK: 1 }, spec.mastic || {}),

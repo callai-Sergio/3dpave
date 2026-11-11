@@ -31,7 +31,7 @@ for (const e of LISTA) {
   if (want.length && !want.includes(e.id)) continue;
   const c = app.GRADLIB.find(c => c.id === e.curve), [pb, avc] = c.sug || [D.pb, D.avc];
   let raw = null;
-  const spec = { id: e.id, curve: e.curve, pb, avc, proto: e.proto, size: e.size, avcMode: 'livre', seed: D.seed, temp: 150, faceW: 2.5,
+  const spec = { id: e.id, curve: e.curve, pb, avc, proto: e.proto, size: e.size, avcMode: 'livre', seed: D.seed, temp: 150,
     bub: { mode: 'auto', B: 40, BScmm: 1.0, BSh: 1.5 }, onRaw: b => { raw = b; } };
   const t0 = Date.now();
   const r = runCase(spec);
@@ -40,7 +40,7 @@ for (const e of LISTA) {
   const st = r.res.st, form = { curve: e.curve, vals: {
       'f-seed': String(D.seed), 'f-lib': D.lib, 'f-pb': f2s(pb), 'f-avc': f2s(avc), 'f-ra': f2s(D.ra), 'f-rb': f2s(D.rb), 'f-proto': e.proto, 'f-size': e.size, 'f-avcmode': 'livre',
       'f-golpes': '75', 'f-gsim': '0', 'f-ngir': '100', 'f-gsimg': '30', 'f-press': '600', 'f-ang': '1,16', 'f-grade': '50/70', 'f-temp': '150', 'f-bub': 'auto',
-      'f-bB': '40', 'f-bSc': '1,0', 'f-bSh': '1,5', 'f-lam': '0,55', 'f-etak': '1', 'f-escE': '0,002', 'f-escP': '0,001', 'f-facew': '2,5', 'f-segk': '1' }, checks: { 'f-seg': true } };
+      'f-bB': '40', 'f-bSc': '1,0', 'f-bSh': '1,5', 'f-lam': '0,55', 'f-etak': '1', 'f-escE': '0,002', 'f-escP': '0,001', 'f-segk': '1' }, checks: { 'f-seg': true } };
   const cab = Buffer.from(JSON.stringify({ formato: 2, nome: e.nome, nota: e.nota, form, tDem: st.tDem, threads: st.comp.motor.threads, avc: st.AVC, na: r.res.NA, criado: new Date().toISOString() }), 'utf8');
   const n4 = Buffer.alloc(4); n4.writeUInt32LE(cab.length, 0);
   const gz = zlib.gzipSync(Buffer.concat([n4, cab, pod]), { level: 9 });

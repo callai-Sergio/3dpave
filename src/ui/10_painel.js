@@ -116,7 +116,7 @@ function renderPanel(){
     if(b.mode!=='off')vr.push(['BSc · BSh',`${fmt(b.BSc*10,2)} mm · ${fmt(b.BSh,2)}`+(b.fallback?' *':'')]);}
   if(wref)vr.push(['Medido em [W] (B · BSc · BSh)',`${fmt(wref[9]*100,0)}% · ${fmt(wref[10]*10,1)} mm · ${fmt(wref[11],2)}`],['NA · M em [W] (1000 g)',`${fmt(wref[12],0)} · ${fmt(wref[13],1)} cm³`]);
   if(st){vr.push(['Vazios do esqueleto',`${fmt(st.Vesq,2)} cm³ (alvo ${fmt(st.VesqT,2)})`],['Bolhas',`${fmt(st.Vbol,2)} cm³ (alvo ${fmt(st.VbolT,2)}) · ${fmt(st.nBubbles,0)}`],
-    ['B real',fmt(st.Breal,1)+'%'],['Mediana do diâmetro das bolhas',fmt(st.bubMed,2)+' mm'],['AVC real',fmt(st.AVC,2)+'%'],
+    ['B real',fmt(st.Breal,1)+'%'],['Mediana do diâmetro das bolhas',fmt(st.bubMed,2)+' mm'],...(st.Vtex!=null?(st.aberta?[['AVC geométrico (cilindro inteiro)',fmt(st.AVC,2)+'%'],['Reentrâncias da superfície','Mistura aberta: os vazios chegam ao miolo; o AVC é o geométrico']]:[['AVC (sem as reentrâncias)',fmt(st.AVC,2)+'%'],['Reentrâncias da superfície',`${fmt(st.Vtex,2)} cm³ · ${fmt(st.texProf,2)} mm`+l10n(' de profundidade média · casca de ')+`${fmt(st.eCasca,1)} mm`],['AVC geométrico (cilindro inteiro)',fmt(st.AVCgeo,2)+'%']]):[['AVC real',fmt(st.AVC,2)+'%']]),
     ['AVC por quadrante (meia altura)',st.quad.map(v=>fmt(v,1)).join(' · ')],['Sobreposição de agregados',fmt(st.over,2)+' cm³']);}
   $('voids').innerHTML=vr.map(([a,v])=>`<dt>${a}</dt><dd>${v}</dd>`).join('')+(b&&b.Bfallback&&b.mode==='auto'?`<dt class="note" style="grid-column:1/-1">† Esta mistura está fora da faixa em que a [W] Eq. (3) foi calibrada: ela daria ${fmt(b.Braw,0)}%. Usei a mediana da Tabela 3 de [W] (48%). Ajuste em Avançado › Bolhas › Manual, se quiser.</dt>`:'')+
     (b&&b.fallback?'<dt class="note" style="grid-column:1/-1">* A [W] Eq. (4) ou (5) saiu da faixa válida; usei as medianas da Tabela 3 de [W].</dt>':'')+
@@ -219,7 +219,7 @@ function onInputs(){
   const gi=cfg.grad.findIndex(r=>r.p<90),tnm=gi>0?cfg.grad[gi-1].s:cfg.grad[0].s;
   const big=4*tnm>comp.D+1e-9;$('w-size').hidden=!big;if(big)$('w-size').textContent=`O TNM de ${fmt(tnm,1)} mm pede um molde de pelo menos Ø${fmt(4*tnm,0)} mm. Use uma faixa mais fina.`;
   if(running)return;
-  const sig=c=>JSON.stringify([c.comp,c.lib,c.seed,c.proto,c.avcMode,c.golpes,c.gsim,c.ngir,c.gsimg,c.press,c.ang,c.grade,c.temp,c.lam,c.etaK,c.escE,c.escP,c.faceW]);
+  const sig=c=>JSON.stringify([c.comp,c.lib,c.seed,c.proto,c.avcMode,c.golpes,c.gsim,c.ngir,c.gsimg,c.press,c.ang,c.grade,c.temp,c.lam,c.etaK,c.escE,c.escP]);
   const prev=lastCfg,changed=!prev||sig(prev)!==sig(Object.assign({},cfg,{comp}));
   if(changed&&result){stale=true;sampled=null;$('stale-note').hidden=false;}
   lastCfg=Object.assign(cfg,{comp});
@@ -300,7 +300,7 @@ function workerMsg(cfg,comp){
   const v=cfg.proto!=='w'?viscMastic(cfg,comp):{etaM:0};
   return {comp:{R:comp.R,H:comp.H,V:comp.V,mass:comp.mass,m_agg:comp.m_agg,fracoes:comp.fracoes,k250:comp.k250,k1000:comp.k1000,V_void:comp.V_void,M:comp.M,V_graudo:comp.V_graudo},
     rhoA:cfg.ra,seed:cfg.seed,lib:cfg.lib,bub:cfg.bub,seg:cfg.seg,avc:cfg.avc,voxel:(SIZES[cfg.size]||SIZES.p)[2],dt:2e-5,coat:0.25,
-    proto:cfg.proto,avcMode:cfg.avcMode,faceW:cfg.faceW,
+    proto:cfg.proto,avcMode:cfg.avcMode,
     mastic:{eta:v.etaM,lam:cfg.lam,etaK:cfg.etaK,kf:0.05,coh:0.005,mu:0.2},
     marshall:{golpes:cfg.golpes,sim:cfg.gsim,escE:cfg.escE},
     gir:{N:cfg.ngir,sim:cfg.gsimg,P:cfg.press,escP:cfg.escP,ang:cfg.ang,Tg:0.04}};

@@ -56,15 +56,12 @@ function runAll(cfg){
         }}}
     if(i%200===0)progress('pintura',0.15*i/n,'Voxelizando os agregados');
   }
-  // [W] §3.6: pintura do mastique a partir das bordas dos agregados (as paredes contam como agregado)
+  // [W] §3.6: pintura do mastique a partir das bordas dos agregados
   progress('pintura',0.2,'Distância até os agregados e as paredes',true);
   const D=new Uint16Array(nvox);
-  // 3.1: a distância à parede lateral é a exata ao eixo (R − r), na mesma convenção da chanfrada (×3, em voxels, até o centro
-  // do primeiro voxel de fora). Antes a parede era o voxel de fora da máscara: nos eixos x e y o cilindro encosta na borda da
-  // grade, não há voxel de fora, a parede não era vista e os vazios se juntavam ali (picos a cada 90°)
-  const dW=new Uint16Array(sxy);
-  for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){const X=(x+0.5)*h-R,Y=(y+0.5)*h-R;dW[y*nx+x]=Math.max(1,Math.round(3*((R-Math.hypot(X,Y))/h+0.5)));}
-  for(let zz=0;zz<nz;zz++){const fw=cfg.faceW??2.5,lim=Math.min(Math.round(3*fw*(zz+1)),Math.round(3*fw*(nz-zz)),65535);for(let k=0;k<sxy;k++){const id=zz*sxy+k,p=phase[id];D[id]=p===1?Math.min(lim,dW[k]):(p===0?65535:0);}}
+  // 3.2: só as pedras atraem mastique. A parede lateral e as faces deixaram de contar como agregado (antes: peso 1 na lateral,
+  // com a distância exata da 3.1, e faceW nas faces), e por isso os vazios podem encostar na superfície e abrir para fora
+  for(let id=0;id<nvox;id++)D[id]=phase[id]===4?0:65535;
   chamfer(D,nx,ny,nz);
   const noise=valueNoise(cfg.seed*7+3),cellN=1/h;
   const dP=new Float32Array(nvox);
@@ -72,7 +69,20 @@ function runAll(cfg){
   for(let zz=0;zz<nz;zz++)for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){const id=zz*sxy+y*nx+x;if(phase[id]!==0)ncyl++;if(phase[id]===1)dP[id]=D[id]/3+0.15*noise(x/cellN,y/cellN,zz/cellN);}
   const vv=h*h*h/1000;
   const Vvoid=Vvoid0*(ncyl*vv)/Vcp;
-  const nVoidT=Math.round(Vvoid/vv),nBubT=Math.round(nVoidT*bub.B/100),nEsqT=nVoidT-nBubT;
+  const nVoidT=Math.round(Vvoid/vv);let nBubT=Math.round(nVoidT*bub.B/100),nEsqT=nVoidT-nBubT;
+  /* 3.2: casca de textura. eC = metade do diâmetro mediano das pedras da superfície (as que têm voxel a menos de 1 mm dela,
+     pesadas por essa área). A casca (profundidade ≤ eC) e o miolo recebem vazios na proporção do espaço entre pedras que cada um
+     tem: o mastique enche os dois no mesmo grau. Sem isso, com uma só fila para o CP todo, os vazios iam quase todos para a
+     superfície, onde as pedras encostadas na parede deixam os vãos mais largos. */
+  const depth=id=>{const x=id%nx,y=Math.floor(id/nx)%ny,zz=Math.floor(id/sxy);return Math.min(R-Math.hypot((x+0.5)*h-R,(y+0.5)*h-R),(zz+0.5)*h,(nz-zz-0.5)*h);};
+  let eC=5;
+  {const vol=new Int32Array(n+1),sur=new Int32Array(n+1);
+    for(let id=0;id<nvox;id++){const l=lab[id];if(l>0){vol[l]++;if(depth(id)<1)sur[l]++;}}
+    const a=[];let tot=0;for(let l=1;l<=n;l++)if(sur[l]){a.push([Math.cbrt(6*vol[l]*h*h*h/Math.PI),sur[l]]);tot+=sur[l];}
+    a.sort((p,q)=>p[0]-q[0]);let acc=0;for(const [d,sv] of a){acc+=sv;if(acc>=tot/2){eC=d/2;break;}}}
+  const naCasca=new Uint8Array(nvox),noMiolo=new Uint8Array(nvox);let n1=0,n1c=0;
+  for(let id=0;id<nvox;id++){if(!phase[id])continue;const c=depth(id)<=eC;naCasca[id]=c?1:0;noMiolo[id]=c?0:1;if(phase[id]===1){n1++;if(c)n1c++;}}
+  const fCasca=n1?n1c/n1:0;
   const NB=4096;
   function convert(from,to,nsel,desc,skip){
     if(nsel<=0)return 0;
@@ -86,9 +96,11 @@ function runAll(cfg){
       if(desc?b>T:b<T){phase[id]=to;done++;}else if(b===T&&rem>0){phase[id]=to;rem--;done++;}}
     return done;
   }
+  // mastique → vazio do esqueleto, repartido entre a casca e o miolo
+  const conv12=k=>{if(k<=0)return;const a=Math.round(k*fCasca);convert(1,2,a,true,noMiolo);convert(1,2,k-a,true,naCasca);};
   const count=c=>{let k=0;for(let id=0;id<nvox;id++)if(phase[id]===c)k++;return k;};
   progress('pintura',0.45,'Pintando o mastique a partir dos agregados',true);
-  convert(1,2,nEsqT,true);
+  conv12(nEsqT);
   const flipped=new Uint8Array(nvox);
   for(let iter=0;iter<3;iter++){
     const list=[];
@@ -109,12 +121,31 @@ function runAll(cfg){
         for(const j of nb)if(j>=0&&!seen[j]&&phase[j]===2){seen[j]=1;qu[qt++]=j;}}
       if(qt<30){for(let k=0;k<qt;k++)phase[qu[k]]=1;removed+=qt;}
     }
-    if(removed>0)convert(1,2,removed,true);
+    if(removed>0)conv12(removed);
   }
+  /* ---------- 3.2: fase 5, "externo" ----------
+     Um vazio do esqueleto vira "externo" se chega à lateral ou a uma face por vizinhos de face, sem sair da casca.
+     O externo não é vazio de ar: sai do volume do CP no AVC (3.3), como no ensaio de superfície seca. */
+  progress('pintura',0.85,'Reentrâncias da superfície',true);
+  const quE=new Int32Array(nvox);
+  // marca (ou só conta, com lim = Infinity) os vazios ligados à superfície por dentro da casca de espessura lim
+  function externo(lim,marcar){
+    const seen=new Uint8Array(nvox);let qh=0,qt=0;
+    for(let id=0;id<nvox;id++){const p=phase[id];if((p===2||p===5)&&depth(id)<h){seen[id]=1;quE[qt++]=id;}}
+    while(qh<qt){const id=quE[qh++],x=id%nx,y=Math.floor(id/nx)%ny,zz=Math.floor(id/sxy);if(marcar)phase[id]=5;
+      const nb=[x>0?id-1:-1,x<nx-1?id+1:-1,y>0?id-nx:-1,y<ny-1?id+nx:-1,zz>0?id-sxy:-1,zz<nz-1?id+sxy:-1];
+      for(const j of nb)if(j>=0&&!seen[j]&&(phase[j]===2||phase[j]===5)&&depth(j)<=lim){seen[j]=1;quE[qt++]=j;}}
+    return qt;
+  }
+  // o orçamento total não muda (textura + vazios do esqueleto + bolhas = Vcil − Vsol). B vale para os vazios de dentro: a parte
+  // das bolhas que caberia à textura volta para o esqueleto, e a conta se repete porque um pouco disso também abre para fora
+  let nExt=externo(eC,true);
+  for(let it=0;it<4;it++){const nb2=Math.round((nVoidT-nExt)*bub.B/100);if(nb2>=nBubT)break;conv12(nBubT-nb2);nBubT=nb2;nEsqT=nVoidT-nBubT;nExt=externo(eC,true);}
+
   // bolhas no mastique, com diâmetro pela Weibull (BSc, BSh)
   progress('bolhas',0,'Semeando bolhas no mastique',true);
   const DV=new Uint16Array(nvox);
-  for(let id=0;id<nvox;id++)DV[id]=phase[id]===2?0:65535;
+  for(let id=0;id<nvox;id++)DV[id]=(phase[id]===2||phase[id]===5)?0:65535;
   chamfer(DV,nx,ny,nz);
   const cand=[];
   for(let id=0;id<nvox;id++)if(phase[id]===1&&D[id]/3*h>=2*h&&DV[id]/3*h>=1.0)cand.push(id);
@@ -136,10 +167,11 @@ function runAll(cfg){
         if(!ok)continue;
         const rv=r/h,x0=Math.max(0,Math.floor(x-rv)),x1=Math.min(nx-1,Math.ceil(x+rv)),y0=Math.max(0,Math.floor(y-rv)),y1=Math.min(ny-1,Math.ceil(y+rv)),z0=Math.max(0,Math.floor(zz-rv)),z1=Math.min(nz-1,Math.ceil(zz+rv));
         // A8: a bolha fica inteira no mastique: nenhum voxel dela nem da casca de um voxel em volta é agregado, parede ou
-        // vazio do esqueleto (a distância chanfrada do centro é só aproximada e deixava bolhas encostadas na pedra, K19)
+        // vazio do esqueleto ou externo (a distância chanfrada do centro é só aproximada e deixava bolhas encostadas na pedra, K19)
         const rs=rv+1;
+        if(x-rs<0||y-rs<0||zz-rs<0||x+rs>nx-1||y+rs>ny-1||zz+rs>nz-1)continue;
         for(let Z=Math.max(0,Math.floor(zz-rs));Z<=Math.min(nz-1,Math.ceil(zz+rs))&&ok;Z++)for(let Y=Math.max(0,Math.floor(y-rs));Y<=Math.min(ny-1,Math.ceil(y+rs))&&ok;Y++)for(let Xx=Math.max(0,Math.floor(x-rs));Xx<=Math.min(nx-1,Math.ceil(x+rs));Xx++){
-          const dx=Xx-x,dy=Y-y,dz=Z-zz;if(dx*dx+dy*dy+dz*dz>rs*rs)continue;const f=phase[Z*sxy+Y*nx+Xx];if(f===0||f===2||f===4){ok=false;break;}}
+          const dx=Xx-x,dy=Y-y,dz=Z-zz;if(dx*dx+dy*dy+dz*dz>rs*rs)continue;const f=phase[Z*sxy+Y*nx+Xx];if(f===0||f===2||f===4||f===5){ok=false;break;}}
         if(!ok)continue;
         for(let Z=z0;Z<=z1;Z++)for(let Y=y0;Y<=y1;Y++)for(let Xx=x0;Xx<=x1;Xx++){const dx=Xx-x,dy=Y-y,dz=Z-zz;if(dx*dx+dy*dy+dz*dz<=rv*rv){const j=Z*sxy+Y*nx+Xx;if(phase[j]===1){phase[j]=3;nBub++;}}}
         bubbles.push(d);bubC.push(cx,cy,cz,r);const k=key(gx,gy,gz);if(!hash.has(k))hash.set(k,[]);hash.get(k).push([cx,cy,cz,r]);
@@ -151,26 +183,35 @@ function runAll(cfg){
   }
   // A8: o que não coube vira vazio do esqueleto (o AVC não muda) e o app diz qual B ficou
   let bubDeficit=false;
-  if(nBub<nBubT){const rest=nBubT-nBub;convert(1,2,rest,true);bubDeficit=true;
+  if(nBub<nBubT){const rest=nBubT-nBub;conv12(rest);bubDeficit=true;
     warn=`Faltou espaço para ${br(rest*vv,2)} cm³ de bolhas; completei com vazios do esqueleto. As bolhas não cabem inteiras no mastique entre as pedras: B ficou em ${br(100*nBub/Math.max(nVoidT,1),0)}% dos vazios (pedido: ${br(bub.B,0)}%).`;}
 
   /* ---------- estatísticas ---------- */
-  const cnt=[0,0,0,0,0];for(let id=0;id<nvox;id++)cnt[phase[id]]++;
+  if(bubDeficit)externo(eC,true);
+  // mistura aberta: os vazios se comunicam até o miolo e é a espessura da casca que segura a textura (sem o limite ela passaria de
+  // 1,5 vez). Aí não há superfície que separe fora e dentro: o AVC fica o geométrico e nada é marcado como externo
+  let cE=0;for(let id=0;id<nvox;id++)if(phase[id]===5)cE++;
+  const nExtInf=externo(Infinity,false),aberta=cE>0&&nExtInf>1.5*cE,VtexCasca=cE*vv;
+  if(aberta)for(let id=0;id<nvox;id++)if(phase[id]===5)phase[id]=2;
+  const cnt=[0,0,0,0,0,0];for(let id=0;id<nvox;id++)cnt[phase[id]]++;
+  const Asup=2*Math.PI*R*(H+R)/100;   // lateral + duas faces, cm²
   const st={ncyl,Vcil:ncyl*vv,Vagg:cnt[4]*vv,Vmast:cnt[1]*vv,Vesq:cnt[2]*vv,Vbol:cnt[3]*vv,over:over*vv,tDem,warn,maxov:out.maxov,forced,
-    nBubbles:bubbles.length,bubDeficit,VvoidT:Vvoid,VbolT:nBubT*vv,VesqT:nEsqT*vv};
-  st.AVC=(cnt[2]+cnt[3])/ncyl*100;st.Breal=(cnt[2]+cnt[3])?cnt[3]/(cnt[2]+cnt[3])*100:0;
+    nBubbles:bubbles.length,bubDeficit,VvoidT:Vvoid,VbolT:nBubT*vv,VesqT:(nEsqT+Math.max(0,nBubT-nBub)-cnt[5])*vv,
+    Vtex:cnt[5]*vv,texProf:10*cnt[5]*vv/Asup,eCasca:eC,aberta,VtexCasca,VtexLivre:nExtInf*vv};
+  // 3.3: o AVC usa o volume sem as reentrâncias (ensaio de superfície seca); o geométrico usa o cilindro inteiro, como até a 3.1
+  st.AVC=(cnt[2]+cnt[3])/(ncyl-cnt[5])*100;st.AVCgeo=(cnt[2]+cnt[3]+cnt[5])/ncyl*100;st.Breal=(cnt[2]+cnt[3])?cnt[3]/(cnt[2]+cnt[3])*100:0;
   bubbles.sort((a,b)=>a-b);st.bubMed=bubbles.length?bubbles[bubbles.length>>1]:0;
   const zc=Math.floor(nz/2),prof=new Float64Array(20),pTot=new Float64Array(20),quad=[0,0,0,0],qTot=[0,0,0,0];
   for(let zz=Math.floor(nz/3);zz<Math.ceil(2*nz/3);zz++)for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){
-    const p=phase[zz*sxy+y*nx+x];if(!p)continue;const k=Math.min(19,Math.floor((x+0.5)/nx*20)),v=(p===2||p===3)?1:0;prof[k]+=v;pTot[k]++;
+    const p=phase[zz*sxy+y*nx+x];if(!p||p===5)continue;const k=Math.min(19,Math.floor((x+0.5)/nx*20)),v=(p===2||p===3)?1:0;prof[k]+=v;pTot[k]++;
     if(zz===zc){const qd=(x>=nx/2?1:0)+(y>=ny/2?2:0);quad[qd]+=v;qTot[qd]++;}}
   st.profile=[...prof].map((v,k)=>pTot[k]?v/pTot[k]*100:0);st.quad=quad.map((v,k)=>qTot[k]?v/qTot[k]*100:0);
   // perfil vertical (K31): 20 fatias da base ao topo, com as frações de vazio e de agregado
   const vp=new Float64Array(20),va=new Float64Array(20),vt=new Float64Array(20);
-  for(let zz=0;zz<nz;zz++){const k=Math.min(19,Math.floor((zz+0.5)/nz*20));for(let j=zz*sxy,e=j+sxy;j<e;j++){const p=phase[j];if(!p)continue;vt[k]++;if(p===2||p===3)vp[k]++;else if(p===4)va[k]++;}}
+  for(let zz=0;zz<nz;zz++){const k=Math.min(19,Math.floor((zz+0.5)/nz*20));for(let j=zz*sxy,e=j+sxy;j<e;j++){const p=phase[j];if(!p||p===5)continue;vt[k]++;if(p===2||p===3)vp[k]++;else if(p===4)va[k]++;}}
   st.vprofile=[...vp].map((v,k)=>vt[k]?v/vt[k]*100:0);st.vagg=[...va].map((v,k)=>vt[k]?v/vt[k]*100:0);
   // perfil fino junto às faces (K28, K30): % de vazios por camada de voxels nos primeiros 4 mm da base e do topo
-  {const nf=Math.min(nz>>1,Math.ceil(4/h)),lay=zz=>{let v=0,t=0;for(let j=zz*sxy,e=j+sxy;j<e;j++){const p=phase[j];if(!p)continue;t++;if(p===2||p===3)v++;}return t?v/t*100:0;};
+  {const nf=Math.min(nz>>1,Math.ceil(4/h)),lay=zz=>{let v=0,t=0;for(let j=zz*sxy,e=j+sxy;j<e;j++){const p=phase[j];if(!p||p===5)continue;t++;if(p===2||p===3)v++;}return t?v/t*100:0;};
    st.vface={dz:h,bot:Array.from({length:nf},(_,i)=>+lay(i).toFixed(3)),top:Array.from({length:nf},(_,i)=>+lay(nz-1-i).toFixed(3))};}
   // compactação: protocolo, curva altura × golpe/giro, modo de AVC, esforço de ajuste e penetração pela casca (K33)
   const Hs=C.Hsolto??null,Hc=C.Hcomp??C.Hf;

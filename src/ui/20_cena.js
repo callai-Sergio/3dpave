@@ -292,7 +292,7 @@ function sectionStats(idx){
   const r=result,nx=r.nx,ny=r.ny,nz=r.nz,sxy=nx*ny,W=secKind==='z'?nx:ny,H=secKind==='z'?ny:nz,h=r.h;
   let tot=0,vo=0;const q=[0,0,0,0],qt=[0,0,0,0],parts=new Map();
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){
-    const id=secKind==='z'?idx*sxy+j*nx+i:j*sxy+i*nx+idx,p=r.phase[id];if(!p)continue;tot++;const v=(p===2||p===3)?1:0;vo+=v;
+    const id=secKind==='z'?idx*sxy+j*nx+i:j*sxy+i*nx+idx,p=r.phase[id];if(!p||p===5)continue;tot++;const v=(p===2||p===3)?1:0;vo+=v;
     if(secKind==='z'){const qd=(i>=W/2?1:0)+(j>=H/2?2:0);q[qd]+=v;qt[qd]++;}
     if(p===4){const L=r.lab[id];let a=parts.get(L);if(!a){a=[];parts.set(L,a);}a.push(i,j);}
   }

@@ -34,7 +34,7 @@ if (rot) {   // gira posição e orientação finais em torno do eixo z (os quad
 }
 const v = cab.form.vals, num = k => parseFloat(String(v[k]).replace(',', '.'));
 const spec = { id, curve: cab.form.curve, pb: num('f-pb'), avc: num('f-avc'), proto: v['f-proto'], size: v['f-size'], avcMode: v['f-avcmode'], seed: +v['f-seed'],
-  temp: num('f-temp'), faceW: num('f-facew'), bub: { mode: 'auto', B: 40, BScmm: 1.0, BSh: 1.5 }, native: '', replay: raw.buffer, replayNA: cab.na };
+  temp: num('f-temp'), bub: { mode: 'auto', B: 40, BScmm: 1.0, BSh: 1.5 }, native: '', replay: raw.buffer, replayNA: cab.na };
 const r = runCase(spec);
 if (r.status !== 'ok') { console.log(`ERRO ${id}: ${r.status} ${(r.validation || r.error || '').toString().slice(0, 300)}`); process.exit(1); }
 const { phase, nx, ny, nz, h, R, meshE, st } = r.res, sxy = nx * ny;
@@ -47,7 +47,7 @@ for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
   const X = (x + 0.5) * h - R, Y = (y + 0.5) * h - R, d = R - Math.hypot(X, Y);
   if (d < 0 || d >= NB * db) continue;
   const k = setor(X, Y), cl = k % 9 === 0 ? 0 : ((k % 9 === 4 || k % 9 === 5) ? 1 : 2), b = Math.floor(d / db);
-  for (let z = 0; z < nz; z++) { const p = phase[z * sxy + y * nx + x]; if (!p) continue; const e = (p === 2 || p === 3) ? 1 : 0;
+  for (let z = 0; z < nz; z++) { const p = phase[z * sxy + y * nx + x]; if (!p || p === 5) continue; const e = (p === 2 || p === 3) ? 1 : 0;
     pT[cl][b]++; pV[cl][b] += e; if (d < casca) { tot[k]++; vz[k] += e; } }
 }
 const f = Array.from(tot, (t, k) => t ? 100 * vz[k] / t : 0), media = f.reduce((a, b) => a + b, 0) / NS;

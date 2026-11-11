@@ -4,7 +4,7 @@
    bolhas são refeitos. Salvar grava o que o núcleo em C acabou de calcular. Formato 2: os quadros da animação vão compactos
    (26_quadros.js), todos; o formato 1 (metade dos quadros, em float32) continua abrindo. Os exemplos do pacote (exemplos/index.json) usam o mesmo formato. */
 const FORM_IDS=['f-nome','f-seed','f-lib','f-pb','f-avc','f-ra','f-rb','f-proto','f-size','f-avcmode','f-golpes','f-gsim','f-ngir','f-gsimg','f-press','f-ang','f-grade','f-temp',
-  'f-bub','f-bB','f-bSc','f-bSh','f-lam','f-etak','f-escE','f-escP','f-facew','f-segk'];
+  'f-bub','f-bB','f-bSc','f-bSh','f-lam','f-etak','f-escE','f-escP','f-segk'];
 function formSnap(){
   const vals={};FORM_IDS.forEach(id=>vals[id]=$(id).value);
   return {curve:preset.replace(/^lib:/,''),preset,rows:rows.map(r=>({s:r.s,p:r.p})),vals,checks:{'f-seg':$('f-seg').checked}};
@@ -15,7 +15,7 @@ function restoreForm(f){
   if(f.rows&&f.rows.length)setRows(f.rows);
   if('f-proto' in vals)$('f-proto').value=vals['f-proto'];
   syncSize();
-  for(const id in vals)if(id!=='f-proto')$(id).value=vals[id];
+  for(const id in vals)if(id!=='f-proto'&&$(id))$(id).value=vals[id];   // campos que saíram do app (f-facew) são ignorados
   for(const id in (f.checks||{}))$(id).checked=f.checks[id];
   syncForm();onInputs();
 }
