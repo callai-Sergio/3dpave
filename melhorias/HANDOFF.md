@@ -1,5 +1,7 @@
 # Handoff (atualizado em 2026-11-02, depois do push)
 
+> **2026-11-12 (3.4, só tela; worker e golden intactos):** `src/ui/20_cena.js`: `sideCanvas()` pinta a lateral pelos voxels da superfície (planificação do cilindro, 1 pixel por voxel de altura), e a película de mastique de 1,5 mm (`FILM_MM`) é vista como transparente na lateral, nas tampas e no corte (aparecem as pedras logo abaixo). Vazios e reentrâncias não são pintados: mostra-se o que está atrás, escurecido. Conferido no Chrome headless (DNIT C, Corpo de prova): 0 erros de JS, agregado aparente na lateral e na tampa, sem vermelho na superfície. Falta: 3.5 (recalibrar com `calib_red_pb*.json`; golden novo só com OK) e a causa do PA 8 lento no PC (preciso do processador).
+
 > **2026-11-10:** o estado verificado e os próximos passos estão em `melhorias/RESUMO_E_PROXIMOS_PASSOS.md`. Leia esse arquivo primeiro; o que vem abaixo é o histórico.
 
 > **2026-11-10 (tarde):** próximo trabalho em `melhorias/PLANO_REALISMO_E_PC.md` (realismo do CP e da animação, CP de 250 g fora, mistura só por cima, cálculo rápido no PC). Slab anotado como A15 no BACKLOG.

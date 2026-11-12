@@ -2380,6 +2380,7 @@ function sectionCanvas(kind,idx,style,look){
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){
     let id=kind==='z'?idx*sxy+(ny-1-j)*nx+i:(nz-1-j)*sxy+i*nx+idx;
     let p=r.phase[id],c=null,fundo=0;const o=4*(j*W+i),id0=id;
+    if(look&&p===1){const kf=Math.ceil(FILM_MM/r.h);let q=id0,pos=idx;for(let k=1;k<=kf;k++){pos+=look;if(pos<0||pos>=lim)break;q+=passo;if(r.phase[q]===4){p=4;id=q;fundo=0;break;}}}
     if(look&&(p===5||((p===2||p===3)&&!showVoids))){
       let pos=idx,q=id0;p=0;
       for(fundo=1;fundo<=nmax;fundo++){pos+=look;if(pos<0||pos>=lim)break;q+=passo;const pq=r.phase[q];if(pq===0)break;if(pq===1||pq===4){p=pq;break;}}
@@ -2393,12 +2394,31 @@ function sectionCanvas(kind,idx,style,look){
   }
   ctx.putImageData(img,0,0);return cv;
 }
+// 3.4: lateral desenhada pela superfície dos voxels (agregado aparente e mastique). Vazios e reentrâncias (fases 2, 3, 5) não são
+// pintados: mostra-se o que está atrás (até 10 mm), escurecido com a profundidade. Planificação do cilindro: u = ângulo, v = altura.
+const FILM_MM=1.5; // película de mastique da superfície vista como transparente (3.4): as pedras logo abaixo aparecem
+function sideCanvas(){
+  const r=result,nx=r.nx,ny=r.ny,nz=r.nz,sxy=nx*ny,W=Math.max(360,Math.round(2*Math.PI*r.R/r.h)),H=nz,pas=r.h/2,nmax=Math.ceil(10/pas);
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d'),img=ctx.createImageData(W,H),d=img.data,agcache=new Map();
+  for(let i=0;i<W;i++){const th=2*Math.PI*(i+0.5)/W,sx=Math.sin(th),sy=-Math.cos(th);
+    for(let j=0;j<H;j++){const iz=nz-1-j;let c=null,achou=false,fundo=0;
+      const kf=Math.ceil(FILM_MM/pas);let ag=-1;
+      for(let k=-2;k<=kf&&ag<0;k++){const rr=r.R-k*pas,ix=Math.floor((rr*sx+r.R)/r.h),iy=Math.floor((rr*sy+r.R)/r.h);
+        if(ix>=0&&iy>=0&&ix<nx&&iy<ny&&r.phase[iz*sxy+iy*nx+ix]===4)ag=k;}
+      for(let k=ag>=0?ag:-2;k<=nmax;k++){const rr=r.R-k*pas,ix=Math.floor((rr*sx+r.R)/r.h),iy=Math.floor((rr*sy+r.R)/r.h);
+        if(ix<0||iy<0||ix>=nx||iy>=ny)continue;const id=iz*sxy+iy*nx+ix,p=r.phase[id];
+        if(p===1){c=C_MAST;achou=true;}else if(p===4){const L=r.lab[id]-1;if(!agcache.has(L))agcache.set(L,particleRGB(L));c=agcache.get(L);achou=true;}
+        if(achou){fundo=Math.max(0,k);break;}}
+      const o=4*(j*W+i);if(!c)c=[5,5,5];const f=achou&&fundo>0?0.85*Math.exp(-Math.max(0,fundo*pas-FILM_MM)/4):1;
+      d[o]=c[0]*f;d[o+1]=c[1]*f;d[o+2]=c[2]*f;d[o+3]=255;}}
+  ctx.putImageData(img,0,0);return cv;
+}
 function tex(cv){const t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;t.magFilter=THREE.NearestFilter;t.minFilter=THREE.LinearFilter;t.generateMipmaps=false;return t;}
 function setMap(m,cv){if(m.material.map)m.material.map.dispose();m.material.map=tex(cv);m.material.needsUpdate=true;}
 function cutValue(){const r=result,f=+$('cut').value/1000;return cutMode==='z'?f*r.H:(f*2-1)*r.R;}
 function updateCaps(all){
   if(!result)return;const r=result;
-  if(all){setMap(capTop,sectionCanvas('z',r.nz-1,null,-1));setMap(capBot,sectionCanvas('z',0,null,1));}
+  if(all){setMap(capTop,sectionCanvas('z',r.nz-1,null,-1));setMap(capBot,sectionCanvas('z',0,null,1));setMap(skin,sideCanvas());skin.material.color.set(0xffffff);}
   const c=cutValue();
   if(cutMode==='x'){
     const ix=Math.min(r.nx-1,Math.max(0,Math.floor((c+r.R)/r.h)));
