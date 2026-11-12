@@ -1,5 +1,7 @@
 # Handoff (atualizado em 2026-11-02, depois do push)
 
+> **2026-11-12 (3.5, calibração reduzida no vid1, 12 rodadas, 8,3 min por Pb; `stress/results/calib_red_pb*.jsonl`):** com λ 0,55 e escE 0,002 (A5) e o código da 3.4/3.2/3.3, o AVC do CP (`comp.AVCcp`, média de 3 sementes) contra Albayati 60/70: Pb 4,0 → 7,64 (lab 6,1), 4,5 → 5,11 (4,8), 5,0 → 3,96 (3,3), 5,5 → 2,10 (2,7). **MAE 0,78 pp, meta ≤ 0,5 (antes da 3.2/3.3: 0,31).** Erro maior nos extremos (inclinação mais íngreme que o lab). Golden **não** ganhou nova referência. Próximo: varrer λ × escE de novo (grade tipo `calib_albayati_m2.json`, 96 rodadas) para fechar a 3.5; K1 do harness compara com avc=4,8 fixo, não com o lab, então ignorar K1 nessas grades.
+
 > **2026-11-12 (3.4, só tela; worker e golden intactos):** `src/ui/20_cena.js`: `sideCanvas()` pinta a lateral pelos voxels da superfície (planificação do cilindro, 1 pixel por voxel de altura), e a película de mastique de 1,5 mm (`FILM_MM`) é vista como transparente na lateral, nas tampas e no corte (aparecem as pedras logo abaixo). Vazios e reentrâncias não são pintados: mostra-se o que está atrás, escurecido. Conferido no Chrome headless (DNIT C, Corpo de prova): 0 erros de JS, agregado aparente na lateral e na tampa, sem vermelho na superfície. Falta: 3.5 (recalibrar com `calib_red_pb*.json`; golden novo só com OK) e a causa do PA 8 lento no PC (preciso do processador).
 
 > **2026-11-10:** o estado verificado e os próximos passos estão em `melhorias/RESUMO_E_PROXIMOS_PASSOS.md`. Leia esse arquivo primeiro; o que vem abaixo é o histórico.
