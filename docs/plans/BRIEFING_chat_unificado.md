@@ -42,9 +42,9 @@ Cada um roda em dois modos de AVC: **travado** (mede o esforço de ajuste) e **l
 | `stress/kpi.mjs`, `golden.mjs`, `validacao.mjs` | KPIs (K1–K33), golden do [W] e validação V1 contra o Albayati. |
 | `stress/run.mjs` + `stress/grids/*.json` | Grades de casos (`--jobs 8 --timeout 10800 --mem 8192`). |
 | `stress/server/deploy_native.sh` | Envia para o vid1 e compila lá (usa as chaves ssh do Windows). |
-| `plano_app_unificado_compactacao.md` | Plano mestre: §6 fases F0–F7; §8 avaliação dos KPIs; **§9 desatualizada**. |
-| `plano_melhorias_marshall_digital.md` | Plano de KPIs do usuário (P1–P7, K1–K32). |
-| `legacy_2026-10-28/` | Versão anterior à unificação. |
+| `docs/plans/plano_app_unificado_compactacao.md` | Plano mestre: §6 fases F0–F7; §8 avaliação dos KPIs; **§9 desatualizada**. |
+| `docs/plans/plano_melhorias_marshall_digital.md` | Plano de KPIs do usuário (P1–P7, K1–K32). |
+| `archive/legacy_2026-10-28/` | Versão anterior à unificação. |
 
 Rodar no servidor:
 ```
@@ -79,7 +79,7 @@ cd /data/callai/workspace/3dpave && MD_NATIVE=$PWD/native/mdsim MD_THREADS=4 noh
 7. S5: WebAssembly no navegador e "Abrir resultado do servidor".
 8. S6: escala de massa e fim do golpe pelo repouso.
 9. Pintura do mastique: P2 (excesso em misturas graúdas) e P3 (bolhas que não cabem; K19).
-10. Atualizar a §9 de `plano_app_unificado_compactacao.md` com a arquitetura em C, o benchmark e a calibração.
+10. Atualizar a §9 de `docs/plans/plano_app_unificado_compactacao.md` com a arquitetura em C, o benchmark e a calibração.
 11. Backlog: duplo êmbolo (V2); granulometria do LTPP (falta); paper Zhu 2022 (falta).
 
 ## 7. Armadilhas conhecidas

@@ -143,7 +143,7 @@ node build.mjs                                   # monta o app a partir de src/
 node stress/golden.mjs --determinism             # âncora: deve dar "identical"
 node stress/run.mjs stress/grids/smoke.json --jobs 6
 ```
-Grades longas rodam no servidor (ver `stress/README.md` e `BRIEFING_chat_unificado.md`), sempre com Node 24.11.1.
+Grades longas rodam no servidor (ver `stress/README.md` e `docs/plans/BRIEFING_chat_unificado.md`), sempre com Node 24.11.1.
 
 **Distribuição (versão alfa 1.1.0a1):** `pacote/` é um mini app Python que abre o simulador numa janela própria (pywebview; WebView2 no Windows), com o three.js r128 (MIT) embutido para funcionar sem internet. `python pacote/build_pacote.py --exe` gera o wheel, o `MarshallSimulator.exe` (PyInstaller, Windows, sem Python) e o zip para os colegas. Desde a F10, a física do Marshall e do giratório roda no núcleo em C dentro do app: o mini app serve a página e o `mdsim` num servidor local, o worker manda a compactação para ele e mostra o progresso; sem o `mdsim`, a mesma simulação roda em JavaScript. No mesmo Marshall de 1200 g, o C levou 26 min (16 threads) e o JavaScript 76 min. O [W] continua em JavaScript até o C passar no golden (M14). O app abre parado; uma simulação nova cancela a anterior.
 

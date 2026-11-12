@@ -8,10 +8,10 @@ Juntar numa lista só todas as melhorias propostas pelos diferentes chats de ava
 
 ## 2. O que ler primeiro (nesta ordem)
 
-1. **`Marshall_digital_especificacao.md`:** a especificação do app e as referências ([W] = Wan et al. 2024).
-2. **`Marshall_digital_stress_test.md`:** definição dos KPIs K1–K26, desenho da triagem e §5 (recalibrar os limites depois da triagem).
+1. **`docs/specs/Marshall_digital_especificacao.md`:** a especificação do app e as referências ([W] = Wan et al. 2024).
+2. **`docs/specs/Marshall_digital_stress_test.md`:** definição dos KPIs K1–K26, desenho da triagem e §5 (recalibrar os limites depois da triagem).
 3. **`stress/README.md`:** como o harness funciona e os comandos.
-4. **`plano_melhorias_marshall_digital.md`:** problemas P1–P7, problemas de medição M1–M10, metas de KPI (existentes e novos, K16b e K27–K32) e melhorias 1–13 por prioridade.
+4. **`docs/plans/plano_melhorias_marshall_digital.md`:** problemas P1–P7, problemas de medição M1–M10, metas de KPI (existentes e novos, K16b e K27–K32) e melhorias 1–13 por prioridade.
 5. **Avaliações dos outros chats:** todos os arquivos em `melhorias/`. O usuário salva ali o resultado de cada chat de avaliação, um arquivo por chat. Se a pasta não existir ou estiver vazia, pergunte ao usuário onde estão antes de começar.
 6. **Resultados da triagem:** `stress/results_vid1/` (99 casos, vindos do servidor), com `screening.jsonl`, `screening.report.txt`, `screening.effects.txt` e `screening.csv`.
 

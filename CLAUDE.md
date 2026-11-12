@@ -3,6 +3,7 @@
 Simulador DEM de compactação de CPs asfálticos ([W], Marshall, giratório). App em `src/` → `node build.mjs` → `marshall_digital_app.html`; núcleo em C em `native/mdsim.c`; harness em `stress/`; pacote Windows em `pacote/` (gerado no PC do usuário, não no vid1).
 
 ## Onde está o estado
+- `docs/README.md`: índice da documentação (specs, plans, historic).
 - `melhorias/BACKLOG.md`: status de cada item (IDs A*, F*, S*) e medições. Ler só a linha ou seção do item em questão (`grep -n`), não o arquivo todo.
 - `melhorias/PLANO_DESEMPENHO.md`: plano de velocidade (Fases 1–3).
 - `melhorias/HANDOFF.md`: trabalho em aberto da última sessão. Ler primeiro.

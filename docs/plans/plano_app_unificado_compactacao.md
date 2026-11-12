@@ -1,6 +1,6 @@
 # Plano: app unificado de compactação (Marshall + giratório)
 
-Complementa o `plano_melhorias_marshall_digital.md` (problemas P1–P7 e KPIs K1–K32), que continua valendo.
+Complementa o `docs/plans/plano_melhorias_marshall_digital.md` (problemas P1–P7 e KPIs K1–K32), que continua valendo.
 Data: 2026-10-28. Nenhum código foi alterado até aqui.
 
 ## 0. Objetivo
@@ -98,7 +98,7 @@ build.mjs           concatena em marshall_digital_app.html
 
 **Desempenho:**
 - O SGC de Ø150 mm tem ~4,5–5 kg de mistura e mais de 10 mil partículas ≥ 2 mm.
-- **Opção A:** núcleo DEM em C compilado para WASM. O `marshall_digital(1)/dem.c` é ponto de partida, e o mesmo código roda no harness em Node.
+- **Opção A:** núcleo DEM em C compilado para WASM. O `archive/v5_colab/dem.c` é ponto de partida, e o mesmo código roda no harness em Node.
 - **Opção B:** limitar o giratório no navegador a Ø100 mm, como no DEM da Sensors, e oferecer Ø150 mm só no harness ou no desktop.
 - **Recomendo A.** Há também o ganho de reprodutibilidade (P7): WASM dá o mesmo resultado em qualquer máquina.
 
@@ -367,7 +367,7 @@ Uma fase está pronta quando:
 
 ## 9. Estado da implementação (2026-10-28)
 
-O código antigo está em `legacy_2026-10-28/`. As fontes ficam em `src/` e o app é montado com `node build.mjs` (ver `src/README.md`).
+O código antigo está em `archive/legacy_2026-10-28/`. As fontes ficam em `src/` e o app é montado com `node build.mjs` (ver `src/README.md`).
 
 | Fase | Estado | Evidência |
 |---|---|---|

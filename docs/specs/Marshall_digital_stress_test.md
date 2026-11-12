@@ -1,6 +1,6 @@
 # Marshall Digital: stress-test experimental design
 
-Target: the engine in `marshall_digital_app.html` (worker `runAll`: composition → shape library → particle sampling → DEM mixing/compaction → voxel mastic painting → bubble seeding → stats/mesh). Spec and reference values: `Marshall_digital_especificacao.md`.
+Target: the engine in `marshall_digital_app.html` (worker `runAll`: composition → shape library → particle sampling → DEM mixing/compaction → voxel mastic painting → bubble seeding → stats/mesh). Spec and reference values: `docs/specs/Marshall_digital_especificacao.md`.
 
 Goal: find the regions of input space where the pipeline **crashes, hangs, silently degrades, or produces a specimen that is physically wrong while reporting success**.
 

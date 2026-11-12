@@ -1,7 +1,7 @@
 # Marshall Digital: problemas, melhorias e metas de KPI
 
 Base para um plano de melhoria do app `marshall_digital_app.html`.
-Fonte: triagem da Fase 1 do harness de estresse (`stress/`, KPIs K1–K23 de `Marshall_digital_stress_test.md`) e uma análise do perfil vertical de vazios. Data: 2026-10-28.
+Fonte: triagem da Fase 1 do harness de estresse (`stress/`, KPIs K1–K23 de `docs/specs/Marshall_digital_stress_test.md`) e uma análise do perfil vertical de vazios. Data: 2026-10-28.
 
 ## 0. Contexto em poucas linhas
 
