@@ -27,7 +27,13 @@ HTML = 'marshall_digital_app.html'
 TITULO = 'Marshall Simulator'
 DADOS = os.environ.get('MARSHALL_SIM_DIR') or os.path.join(os.path.expanduser('~'), '.marshall_simulator')
 CURVAS = os.path.join(DADOS, 'minhas_curvas.json')
-NUCLEOS = os.cpu_count() or 1
+# Threads do mdsim: variável MD_THREADS manda; sem ela, ~60 % dos processadores lógicos. Em CPUs híbridas (ex.: i7-1370P, 20 lógicos
+# com 8 núcleos de eficiência) usar todos faz o cálculo esperar os núcleos lentos; PA 8 levou >66 min no PC (171 s no vid1 com 16).
+_LOG = os.cpu_count() or 1
+try:
+    NUCLEOS = max(1, int(os.environ.get('MD_THREADS', '')))
+except ValueError:
+    NUCLEOS = max(1, round(_LOG * 0.6))
 
 
 class Api:
