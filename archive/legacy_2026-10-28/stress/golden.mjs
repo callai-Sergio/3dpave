@@ -1,5 +1,5 @@
 // Golden run: C-12,5 mid-band, limestone, Pb 5,5 %, AVC 4 %, 250 g, seed 2024.
-// Checks the harness against the reference values of Marshall_digital_especificacao.md §5.3 and §7.4.
+// Checks the harness against the reference values of docs/specs/Marshall_digital_especificacao.md §5.3 and §7.4.
 // Usage: node stress/golden.mjs [--determinism]
 import { runCase } from './engine.mjs';
 import { computeKPIs } from './kpi.mjs';

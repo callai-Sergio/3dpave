@@ -1,4 +1,4 @@
-// KPIs K1-K26 of Marshall_digital_stress_test.md §3, computed from one runCase() result.
+// KPIs K1-K26 of docs/specs/Marshall_digital_stress_test.md §3, computed from one runCase() result.
 // Thresholds are the initial ones from the design (§5 says to recalibrate them after the screening phase).
 import { compSummary, probeSummary } from './engine.mjs';
 

@@ -32,7 +32,7 @@ node stress/grids/make_screening.mjs --seeds 3
 ```bash
 node stress/validacao.mjs --size p --seeds 3 --binder 60/70
 ```
-V1/V2b validation against Albayati (2024): Marshall 75 blows, free AVC, AVC × binder content (plano_app_unificado_compactacao.md §8.2).
+V1/V2b validation against Albayati (2024): Marshall 75 blows, free AVC, AVC × binder content (docs/plans/plano_app_unificado_compactacao.md §8.2).
 Regenerates the Phase 1 design (`grids/screening.json`).
 
 ## Case spec

@@ -1,4 +1,4 @@
-// KPIs K1-K33 (Marshall_digital_stress_test.md §3, plano_melhorias §3.2, plano_app_unificado §8), computed from one runCase() result.
+// KPIs K1-K33 (docs/specs/Marshall_digital_stress_test.md §3, plano_melhorias §3.2, plano_app_unificado §8), computed from one runCase() result.
 // Thresholds are the initial ones from the design (§5 says to recalibrate them after the screening phase).
 import { compSummary, probeSummary } from './engine.mjs';
 
@@ -20,7 +20,7 @@ export const THRESH = {
   K11b_gapErr_mm: [0.05, 0.5, 'lt'],
   K19_bubTouch: [0, 0.005, 'lt'], // fraction of bubble voxels face-adjacent to aggregate
   K23_meshTri: [250000, 500000, 'lt'], // M5: now counts voids + bubbles; the plan gives no warn limit, 2× is the warn band
-  // plano_app_unificado_compactacao.md §8
+  // docs/plans/plano_app_unificado_compactacao.md §8
   K33_penMax: [0.02, 0.04, 'lt'], // max stone-stone penetration by the real hull, / Min Feret of the smaller particle
   // (max − min AVC of the thirds) / target AVC. A calibrar: with more voids at the faces (K27 > 1, as in real CT) the end thirds
   // differ from the middle by design, so the plan's 0,30 / 0,60 conflicts with K27; widened until a CT reference exists

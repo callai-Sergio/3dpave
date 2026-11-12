@@ -129,5 +129,5 @@ Os números das Fases 2 e 3 são estimativas a partir do perfil; cada item mede 
 - **Fins de linha misturados**: parte de `src/` está em CRLF (vinda do Windows) e parte em LF. O `marshall_digital_app.html` muda centenas de linhas só por isso quando o build roda em Linux. Proposta: `.gitattributes` com `* text=auto eol=lf` e uma normalização num commit só.
 - **Pacote desatualizado**: `pacote/src/marshall_simulator/web/marshall_digital_app.html` é anterior às últimas mudanças da UI; refazer com `pacote/build_pacote.py`.
 - **Golden do C** (M14): o golden [W] só vale para o JS. Com a referência do C da S2a, o C passa a ter a sua própria âncora.
-- **Arquivos grandes antigos**: `marshall_digital(1)/…/V5_visualizador.html` (2 × 10 MB) e `legacy_2026-10-28/` só servem de histórico; podem sair do repositório (ficam no histórico do git).
+- **Arquivos grandes antigos**: `archive/v5_colab/…/V5_visualizador.html` (2 × 10 MB) e `archive/legacy_2026-10-28/` só servem de histórico; podem sair do repositório (ficam no histórico do git).
 - **Sem CI**: um workflow com `node build.mjs`, `golden.mjs --determinism` (Node 24.11.1) e a compilação do `mdsim.c` pegaria regressões antes do merge.

@@ -6,13 +6,13 @@ Junta, sem duplicatas, as melhorias propostas em todos os chats do projeto. A pa
 
 | Código | Fonte |
 |---|---|
-| PM | `plano_melhorias_marshall_digital.md` (P1–P7, M1–M10, metas K, melhorias 1–13) |
-| PU | `plano_app_unificado_compactacao.md` (fases F0–F7, §8 KPIs V1–V7, §9 estado) |
-| BR | `BRIEFING_chat_unificado.md` (chat "Melhorias no código de simulação": unificação, núcleo C, calibração) |
-| PP | `PROXIMOS_PASSOS.md` (chat "Arquivos na pasta": artefato, pacote, curvas DE, PT/EN) |
+| PM | `docs/plans/plano_melhorias_marshall_digital.md` (P1–P7, M1–M10, metas K, melhorias 1–13) |
+| PU | `docs/plans/plano_app_unificado_compactacao.md` (fases F0–F7, §8 KPIs V1–V7, §9 estado) |
+| BR | `docs/plans/BRIEFING_chat_unificado.md` (chat "Melhorias no código de simulação": unificação, núcleo C, calibração) |
+| PP | `docs/plans/PROXIMOS_PASSOS.md` (chat "Arquivos na pasta": artefato, pacote, curvas DE, PT/EN) |
 | AG | chat "Pipeline de agregados" (modelo de forma v2, `biblioteca_formas_reais.json`) |
 | ST | chat "Stress test" + `stress/results/screening_findings.md` (triagem de 99 casos) |
-| IN | `INSTRUCOES_MELHORIAS.md` |
+| IN | `docs/plans/INSTRUCOES_MELHORIAS.md` |
 
 Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK do usuário) · **backlog** (não implementar agora).
 
@@ -23,8 +23,8 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | I1 | IN §6, PM 11 | O `server_run.sh` do PC aceita Node ≥ 20 e baixa v22.11.0; o `deploy.sh` sobrescreve a correção feita à mão no vid1 | Preferir `.node/bin/node`; baixar v24.11.1; exigir 24.11.1 | `stress/server/server_run.sh` | golden passa no vid1 depois do deploy | Node 24.11.1 | alta | **feito** (2026-10-29; ainda não testado no vid1) |
 | I2 | PM 11, P7 | O jsonl não diz em que plataforma rodou | Gravar versão do Node, SO e hash do app em cada linha | `stress/run.mjs` | campo `env` presente | — | alta | **feito** (`env`: node, SO, host, hash do app, núcleo C) |
 | I3 | IN §4.2 | Pasta sem git | `git init`, commit base e repositório privado no GitHub | raiz | — | — | alta | **feito** (este chat) |
-| I5 | usuário | Documentar e versionar tudo | Commit + push a cada item; `WHITEPAPER.md` atualizado a cada mudança | raiz | — | — | alta | **regra permanente** |
-| I4 | BR §6.10 | §9 do plano unificado desatualizada (não fala do C nem da calibração Ø101,6) | Atualizar §9 | `plano_app_unificado_compactacao.md` | — | — | baixa | falta |
+| I5 | usuário | Documentar e versionar tudo | Commit + push a cada item; `docs/specs/WHITEPAPER.md` atualizado a cada mudança | raiz | — | — | alta | **regra permanente** |
+| I4 | BR §6.10 | §9 do plano unificado desatualizada (não fala do C nem da calibração Ø101,6) | Atualizar §9 | `docs/plans/plano_app_unificado_compactacao.md` | — | — | baixa | falta |
 
 ## Bloco 1: medição (harness `stress/kpi.mjs`), antes de mexer no simulador
 
@@ -83,7 +83,7 @@ Status: **feito** · **parcial** · **falta** · **bloqueado** (falta dado ou OK
 | F5 | PP 4 | Eq. 3 de [W] não serve para PA (cai em 48 %) | Sugestão de B por tipo de curva | `src/ui` | — | baixa | falta |
 | F6 | PP 4 | Testes faltando | 1000 g, preset [W] completo, download do zip, pacote em macOS/Linux | — | — | baixa | falta |
 | F8 | novo (K23) | Com bolhas, o STL de vazios passa de 250 mil triângulos (golden ~290 mil) | Icosaedro mais simples para bolhas pequenas, ou exportar bolhas em arquivo separado | `src/ui/30_export.js` | K23 | ≤ 250 mil | baixa | falta |
-| F9 | usuário | O app precisa de ajuda, copyright e referências; o projeto, de um whitepaper | Cards Ajuda e Referências (PT/EN), rodapé © Sergio Callai, `WHITEPAPER.md` | `src/app/head.html`, `src/ui/00_base.js` | prévia PT/EN | alta | **feito** |
+| F9 | usuário | O app precisa de ajuda, copyright e referências; o projeto, de um whitepaper | Cards Ajuda e Referências (PT/EN), rodapé © Sergio Callai, `docs/specs/WHITEPAPER.md` | `src/app/head.html`, `src/ui/00_base.js` | prévia PT/EN | alta | **feito** |
 | F10 | usuário | No app, o Marshall de 1200 g leva ~40 min em JS | Núcleo em C (`mdsim`) dentro do mini app: o servidor local do Python serve a página e `native/mdsim` (token); o worker manda a compactação por POST síncrono e a página lê o progresso do servidor; sem o mdsim (ou se ele falhar), JS. Serialização única em `src/worker/26_nativo.js`, usada também pelo harness (`stress/native.mjs`). Só Marshall e giratório (o [W] em C reprova no golden, M14). `mdsim.exe` compilado com `-march=x86-64-v2` vai no pacote | `src/worker/25_protocolos.js`, `26_nativo.js`, `src/ui/10_painel.js`, `pacote/` | golden pela ponte nova = ponte antiga; app roda Marshall pelo C | **alta** | **em andamento**: ponte nova dá o golden C idêntico à antiga; o app chama o mdsim com 20 núcleos |
 | F7 | AG | Eq. 3 (Awuah) ignora a forma: propriedades idênticas | Modelo de previsão que use força de compactação ou contatos do DEM | — | — | baixa | backlog |
 

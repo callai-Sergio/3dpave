@@ -1,4 +1,4 @@
-// Validação V1 (plano_app_unificado_compactacao.md §8.2): AVC Marshall com 75 golpes × teor de betume,
+// Validação V1 (docs/plans/plano_app_unificado_compactacao.md §8.2): AVC Marshall com 75 golpes × teor de betume,
 // contra Albayati (2024), Data in Brief 53, 110224, Fig. 2 (valores lidos do gráfico, ±0,2 pp).
 // Roda no modo AVC livre: o AVC sai dos golpes. Uso:
 //   node stress/validacao.mjs [--size p|m] [--seeds 1] [--pb 4,4.5,5,5.5] [--binder 60/70|40/50] [--set '{"mastic":{"lam":0.6}}']

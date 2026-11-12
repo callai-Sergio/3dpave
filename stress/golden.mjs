@@ -1,6 +1,6 @@
 // Golden run: C-12,5 mid-band, limestone, Pb 5,5 %, AVC 4 %, 250 g, seed 2024.
 // Checks the harness against the reference values. Protocol [W] (pistons). Reference updated on 2026-10-28 for the
-// convex-hull contact core (plano_app_unificado_compactacao.md, F1): overlap 0,61 → 0,006 cm³; spec §7.4 had the sphere-cluster values.
+// convex-hull contact core (docs/plans/plano_app_unificado_compactacao.md, F1): overlap 0,61 → 0,006 cm³; spec §7.4 had the sphere-cluster values.
 // Usage: node stress/golden.mjs [--determinism] [--record]
 // Besides the tolerances below (valid on any platform), golden_ref.json keeps the exact values per platform (M10):
 // on a platform with a reference the run must reproduce it bit for bit, and K32 reports the drift against the other platforms.
