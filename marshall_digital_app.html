@@ -2370,15 +2370,25 @@ function tickAnim(t){if(!playing)return;
   requestAnimationFrame(tickAnim);}
 $('b-play').addEventListener('click',()=>playing?stopAnim():playAnim());
 $('frame').addEventListener('input',e=>{stopAnim();if(viewMode!=='a')setViewMode('a');setFrame(+e.target.value);});
-function sectionCanvas(kind,idx,style){
+// look (+1 ou -1, só na vista 3D): sentido em que se olha para dentro do CP. Com "vazios" desmarcado o vazio não é pintado:
+// aparece o que está atrás dele, mais escuro quanto mais fundo. As reentrâncias da superfície (fase 5) são sempre vistas assim.
+function sectionCanvas(kind,idx,style,look){
   const r=result,nx=r.nx,ny=r.ny,nz=r.nz,sxy=nx*ny,W=kind==='z'?nx:ny,H=kind==='z'?ny:nz;
+  const passo=look?(kind==='z'?look*sxy:look):0,lim=kind==='z'?nz:nx,nmax=look?Math.ceil(10/r.h):0;
   const cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d'),img=ctx.createImageData(W,H),d=img.data;
   const tc=style==='tc',agcache=new Map();
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){
-    const id=kind==='z'?idx*sxy+(ny-1-j)*nx+i:(nz-1-j)*sxy+i*nx+idx;
-    const p=r.phase[id],o=4*(j*W+i);let c=null;
+    let id=kind==='z'?idx*sxy+(ny-1-j)*nx+i:(nz-1-j)*sxy+i*nx+idx;
+    let p=r.phase[id],c=null,fundo=0;const o=4*(j*W+i),id0=id;
+    if(look&&(p===5||((p===2||p===3)&&!showVoids))){
+      let pos=idx,q=id0;p=0;
+      for(fundo=1;fundo<=nmax;fundo++){pos+=look;if(pos<0||pos>=lim)break;q+=passo;const pq=r.phase[q];if(pq===0)break;if(pq===1||pq===4){p=pq;break;}}
+      if(p)id=q;
+    }
+    if(fundo&&!p)c=[5,5,5];else
     if(p===1)c=tc?[12,12,12]:C_MAST;else if(p===2)c=tc?[245,245,245]:C_VOID;else if(p===3)c=tc?[245,245,245]:(distBub?C_BUB:C_VOID);
     else if(p===4){const L=r.lab[id]-1;if(tc){const t=toneOf(L);c=[128+t*9,128+t*9,128+t*9];}else{if(!agcache.has(L))agcache.set(L,particleRGB(L));c=agcache.get(L);}}
+    if(fundo&&p){const f=0.85*Math.exp(-fundo*r.h/4);c=[c[0]*f,c[1]*f,c[2]*f];}
     if(c){d[o]=c[0];d[o+1]=c[1];d[o+2]=c[2];d[o+3]=255;}
   }
   ctx.putImageData(img,0,0);return cv;
@@ -2388,17 +2398,17 @@ function setMap(m,cv){if(m.material.map)m.material.map.dispose();m.material.map=
 function cutValue(){const r=result,f=+$('cut').value/1000;return cutMode==='z'?f*r.H:(f*2-1)*r.R;}
 function updateCaps(all){
   if(!result)return;const r=result;
-  if(all){setMap(capTop,sectionCanvas('z',r.nz-1));setMap(capBot,sectionCanvas('z',0));}
+  if(all){setMap(capTop,sectionCanvas('z',r.nz-1,null,-1));setMap(capBot,sectionCanvas('z',0,null,1));}
   const c=cutValue();
   if(cutMode==='x'){
     const ix=Math.min(r.nx-1,Math.max(0,Math.floor((c+r.R)/r.h)));
     capCut.geometry.dispose();const g=new THREE.PlaneGeometry(2*r.R,r.H);
     g.applyMatrix4(new THREE.Matrix4().makeBasis(new THREE.Vector3(0,1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(1,0,0)));
-    capCut.geometry=g;capCut.position.set(c-0.03,0,r.H/2);setMap(capCut,sectionCanvas('x',ix));
+    capCut.geometry=g;capCut.position.set(c-0.03,0,r.H/2);setMap(capCut,sectionCanvas('x',ix,null,-1));
     clipPlane.normal.set(-1,0,0);clipPlane.constant=c;$('cut-lbl').textContent=`x = ${fmt(c,1)} mm`;
   }else if(cutMode==='z'){
     const iz=Math.min(r.nz-1,Math.max(0,Math.floor(c/r.h)));
-    capCut.geometry.dispose();capCut.geometry=new THREE.PlaneGeometry(2*r.R,2*r.R);capCut.position.set(0,0,c-0.03);setMap(capCut,sectionCanvas('z',iz));
+    capCut.geometry.dispose();capCut.geometry=new THREE.PlaneGeometry(2*r.R,2*r.R);capCut.position.set(0,0,c-0.03);setMap(capCut,sectionCanvas('z',iz,null,-1));
     clipPlane.normal.set(0,-1,0);clipPlane.constant=c;$('cut-lbl').textContent=`z = ${fmt(c,1)} mm`;
   }else{clipPlane.normal.set(-1,0,0);clipPlane.constant=1e5;$('cut-lbl').textContent='sem corte';}
   applyModes();dirty=true;
@@ -2426,7 +2436,7 @@ $('chk-tilt').addEventListener('change',e=>{tiltEx=e.target.checked;syncTilt();i
 segGroup('seg-cor',v=>{colorMode=v;recolor();});
 segGroup('seg-corte',v=>{cutMode=v;$('cut').value=500;updateCaps(false);});
 $('cut').addEventListener('input',()=>updateCaps(false));
-$('chk-void').addEventListener('change',e=>{showVoids=e.target.checked;applyModes();});
+$('chk-void').addEventListener('change',e=>{showVoids=e.target.checked;updateCaps(true);});
 $('chk-bub').addEventListener('change',e=>{distBub=e.target.checked;applyModes();updateCaps(true);renderLegend();if(!$('tomo').hidden)drawSection();});
 segGroup('seg-tab',v=>{const t=v==='tomo';$('tomo').hidden=!t;$('c3d').hidden=t;$('tb3d').hidden=t;$('tbtomo').hidden=!t;$('hint').hidden=t;$('tomo-card').hidden=!t;if(t)drawSection();else{resize();dirty=true;}});
 
