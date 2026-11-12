@@ -3,7 +3,7 @@
 ## Estado atual
 - App: `marshall_digital_app.html` (Wan et al. 2024). Artefato v5 em https://claude.ai/artifact/NZdqVD7NCQUwAA3bTUsTNW. Tem PT/EN e 17 curvas alemãs AC/PA (TL Asphalt-StB 07/13).
 - Pacote para os colegas: `pacote/` (marshall-simulator 1.0.0, pywebview). Já foi gerado `pacote/MarshallSimulator_1.0.0.zip`. Testado só no Windows.
-- Servidor vid1: o pipeline de agregados está parado e o modelo v2 terminou em 28/10. Os resultados ficam em `~/workspace/3dpave/agregados/03_modelo/{todos,f004_A,sma_diabasio}` e já foram copiados para cá.
+- Servidor vid1: o pipeline de agregados está parado e o modelo v2 terminou em 28/10. Os resultados ficam em `~/workspace/data/marshall/agregados/03_modelo/{todos,f004_A,sma_diabasio}` e já foram copiados para cá.
 
 ## Próximos passos (por prioridade)
 1. **Formas reais dos agregados (o maior ganho).** O gerador convexo (`md_core._forma`) dá convexidade de cerca de 0,99, mas os grãos reais ficam entre 0,66 e 0,81.
