@@ -69,6 +69,30 @@ Gerado do `git log`; detalhes por dia em `docs/historic/AAAA-MM-DD.md`. Estado a
 ## 2026-11-11: Vazios na superfície (3.2/3.3) (1 commits)
 - `daeb644` 3.2 e 3.3: reentrâncias da superfície (fase "externo") e AVC sem a textura
 
-## 2026-11-12: Trabalho do dia (2 commits)
+## 2026-11-12: Organização, 3.4 e início da 3.5 (9 commits)
 - `a549805` Cena 3D: vazios desmarcados não são pintados de vermelho nas tampas e no corte (mostra o que está atrás, escurecido)
 - `c373bd3` HANDOFF: retorno do usuário no Chrome e PA 8 lento no PC
+- `0e0924d` docs: reorganiza em docs/{specs,plans,historic}, move legado para archive/ e corrige referências
+- `ecb999e` docs: caminhos atualizados em BACKLOG, stress e legacy após a reorganização
+- `5337c88` DATA.md: dados pesados movidos para ~/workspace/data/marshall
+- `e63be25` 3.4: lateral e faces pela superfície dos voxels, com a película de mastique de 1,5 mm transparente
+- `8e18dfe` Pacote: threads do mdsim = MD_THREADS ou 60 % dos lógicos (PA 8 lento em CPU híbrida; ainda não medido no PC)
+- `8c383f2` 3.5: calibração reduzida depois da 3.2-3.4 dá MAE 0,78 pp (meta 0,5); precisa varrer λ e escE de novo
+- `5a134a6` 3.5: varredura λ x escE (96 rodadas): melhor par λ 0,50 / escE 0,001 com MAE 0,57 pp; falta refinar
+
+## 2026-11-13: 3.5: varreduras de λ × escE e viés em Pb 4,0 (5 commits)
+- `a01d4a9` 3.5: refinamento (72 rodadas): λ 0,52 / escE 0,001 com MAE 0,52 pp; falta testar λ 0,51
+- `ed11162` 3.5: λ 0,51 dá MAE 0,70 pp; a diferença entre os candidatos está dentro do ruído de semente (dp 0,55 pp)
+- `ba5c1ec` 3.5: 9 sementes por candidato: λ 0,52/0,001 MAE 0,59, λ 0,54/0,0015 0,57, atual 0,70; nenhum chega a 0,5 (viés em Pb 4,0)
+- `49c6b7e` 3.5: viés em Pb 4,0 é do modelo (já existia na A5); FMA e mudanças de código descartadas
+- `dc0c9f1` Viés em Pb 4,0: película descartada; atrito e coesão travam a mistura seca (inclinação −3,59 → −2,86 / −2,91)
+
+## 2026-11-15: 3.5: atrito, coesão e λ (MAE 0,24 pp no 60/70) (3 commits)
+- `d7aa070` Calibração atrito/coesão: coesão 0 dá MAE 0,47 pp e inclinação −2,91 (antes 0,70 e −3,59); falta ajustar λ
+- `b9068d0` 3.5: calibração λ 0,52/0,535 sem coesão (melhor λ 0,535, μ 0,1, MAE 0,31)
+- `e15bb1a` 3.5: λ 0,535 com 12 sementes (μ 0,1, coesão 0: MAE 0,24, IC 0,20–0,47)
+
+## 2026-11-16: 3.5: padrões aplicados; validação 40/50 falha; papel da viscosidade (3 commits)
+- `6a8216c` 3.5: padrões do mastique calibrados (λ 0,535, μ 0,1, coesão 0); grade de validação Albayati 40/50
+- `489ca48` 3.5: validação Albayati 40/50 falha (MAE 1,78 pp): o modelo reage demais à viscosidade do ligante
+- `e584844` 3.5: peso da viscosidade: etaK 0,1 iguala os ligantes como no lab, mas a mistura seca perde o travamento
