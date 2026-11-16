@@ -301,7 +301,7 @@ function workerMsg(cfg,comp){
   return {comp:{R:comp.R,H:comp.H,V:comp.V,mass:comp.mass,m_agg:comp.m_agg,fracoes:comp.fracoes,k250:comp.k250,k1000:comp.k1000,V_void:comp.V_void,M:comp.M,V_graudo:comp.V_graudo},
     rhoA:cfg.ra,seed:cfg.seed,lib:cfg.lib,bub:cfg.bub,seg:cfg.seg,avc:cfg.avc,voxel:(SIZES[cfg.size]||SIZES.p)[2],dt:2e-5,coat:0.25,
     proto:cfg.proto,avcMode:cfg.avcMode,
-    mastic:{eta:v.etaM,lam:cfg.lam,etaK:cfg.etaK,kf:0.05,coh:0.005,mu:0.2},
+    mastic:{eta:v.etaM,lam:cfg.lam,etaK:cfg.etaK,kf:0.05,coh:0,mu:0.1},
     marshall:{golpes:cfg.golpes,sim:cfg.gsim,escE:cfg.escE},
     gir:{N:cfg.ngir,sim:cfg.gsimg,P:cfg.press,escP:cfg.escP,ang:cfg.ang,Tg:0.04}};
 }

@@ -154,7 +154,7 @@ export function workerMsg(cfg, comp, spec, app) {
     proto: spec.proto ?? 'w', avcMode: spec.avcMode ?? 'travado',
     // replay: saída gravada do mdsim no lugar da física (como o "Abrir resultado" do app); sem MD_NATIVE
     replay: spec.replay, replayNA: spec.replayNA,
-    mastic: Object.assign({ eta, lam: 0.55, kf: 0.05, coh: 0.005, mu: 0.2, etaK: 1 }, spec.mastic || {}),
+    mastic: Object.assign({ eta, lam: 0.535, kf: 0.05, coh: 0, mu: 0.1, etaK: 1 }, spec.mastic || {}),
     marshall: Object.assign({ golpes: 75, sim: 0, escE: 0.002 }, spec.marshall || {}),
     gir: Object.assign({ N: 100, sim: 30, P: 600, escP: 0.001, ang: 1.16, Tg: 0.04 }, spec.gir || {}),
   };

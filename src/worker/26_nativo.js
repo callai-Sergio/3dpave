@@ -12,7 +12,7 @@ function nativeInput(cfg,comp,lib,Ps,pos,q){
     mh.golpes??75,mh.sim??0,gi.N??100,gi.sim??0,seg.on?1:0]);
   // o mdsim usa este campo só para o soquete do Marshall (Mh e E): vai a massa de referência do soquete (25_protocolos.js)
   F64([comp.R,comp.H,cfg.dt,cfg.coat,comp.V_graudo,comp.M,massaSoquete(comp),cfg.rhoA*1e-6,
-    mc.lam??0.55,mc.kf??0.05,(mc.eta??20)*(mc.etaK??1),mc.coh??0.005,mc.mu??0.2,
+    mc.lam??0.535,mc.kf??0.05,(mc.eta??20)*(mc.etaK??1),mc.coh??0,mc.mu??0.1,
     mh.escE??0.002,gi.P??600,gi.escP??0.001,gi.ang??1.16,gi.Tg??0.04,seg.k??0]);
   for(const t of lib){I32([t.pr.length/3,t.pl.length/4]);F64(t.pr);F64(t.pl);F64([t.vol,...t.I.map(Math.abs),t.area,t.rmax]);}
   I32(Ps.tpl);F64(Ps.sc);F64(pos);F64(q);
